@@ -1,0 +1,60 @@
+<!-- STATS GRID COMPONENT
+     Key metrics display with large numbers and small labels.
+     Arrange 3-7 metrics in a single row using percentage-based widths.
+     IMPORTANT: Uses width="100%" to prevent overflow. Wrap in a <td style="padding:0 16px;">
+     to add side margins within the parent container.
+     Variables: {{bg_color}} (default #f8fafc)
+-->
+<table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%"
+       style="width:100%;border-collapse:collapse;table-layout:fixed;" align="center">
+    <tr>
+        <!-- Metric 1 -->
+        <td align="center" valign="top" bgcolor="{{bg_color}}"
+            style="background-color:{{bg_color}};padding:12px 8px;width:25%;">
+            <p style="margin:0;padding:0;
+                      font-family:-apple-system,BlinkMacSystemFont,'Segoe UI','PingFang SC','Microsoft YaHei',sans-serif;
+                      font-size:24px;font-weight:600;color:#334155;
+                      line-height:28px;mso-line-height-rule:exactly;word-wrap:break-word;overflow-wrap:break-word;">{{metric_1_value}}</p>
+            <p style="margin:4px 0 0 0;padding:0;
+                      font-family:-apple-system,BlinkMacSystemFont,'Segoe UI','PingFang SC','Microsoft YaHei',sans-serif;
+                      font-size:12px;font-weight:400;color:#64748b;
+                      line-height:16px;mso-line-height-rule:exactly;word-wrap:break-word;overflow-wrap:break-word;">{{metric_1_label}}</p>
+        </td>
+        <!-- Metric 2 -->
+        <td align="center" valign="top" bgcolor="{{bg_color}}"
+            style="background-color:{{bg_color}};padding:12px 8px;width:25%;">
+            <p style="margin:0;padding:0;
+                      font-family:-apple-system,BlinkMacSystemFont,'Segoe UI','PingFang SC','Microsoft YaHei',sans-serif;
+                      font-size:24px;font-weight:600;color:#334155;
+                      line-height:28px;mso-line-height-rule:exactly;word-wrap:break-word;overflow-wrap:break-word;">{{metric_2_value}}</p>
+            <p style="margin:4px 0 0 0;padding:0;
+                      font-family:-apple-system,BlinkMacSystemFont,'Segoe UI','PingFang SC','Microsoft YaHei',sans-serif;
+                      font-size:12px;font-weight:400;color:#64748b;
+                      line-height:16px;mso-line-height-rule:exactly;word-wrap:break-word;overflow-wrap:break-word;">{{metric_2_label}}</p>
+        </td>
+        <!-- Metric 3 -->
+        <td align="center" valign="top" bgcolor="{{bg_color}}"
+            style="background-color:{{bg_color}};padding:12px 8px;width:25%;">
+            <p style="margin:0;padding:0;
+                      font-family:-apple-system,BlinkMacSystemFont,'Segoe UI','PingFang SC','Microsoft YaHei',sans-serif;
+                      font-size:24px;font-weight:600;color:#059669;
+                      line-height:28px;mso-line-height-rule:exactly;word-wrap:break-word;overflow-wrap:break-word;">{{metric_3_value}}</p>
+            <p style="margin:4px 0 0 0;padding:0;
+                      font-family:-apple-system,BlinkMacSystemFont,'Segoe UI','PingFang SC','Microsoft YaHei',sans-serif;
+                      font-size:12px;font-weight:400;color:#64748b;
+                      line-height:16px;mso-line-height-rule:exactly;word-wrap:break-word;overflow-wrap:break-word;">{{metric_3_label}}</p>
+        </td>
+        <!-- Metric 4 -->
+        <td align="center" valign="top" bgcolor="{{bg_color}}"
+            style="background-color:{{bg_color}};padding:12px 8px;width:25%;">
+            <p style="margin:0;padding:0;
+                      font-family:-apple-system,BlinkMacSystemFont,'Segoe UI','PingFang SC','Microsoft YaHei',sans-serif;
+                      font-size:24px;font-weight:600;color:#dc2626;
+                      line-height:28px;mso-line-height-rule:exactly;word-wrap:break-word;overflow-wrap:break-word;">{{metric_4_value}}</p>
+            <p style="margin:4px 0 0 0;padding:0;
+                      font-family:-apple-system,BlinkMacSystemFont,'Segoe UI','PingFang SC','Microsoft YaHei',sans-serif;
+                      font-size:12px;font-weight:400;color:#64748b;
+                      line-height:16px;mso-line-height-rule:exactly;word-wrap:break-word;overflow-wrap:break-word;">{{metric_4_label}}</p>
+        </td>
+    </tr>
+</table>

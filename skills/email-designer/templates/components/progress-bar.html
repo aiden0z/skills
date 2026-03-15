@@ -1,0 +1,37 @@
+<!-- PROGRESS BAR COMPONENT
+     Outlook-safe progress bar using two bgcolor table cells.
+     This works in ALL email clients including Outlook 2007-2019 because
+     it's just two table cells with background colors — no CSS gradients,
+     no border-radius, no advanced features.
+
+     Variables:
+       {{bar_width}}     — total bar width in px (e.g., 120)
+       {{fill_percent}}  — fill percentage as integer (e.g., 75)
+       {{fill_color}}    — filled portion color (e.g., #2563eb)
+       {{track_color}}   — empty portion color (e.g., #e2e8f0)
+       {{bar_height}}    — bar height in px (e.g., 6)
+       {{label}}         — percentage label below (e.g., 75%)
+-->
+<table role="presentation" cellpadding="0" cellspacing="0" border="0"
+       width="{{bar_width}}" style="width:{{bar_width}}px;border-collapse:collapse;">
+    <tr>
+        <!-- Filled portion -->
+        <td width="{{fill_percent}}%" bgcolor="{{fill_color}}" height="{{bar_height}}"
+            style="width:{{fill_percent}}%;height:{{bar_height}}px;
+                   background-color:{{fill_color}};
+                   font-size:1px;line-height:{{bar_height}}px;
+                   mso-line-height-rule:exactly;">&nbsp;</td>
+        <!-- Empty portion -->
+        <td bgcolor="{{track_color}}" height="{{bar_height}}"
+            style="height:{{bar_height}}px;
+                   background-color:{{track_color}};
+                   font-size:1px;line-height:{{bar_height}}px;
+                   mso-line-height-rule:exactly;">&nbsp;</td>
+    </tr>
+</table>
+<!-- Optional label -->
+<p style="margin:2px 0 0 0;padding:0;
+          font-family:-apple-system,BlinkMacSystemFont,'Segoe UI','PingFang SC','Microsoft YaHei',sans-serif;
+          font-size:11px;font-weight:400;color:#64748b;
+          line-height:14px;mso-line-height-rule:exactly;
+          text-align:center;">{{label}}</p>

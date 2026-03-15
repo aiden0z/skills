@@ -1,0 +1,49 @@
+<!-- CARD COMPONENT
+     Card-style content block with light gray background.
+     No border-radius (forbidden in Outlook). Uses bgcolor on both table and td.
+     Uses width="100%" — wrap in a parent td that controls max width.
+     Variables: {{card_title_placeholder}}, {{card_body_placeholder}}
+-->
+<table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%"
+       style="width: 100%; border-collapse: collapse; table-layout: fixed;"
+       bgcolor="#f8fafc">
+    <tr>
+        <td bgcolor="#f8fafc" style="background-color: #f8fafc; padding: 20px 24px;">
+
+            <!-- Card title -->
+            <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%">
+                <tr>
+                    <td style="padding: 0;
+                               font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', 'Hiragino Sans GB', sans-serif;">
+                        <h3 style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', 'Hiragino Sans GB', sans-serif;
+                                   font-size: 18px; font-weight: 600; color: #1e293b;
+                                   line-height: 26px; mso-line-height-rule: exactly;
+                                   padding: 0; word-wrap: break-word; overflow-wrap: break-word;">{{card_title_placeholder}}</h3>
+                    </td>
+                </tr>
+            </table>
+
+            <!-- Spacer between title and body -->
+            <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%">
+                <tr>
+                    <td height="12"
+                        style="height: 12px; font-size: 1px; line-height: 12px; mso-line-height-rule: exactly;">&nbsp;</td>
+                </tr>
+            </table>
+
+            <!-- Card body text -->
+            <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%">
+                <tr>
+                    <td style="padding: 0;
+                               font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', 'Hiragino Sans GB', sans-serif;">
+                        <p style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', 'Hiragino Sans GB', sans-serif;
+                                  font-size: 14px; font-weight: 400; color: #475569;
+                                  line-height: 22px; mso-line-height-rule: exactly;
+                                  padding: 0; word-wrap: break-word; overflow-wrap: break-word;">{{card_body_placeholder}}</p>
+                    </td>
+                </tr>
+            </table>
+
+        </td>
+    </tr>
+</table>

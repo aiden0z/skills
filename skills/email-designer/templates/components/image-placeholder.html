@@ -1,0 +1,35 @@
+<!-- IMAGE PLACEHOLDER COMPONENT
+     Image placeholder for CID-embedded images with optional caption.
+     Outer table uses width="100%" — wrap in a parent td that controls max width.
+     Image width/height use pixel values for correct rendering.
+     Variables: {{image_cid}}, {{image_width}}, {{image_height}}, {{image_alt}}, {{caption_text}}
+-->
+<table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" align="center"
+       style="width: 100%; border-collapse: collapse;">
+    <tr>
+        <td align="center" valign="top" style="padding: 0;">
+            <img src="cid:{{image_cid}}"
+                 width="{{image_width}}" height="{{image_height}}"
+                 alt="{{image_alt}}"
+                 style="display: block; width: {{image_width}}px; height: {{image_height}}px; border: 0;" />
+        </td>
+    </tr>
+
+    <!-- Spacer between image and caption -->
+    <tr>
+        <td height="8"
+            style="height: 8px; font-size: 1px; line-height: 8px; mso-line-height-rule: exactly;">&nbsp;</td>
+    </tr>
+
+    <!-- Optional caption below image -->
+    <tr>
+        <td align="center" valign="top"
+            style="padding: 0;
+                   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', 'Hiragino Sans GB', sans-serif;">
+            <p style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', 'Hiragino Sans GB', sans-serif;
+                      font-size: 12px; font-weight: 400; color: #94a3b8;
+                      line-height: 18px; mso-line-height-rule: exactly;
+                      padding: 0; text-align: center; word-wrap: break-word; overflow-wrap: break-word;">{{caption_text}}</p>
+        </td>
+    </tr>
+</table>

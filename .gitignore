@@ -1,0 +1,28 @@
+# Output and workspace
+output/
+*-workspace/
+evals/
+saved-templates/
+
+# Node
+node_modules/
+package-lock.json
+dist/
+.vite/
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.idea/
+.vscode/
+*.swp
+
+# Temp
+*.tmp

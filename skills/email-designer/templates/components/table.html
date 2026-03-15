@@ -1,0 +1,99 @@
+<!-- TABLE COMPONENT (Type 1: Gray Header)
+     Data table with gray header row, white data rows, VML dividers.
+
+     IMPORTANT — Column width rules:
+     - Use PERCENTAGE widths (e.g., width="30%"), not pixel widths
+     - Percentages prevent overflow regardless of padding
+     - All column percentages must sum to 100%
+     - Table width uses parent's width via width="100%"
+
+     Variables: {{header_bg}} (default #f8fafc), {{header_text_color}} (default #334155)
+-->
+<table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%"
+       style="width:100%;border-collapse:collapse;table-layout:fixed;">
+
+    <!-- Header row -->
+    <tr>
+        <td width="33%" align="left" valign="middle" bgcolor="#f8fafc"
+            style="background-color:#f8fafc;padding:8px 12px;
+                   font-family:-apple-system,BlinkMacSystemFont,'Segoe UI','PingFang SC','Microsoft YaHei','Hiragino Sans GB',sans-serif;
+                   font-size:13px;font-weight:600;color:#334155;
+                   line-height:18px;mso-line-height-rule:exactly;word-wrap:break-word;overflow-wrap:break-word;">
+            {{col_1_header}}
+        </td>
+        <td width="34%" align="left" valign="middle" bgcolor="#f8fafc"
+            style="background-color:#f8fafc;padding:8px 12px;
+                   font-family:-apple-system,BlinkMacSystemFont,'Segoe UI','PingFang SC','Microsoft YaHei','Hiragino Sans GB',sans-serif;
+                   font-size:13px;font-weight:600;color:#334155;
+                   line-height:18px;mso-line-height-rule:exactly;word-wrap:break-word;overflow-wrap:break-word;">
+            {{col_2_header}}
+        </td>
+        <td width="33%" align="left" valign="middle" bgcolor="#f8fafc"
+            style="background-color:#f8fafc;padding:8px 12px;
+                   font-family:-apple-system,BlinkMacSystemFont,'Segoe UI','PingFang SC','Microsoft YaHei','Hiragino Sans GB',sans-serif;
+                   font-size:13px;font-weight:600;color:#334155;
+                   line-height:18px;mso-line-height-rule:exactly;word-wrap:break-word;overflow-wrap:break-word;">
+            {{col_3_header}}
+        </td>
+    </tr>
+
+    <!-- Header divider (heavier: #cbd5e1) -->
+    <tr>
+        <td colspan="3" bgcolor="#cbd5e1" height="1"
+            style="height:1px;max-height:1px;font-size:0;line-height:0;
+                   mso-line-height-rule:exactly;background-color:#cbd5e1;
+                   padding:0;border:0;">
+            <!--[if mso]>
+            <v:rect xmlns:v="urn:schemas-microsoft-com:vml" fill="true" stroke="false"
+                    style="width:100%;height:0.75pt;">
+                <v:fill type="solid" color="#cbd5e1"/>
+            </v:rect>
+            <![endif]-->
+            <!--[if !mso]><!-->&#8203;<!--<![endif]-->
+        </td>
+    </tr>
+
+    <!-- Data row (white) -->
+    <tr>
+        <td align="left" valign="top" bgcolor="#ffffff"
+            style="background-color:#ffffff;padding:10px 12px;
+                   font-family:-apple-system,BlinkMacSystemFont,'Segoe UI','PingFang SC','Microsoft YaHei','Hiragino Sans GB',sans-serif;
+                   font-size:13px;font-weight:400;color:#475569;
+                   line-height:18px;mso-line-height-rule:exactly;word-wrap:break-word;overflow-wrap:break-word;">
+            {{row_1_col_1}}
+        </td>
+        <td align="left" valign="top" bgcolor="#ffffff"
+            style="background-color:#ffffff;padding:10px 12px;
+                   font-family:-apple-system,BlinkMacSystemFont,'Segoe UI','PingFang SC','Microsoft YaHei','Hiragino Sans GB',sans-serif;
+                   font-size:13px;font-weight:400;color:#475569;
+                   line-height:18px;mso-line-height-rule:exactly;word-wrap:break-word;overflow-wrap:break-word;">
+            {{row_1_col_2}}
+        </td>
+        <td align="left" valign="top" bgcolor="#ffffff"
+            style="background-color:#ffffff;padding:10px 12px;
+                   font-family:-apple-system,BlinkMacSystemFont,'Segoe UI','PingFang SC','Microsoft YaHei','Hiragino Sans GB',sans-serif;
+                   font-size:13px;font-weight:400;color:#475569;
+                   line-height:18px;mso-line-height-rule:exactly;word-wrap:break-word;overflow-wrap:break-word;">
+            {{row_1_col_3}}
+        </td>
+    </tr>
+
+    <!-- Row divider (standard: #e2e8f0) -->
+    <tr>
+        <td colspan="3" bgcolor="#e2e8f0" height="1"
+            style="height:1px;max-height:1px;font-size:0;line-height:0;
+                   mso-line-height-rule:exactly;background-color:#e2e8f0;
+                   padding:0;border:0;">
+            <!--[if mso]>
+            <v:rect xmlns:v="urn:schemas-microsoft-com:vml" fill="true" stroke="false"
+                    style="width:100%;height:0.75pt;">
+                <v:fill type="solid" color="#e2e8f0"/>
+            </v:rect>
+            <![endif]-->
+            <!--[if !mso]><!-->&#8203;<!--<![endif]-->
+        </td>
+    </tr>
+
+    <!-- Data row (repeat pattern — add more rows as needed) -->
+
+</table>

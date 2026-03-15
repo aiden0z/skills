@@ -1,0 +1,53 @@
+<!-- DIVIDER COMPONENT
+     1px divider using bgcolor approach, NOT CSS border.
+     Uses zero-width space content, font-size:0, line-height:0, mso-line-height-rule:exactly.
+     VML rect for Outlook rendering at 0.75pt height.
+     Uses width="100%" — wrap in a parent td that controls max width.
+     Variables: {{divider_color}}
+-->
+
+<!-- === 1px Divider === -->
+<table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%"
+       style="width: 100%; border-collapse: collapse; table-layout: fixed;">
+    <tr>
+        <td width="100%" bgcolor="{{divider_color}}" height="1"
+            style="width: 100%; height: 1px; max-height: 1px;
+                   font-size: 0; line-height: 0; mso-line-height-rule: exactly;
+                   background-color: {{divider_color}}; padding: 0; border: 0;">
+            <!--[if mso]>
+            <v:rect xmlns:v="urn:schemas-microsoft-com:vml" fill="true" stroke="false"
+                    style="width:100%;height:0.75pt;">
+                <v:fill type="solid" color="{{divider_color}}"/>
+            </v:rect>
+            <![endif]-->
+            <!--[if !mso]><!-->
+            &#8203;
+            <!--<![endif]-->
+        </td>
+    </tr>
+</table>
+
+<!--
+=== 3px Accent Bar Variant ===
+To use, uncomment the block below and replace the 1px divider above.
+
+<table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%"
+       style="width: 100%; border-collapse: collapse; table-layout: fixed;">
+    <tr>
+        <td width="100%" bgcolor="{{divider_color}}" height="3"
+            style="width: 100%; height: 3px; max-height: 3px;
+                   font-size: 1px; line-height: 3px; mso-line-height-rule: exactly;
+                   background-color: {{divider_color}}; padding: 0; border: 0;">
+            [if mso]>
+            <v:rect xmlns:v="urn:schemas-microsoft-com:vml" fill="true" stroke="false"
+                    style="width:100%;height:3px;">
+                <v:fill type="solid" color="{{divider_color}}"/>
+            </v:rect>
+            <![endif]
+            [if !mso]>
+            <div style="font-size: 1px; line-height: 3px; height: 3px;">&nbsp;</div>
+            <![endif]
+        </td>
+    </tr>
+</table>
+-->

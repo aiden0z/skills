@@ -1,0 +1,38 @@
+<!-- NAVIGATION BAR COMPONENT
+     Internal navigation links for jumping between email sections.
+     Uses pipe separators and brand blue link color.
+     Uses width="100%" — wrap in a parent td that controls max width.
+     Variables: {{link_1_text}}, {{link_1_href}}, {{link_2_text}}, {{link_2_href}}, etc.
+-->
+<table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%"
+       style="width:100%;border-collapse:collapse;table-layout:fixed;" align="center"
+       bgcolor="#f8fafc">
+    <tr>
+        <td align="center" valign="middle" bgcolor="#f8fafc"
+            style="background-color:#f8fafc;padding:12px 20px;">
+            <a href="{{link_1_href}}"
+               style="color:#1d4ed8;font-size:14px;font-weight:600;text-decoration:none;
+                      padding:0 16px;
+                      font-family:-apple-system,BlinkMacSystemFont,'Segoe UI','PingFang SC','Microsoft YaHei',sans-serif;
+                      word-wrap:break-word;overflow-wrap:break-word;">{{link_1_text}}</a><!--
+            --><span style="color:#e2e8f0;font-size:14px;padding:0 4px;">|</span><!--
+            --><a href="{{link_2_href}}"
+               style="color:#1d4ed8;font-size:14px;font-weight:600;text-decoration:none;
+                      padding:0 16px;
+                      font-family:-apple-system,BlinkMacSystemFont,'Segoe UI','PingFang SC','Microsoft YaHei',sans-serif;
+                      word-wrap:break-word;overflow-wrap:break-word;">{{link_2_text}}</a><!--
+            --><span style="color:#e2e8f0;font-size:14px;padding:0 4px;">|</span><!--
+            --><a href="{{link_3_href}}"
+               style="color:#1d4ed8;font-size:14px;font-weight:600;text-decoration:none;
+                      padding:0 16px;
+                      font-family:-apple-system,BlinkMacSystemFont,'Segoe UI','PingFang SC','Microsoft YaHei',sans-serif;
+                      word-wrap:break-word;overflow-wrap:break-word;">{{link_3_text}}</a>
+        </td>
+    </tr>
+    <!-- Bottom border -->
+    <tr>
+        <td height="1" bgcolor="#e5e7eb"
+            style="background-color:#e5e7eb;height:1px;font-size:0;line-height:0;
+                   mso-line-height-rule:exactly;">&#8203;</td>
+    </tr>
+</table>
