@@ -54,6 +54,28 @@ Generate CLAUDE.md and AGENTS.md with this content, replacing {{placeholders}}:
 - Quantify all insights (e.g., "8% conversion" not just "low conversion")
 - NEVER fabricate data — all numbers must come from data files in `src/data/`
 
+## Key Message Usage
+- **Data slides ONLY** — only add `keyMessage` on slides with charts, metrics, or numbers
+- Do NOT use KeyMessage on concept/explanation slides (e.g., "什么是 X？", "为什么选择 Y？")
+- Format: pass as a string array `keyMessage={['bullet 1', 'bullet 2']}` — auto-formatted with bullets
+- Maximum 3 bullets, each ≤ 25 Chinese characters / 60 English characters
+
+## Space Utilization
+- NEVER use fixed pixel width (`w-[Npx]`) for card containers — use `grid grid-cols-N` or `flex-1`
+- Cards in a row: `grid grid-cols-N gap-5 h-full content-center` (N = number of cards)
+- Cards in a 2×2 grid: `grid grid-cols-2 gap-5 h-full content-center`
+- Content should utilize ≥ 70% of available width
+- NEVER fix both width and height on the same element
+
+## Semi-transparent Colors
+- Pattern: `${colors.primary}XX` where XX is hex alpha (e.g., `08` = subtle, `15` = card bg, `40` = border)
+- NEVER hardcode `rgba()` — always use hex alpha on theme colors
+
+## Concept / Text Slides
+- For non-data slides (explanations, comparisons, overviews): use ConceptSlide layout pattern
+- NO `keyMessage` — use the extra vertical space for larger fonts and more breathing room
+- Use `grid grid-cols-2` for side-by-side concepts, single-column for linear flow
+
 ## Data Sources
 {{dataSources — user fills in}}
 

@@ -107,6 +107,116 @@ Side-by-side comparison with card styling.
 </SlideLayout>
 ```
 
+## CardRow
+
+N items in a single row (2–4 items). Cards stretch to fill available width — **NEVER use fixed pixel widths**.
+
+```jsx
+<SlideLayout title="Feature Highlights">
+  <motion.div
+    className="grid grid-cols-3 gap-5 h-full content-center"
+    variants={stagger} initial="hidden" animate="show"
+  >
+    {items.map((item, i) => (
+      <motion.div
+        key={i}
+        className="flex flex-col items-center p-6 rounded-xl text-center"
+        style={{ backgroundColor: `${colors.primary}06` }}
+        variants={fadeIn}
+      >
+        <span className="text-3xl mb-3">{item.icon}</span>
+        <h3 className="text-[16px] font-semibold mb-2" style={{ color: colors.text }}>
+          {item.title}
+        </h3>
+        <p className="text-[13px] leading-relaxed" style={{ color: colors.textSecondary }}>
+          {item.desc}
+        </p>
+      </motion.div>
+    ))}
+  </motion.div>
+</SlideLayout>
+```
+
+**Rules:**
+- Use `grid-cols-N` where N = number of items (2–4)
+- `h-full content-center` to vertically center cards in the content area
+- `gap-5` (20px) between cards
+- Card padding: `p-5` or `p-6`
+
+## CardGrid
+
+4+ items in a 2×2 grid with icon + text. Best for capability lists and feature overviews.
+
+```jsx
+<SlideLayout title="Core Capabilities">
+  <motion.div
+    className="grid grid-cols-2 gap-5 h-full content-center"
+    variants={stagger} initial="hidden" animate="show"
+  >
+    {items.map((item, i) => (
+      <motion.div
+        key={i}
+        className="flex items-start gap-4 p-5 rounded-xl"
+        style={{ backgroundColor: `${colors.primary}06` }}
+        variants={fadeIn}
+      >
+        <div
+          className="w-12 h-12 rounded-xl flex items-center justify-center shrink-0 text-2xl"
+          style={{ backgroundColor: `${colors.primary}12` }}
+        >
+          {item.icon}
+        </div>
+        <div>
+          <h3 className="text-[16px] font-semibold mb-1" style={{ color: colors.text }}>
+            {item.title}
+          </h3>
+          <p className="text-[13px] leading-relaxed" style={{ color: colors.textSecondary }}>
+            {item.desc}
+          </p>
+        </div>
+      </motion.div>
+    ))}
+  </motion.div>
+</SlideLayout>
+```
+
+## ConceptSlide
+
+For explanation / text-heavy slides WITHOUT data. **Do NOT add KeyMessage** — these slides have no quantitative data to highlight.
+
+Best for: "What is X?", "Why choose Y?", concept introductions, process overviews.
+
+```jsx
+{/* Concept with left/right comparison */}
+<SlideLayout title="What is X?" subtitle="From A to B">
+  <div className="grid grid-cols-2 gap-8 h-full content-center">
+    <div className="p-6 rounded-xl" style={{ backgroundColor: `${colors.muted}08` }}>
+      <h3 className="text-[18px] font-semibold mb-4" style={{ color: colors.text }}>Before</h3>
+      <ul className="text-[14px] space-y-3" style={{ color: colors.textSecondary }}>
+        <li>• Point one</li>
+        <li>• Point two</li>
+      </ul>
+    </div>
+    <div className="p-6 rounded-xl border-2" style={{
+      backgroundColor: `${colors.primary}08`,
+      borderColor: `${colors.primary}25`,
+    }}>
+      <h3 className="text-[18px] font-semibold mb-4" style={{ color: colors.text }}>After</h3>
+      <ul className="text-[14px] space-y-3" style={{ color: colors.textSecondary }}>
+        <li>• Point one</li>
+        <li>• Point two</li>
+      </ul>
+    </div>
+  </div>
+</SlideLayout>
+```
+
+**Rules:**
+- NO `keyMessage` prop — concept slides are not data-driven
+- Use larger font sizes (`text-[14px]`+ for body, `text-[18px]` for card titles) since there's more vertical space without KeyMessage
+- Use `grid grid-cols-2` for side-by-side concepts, or single-column with generous spacing for linear flow
+- Highlight the "after" / "featured" side with `border-2` and primary color tint
+
 ## Built-in Slide Templates
 
 These are ready-to-use slide components included in `src/slides/`. Import and use directly — no custom layout needed. These do NOT use SlideLayout (they have their own specialized layouts).

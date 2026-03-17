@@ -61,6 +61,33 @@ Layout order (enforced by component): Title → KeyMessage (when present) → Co
 - Right navigation area: `w-12 z-30` — must not overlap chart interactive areas
 - List mode: cards use `aspect-video`, container `max-w-[90vw] xl:max-w-6xl`
 
+## Space Utilization (IMPORTANT)
+
+Card and content containers MUST fill the available space. Small fixed-size elements centered in a 1440px canvas look unbalanced.
+
+**Rules:**
+- **NEVER use fixed pixel width** (`w-[200px]`, `w-[220px]`, etc.) for card containers — use `grid grid-cols-N` or `flex-1` so cards stretch to fill the row
+- **Only use fixed width** for small decorative elements (icon circles, badges, divider lines)
+- **Cards in a row**: use `grid grid-cols-N gap-5 h-full content-center` where N = number of cards
+- **Cards in a 2×2 grid**: use `grid grid-cols-2 gap-5 h-full content-center`
+- Content area should utilize **≥ 70%** of available width — if cards look like small islands floating in whitespace, the layout is wrong
+- Prefer **one dimension flexible**: if width is fixed, height should be auto (or vice versa) — NEVER fix both `w-[Npx]` and `h-[Npx]` on the same element
+
+## Semi-transparent Colors
+
+To create semi-transparent variants of theme colors, append a 2-digit hex alpha to the color value:
+
+```jsx
+// Pattern: ${colors.primary}XX where XX is hex opacity (00-FF)
+style={{ backgroundColor: `${colors.primary}08` }}  // ~3% opacity — subtle tint
+style={{ backgroundColor: `${colors.primary}10` }}  // ~6% opacity — light background
+style={{ backgroundColor: `${colors.primary}15` }}  // ~8% opacity — card background
+style={{ backgroundColor: `${colors.primary}20` }}  // ~12% opacity — hover / border
+style={{ backgroundColor: `${colors.primary}40` }}  // ~25% opacity — active border
+```
+
+This works because theme colors are hex strings (e.g., `#2563eb`), and appending `08` creates `#2563eb08` (CSS 8-digit hex with alpha). ALWAYS use this pattern instead of hardcoding `rgba()` values.
+
 ## Slide Registration Props
 
 - `title` — **Always set** on every `<Slide>`. Powers the navigator sidebar in list mode and the jump-to panel in presentation mode
