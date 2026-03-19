@@ -1,0 +1,58 @@
+<!-- TESTIMONIAL / QUOTE COMPONENT
+     Customer quote with attribution. Uses VML left accent border
+     and italic text for the quote body.
+
+     Uses width="100%" — wrap in a parent <td> to control max width.
+     Variables:
+       {{accent_color}}  — left border color (default #2563eb)
+       {{bg_tint}}       — background tint (default #f8fafc)
+       {{quote_text}}    — the quote content
+       {{author_name}}   — who said it
+       {{author_title}}  — their role/company (optional)
+-->
+<table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%"
+       style="width:100%;border-collapse:collapse;">
+    <tr>
+        <!-- Accent bar -->
+        <td width="4" bgcolor="{{accent_color}}"
+            style="width:4px;background-color:{{accent_color}};padding:0;
+                   font-size:0;line-height:0;">
+            <!--[if mso]>
+            <v:rect xmlns:v="urn:schemas-microsoft-com:vml" fill="true" stroke="false"
+                    style="width:4px;height:100%;">
+                <v:fill type="solid" color="{{accent_color}}"/>
+            </v:rect>
+            <![endif]-->
+            <!--[if !mso]><!-->&#8203;<!--<![endif]-->
+        </td>
+        <!-- Quote content -->
+        <td bgcolor="{{bg_tint}}"
+            style="background-color:{{bg_tint}};padding:16px 20px;">
+            <!-- Quote text -->
+            <p style="margin:0;padding:0;
+                      font-family:-apple-system,BlinkMacSystemFont,'Segoe UI','PingFang SC','Microsoft YaHei','Hiragino Sans GB',sans-serif;
+                      font-size:15px;font-weight:400;font-style:italic;color:#475569;
+                      line-height:24px;mso-line-height-rule:exactly;
+                      word-wrap:break-word;overflow-wrap:break-word;">
+                &ldquo;{{quote_text}}&rdquo;
+            </p>
+            <!-- Spacer -->
+            <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%">
+                <tr><td height="12" style="height:12px;font-size:1px;line-height:12px;mso-line-height-rule:exactly;">&nbsp;</td></tr>
+            </table>
+            <!-- Attribution -->
+            <p style="margin:0;padding:0;
+                      font-family:-apple-system,BlinkMacSystemFont,'Segoe UI','PingFang SC','Microsoft YaHei','Hiragino Sans GB',sans-serif;
+                      font-size:13px;font-weight:600;color:#334155;
+                      line-height:18px;mso-line-height-rule:exactly;">
+                {{author_name}}
+            </p>
+            <p style="margin:2px 0 0 0;padding:0;
+                      font-family:-apple-system,BlinkMacSystemFont,'Segoe UI','PingFang SC','Microsoft YaHei','Hiragino Sans GB',sans-serif;
+                      font-size:12px;font-weight:400;color:#64748b;
+                      line-height:16px;mso-line-height-rule:exactly;">
+                {{author_title}}
+            </p>
+        </td>
+    </tr>
+</table>

@@ -12,9 +12,28 @@ description: >
 
 # VibeDeck
 
-## Step 0: Check Project
+## Step 0: Environment Check
 
-Before anything else, check if `slide-kit.config.js` exists in the current directory.
+Before anything else, verify that Node.js and npm are available. Try these commands (use whichever works on the current platform):
+
+```sh
+node --version    # or: where.exe node (Windows)
+npm --version     # or: where.exe npm (Windows)
+```
+
+- **Both exist and Node.js ≥ 20** → continue silently (do not mention the check to the user).
+- **Missing or version too low** → do NOT proceed. Instead:
+  1. Run `uname -s` and `uname -m` (or `systeminfo` on Windows) to detect the user's OS and architecture.
+  2. If you have web search capability, search for the latest recommended way to install Node.js on the user's platform, and provide the specific commands.
+  3. If you cannot search, show this message in the user's language:
+     > **中文**: VibeDeck 需要 Node.js 20 或更高版本。请访问 https://nodejs.org 下载并安装适合你操作系统的版本，安装完成后重新运行。
+     >
+     > **English**: VibeDeck requires Node.js 20 or later. Please visit https://nodejs.org to download and install the version for your OS, then try again.
+  4. Stop here and wait for the user to install before continuing.
+
+## Step 1: Check Project
+
+Check if `slide-kit.config.js` exists in the current directory.
 
 - **Exists** → this is an existing slide-kit project. Go to [Building Slides](#building-slides).
 - **Does not exist** → no project yet. Go to [Creating a New Deck](#creating-a-new-deck), then continue to Building Slides if the user also described content.

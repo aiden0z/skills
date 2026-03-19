@@ -866,6 +866,44 @@ Place this inside `<!--[if mso]>` in the `<head>`:
 
 ---
 
+## Accessibility (WCAG 2.1 AA)
+
+The European Accessibility Act (EAA) took effect June 28, 2025. Email templates
+must meet WCAG 2.1 AA to comply.
+
+### Required on all layout tables
+
+Every `<table>` used for layout (not data) must have:
+```html
+<table role="presentation" aria-hidden="true" cellpadding="0" cellspacing="0" border="0">
+```
+This tells screen readers to skip the table structure. Data tables (showing actual
+tabular data) should NOT have `role="presentation"` — they should use `<th>` with
+`scope="col"` or `scope="row"`.
+
+### Language declaration
+
+Always set the `lang` attribute on the `<html>` tag matching the email's language:
+```html
+<html lang="zh" ...>   <!-- Chinese -->
+<html lang="en" ...>   <!-- English -->
+<html lang="ja" ...>   <!-- Japanese -->
+```
+
+### Minimum touch target
+
+Interactive elements (buttons, links) must be at least 44×44px. The button component
+enforces `height:44px` and `min-width:44px` by default.
+
+### CTA button accessibility
+
+Add `role="button"` to `<a>` tags styled as buttons:
+```html
+<a href="..." role="button" style="...">Button Text</a>
+```
+
+---
+
 ## 10. Dark Mode
 
 Outlook.com, Apple Mail, and some other clients support dark mode, which can invert colors unexpectedly. Force light mode to prevent this.
@@ -980,3 +1018,32 @@ Do not include `@media (prefers-color-scheme: dark)` rules. The email should alw
 </body>
 </html>
 ```
+
+## Classic Outlook Retirement Timeline
+
+Microsoft is transitioning from Classic Outlook (Word rendering engine) to
+New Outlook (web-based rendering engine):
+
+| Date | Event |
+|------|-------|
+| August 2024 | New Outlook for Windows generally available |
+| April 2026 | New Outlook becomes the default (Classic still available via toggle) |
+| **October 2026** | **Classic Outlook end of support** |
+
+### What this means for email development
+
+After October 2026, the following Outlook-specific code will no longer be necessary:
+- VML shapes (`<v:rect>`, `<v:roundrect>`) — New Outlook uses standard CSS
+- MSO conditional comments (`<!--[if mso]>`) — New Outlook ignores them harmlessly
+- Ghost tables for layout — New Outlook supports modern CSS layout
+- `mso-*` CSS properties — New Outlook uses standard CSS
+- OfficeDocumentSettings XML block — New Outlook ignores it
+
+**Current recommendation (2026):** Keep all Outlook compatibility code. Many
+organizations have slow upgrade cycles, and Classic Outlook will remain installed
+on enterprise machines well past its end-of-support date. Plan to start removing
+VML and MSO code in 2027-2028 based on your audience's Outlook version distribution.
+
+**The code is harmless in New Outlook** — conditional comments are silently ignored,
+VML blocks are hidden, and MSO properties have no effect. There is no urgency to
+remove them.

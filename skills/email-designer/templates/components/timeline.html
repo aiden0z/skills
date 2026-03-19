@@ -1,0 +1,85 @@
+<!-- TIMELINE COMPONENT
+     Vertical timeline with dot markers and connecting line.
+     Uses nested tables for Outlook compatibility.
+     The "line" is a narrow bgcolor cell between items.
+
+     Uses width="100%" — wrap in a parent <td> to control max width.
+     Variables:
+       {{dot_color}}    — timeline dot color (default #2563eb)
+       {{line_color}}   — connecting line color (default #e2e8f0)
+       {{item_N_title}} — event title
+       {{item_N_date}}  — event date/time
+       {{item_N_desc}}  — event description (optional)
+-->
+<table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%"
+       style="width:100%;border-collapse:collapse;">
+    <!-- Item 1 -->
+    <tr>
+        <!-- Dot column -->
+        <td width="32" valign="top" align="center" style="width:32px;padding:0;">
+            <!-- Dot -->
+            <table role="presentation" cellpadding="0" cellspacing="0" border="0">
+                <tr>
+                    <td width="12" height="12" bgcolor="{{dot_color}}"
+                        style="width:12px;height:12px;background-color:{{dot_color}};
+                               font-size:0;line-height:0;">&nbsp;</td>
+                </tr>
+            </table>
+            <!-- Connecting line -->
+            <table role="presentation" cellpadding="0" cellspacing="0" border="0">
+                <tr>
+                    <td width="2" bgcolor="{{line_color}}" align="center"
+                        style="width:2px;background-color:{{line_color}};
+                               font-size:0;line-height:0;">
+                        <table role="presentation" cellpadding="0" cellspacing="0" border="0">
+                            <tr><td height="40" style="height:40px;font-size:1px;line-height:40px;mso-line-height-rule:exactly;">&nbsp;</td></tr>
+                        </table>
+                    </td>
+                </tr>
+            </table>
+        </td>
+        <!-- Content column -->
+        <td valign="top" style="padding:0 0 16px 12px;">
+            <p style="margin:0;padding:0;
+                      font-family:-apple-system,BlinkMacSystemFont,'Segoe UI','PingFang SC','Microsoft YaHei','Hiragino Sans GB',sans-serif;
+                      font-size:12px;font-weight:400;color:#64748b;
+                      line-height:16px;mso-line-height-rule:exactly;">{{item_1_date}}</p>
+            <p style="margin:2px 0 0 0;padding:0;
+                      font-family:-apple-system,BlinkMacSystemFont,'Segoe UI','PingFang SC','Microsoft YaHei','Hiragino Sans GB',sans-serif;
+                      font-size:14px;font-weight:600;color:#0f172a;
+                      line-height:20px;mso-line-height-rule:exactly;">{{item_1_title}}</p>
+            <p style="margin:4px 0 0 0;padding:0;
+                      font-family:-apple-system,BlinkMacSystemFont,'Segoe UI','PingFang SC','Microsoft YaHei','Hiragino Sans GB',sans-serif;
+                      font-size:13px;font-weight:400;color:#475569;
+                      line-height:20px;mso-line-height-rule:exactly;
+                      word-wrap:break-word;overflow-wrap:break-word;">{{item_1_desc}}</p>
+        </td>
+    </tr>
+    <!-- Item 2 (repeat pattern, last item omits connecting line) -->
+    <tr>
+        <td width="32" valign="top" align="center" style="width:32px;padding:0;">
+            <table role="presentation" cellpadding="0" cellspacing="0" border="0">
+                <tr>
+                    <td width="12" height="12" bgcolor="{{dot_color}}"
+                        style="width:12px;height:12px;background-color:{{dot_color}};
+                               font-size:0;line-height:0;">&nbsp;</td>
+                </tr>
+            </table>
+        </td>
+        <td valign="top" style="padding:0 0 0 12px;">
+            <p style="margin:0;padding:0;
+                      font-family:-apple-system,BlinkMacSystemFont,'Segoe UI','PingFang SC','Microsoft YaHei','Hiragino Sans GB',sans-serif;
+                      font-size:12px;font-weight:400;color:#64748b;
+                      line-height:16px;mso-line-height-rule:exactly;">{{item_2_date}}</p>
+            <p style="margin:2px 0 0 0;padding:0;
+                      font-family:-apple-system,BlinkMacSystemFont,'Segoe UI','PingFang SC','Microsoft YaHei','Hiragino Sans GB',sans-serif;
+                      font-size:14px;font-weight:600;color:#0f172a;
+                      line-height:20px;mso-line-height-rule:exactly;">{{item_2_title}}</p>
+            <p style="margin:4px 0 0 0;padding:0;
+                      font-family:-apple-system,BlinkMacSystemFont,'Segoe UI','PingFang SC','Microsoft YaHei','Hiragino Sans GB',sans-serif;
+                      font-size:13px;font-weight:400;color:#475569;
+                      line-height:20px;mso-line-height-rule:exactly;
+                      word-wrap:break-word;overflow-wrap:break-word;">{{item_2_desc}}</p>
+        </td>
+    </tr>
+</table>

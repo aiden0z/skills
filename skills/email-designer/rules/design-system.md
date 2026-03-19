@@ -311,3 +311,11 @@ invisible spacing below the image.
 
 6. **Borderless tables** — no vertical lines, subtle horizontal `#e2e8f0`
    dividers, gray header row. Clean and modern.
+
+### Accessibility
+- All layout tables: `role="presentation"` (screen readers skip layout structure)
+- Data tables: `<th scope="col">` / `<th scope="row">` (screen readers announce headers)
+- `<html lang="xx">` — always set, matching email language
+- Touch targets: buttons ≥ 44×44px
+- Color: never rely on color alone; always pair with text labels
+- Alt text: required on all `<img>` (use `alt=""` only for decorative images)

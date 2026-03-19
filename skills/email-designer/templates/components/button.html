@@ -1,37 +1,42 @@
-<!-- CTA BUTTON COMPONENT
-     Outlook-safe button using table cell with bgcolor.
-     Cannot use border-radius or padding-based buttons in Outlook.
-     This approach works in ALL email clients.
+<!-- CTA BUTTON COMPONENT (Bulletproof Rounded)
+     Outlook-safe button using VML <v:roundrect> for rounded corners.
+     Modern clients use CSS border-radius. Works in ALL email clients.
 
      Variables:
        {{button_text}}  — button label (e.g., "查看详情", "Learn More")
        {{button_url}}   — link URL
        {{button_color}} — button background (e.g., #2563eb)
        {{text_color}}   — button text color (e.g., #ffffff)
-       {{button_width}} — button width in px (e.g., 200)
+       {{button_width}} — button width in px (e.g., 240)
 -->
 <table role="presentation" cellpadding="0" cellspacing="0" border="0" align="center">
     <tr>
-        <td align="center" valign="middle" bgcolor="{{button_color}}"
-            style="background-color:{{button_color}};padding:12px 32px;
-                   mso-line-height-rule:exactly;">
+        <td align="center" valign="middle">
             <!--[if mso]>
-            <v:rect xmlns:v="urn:schemas-microsoft-com:vml" href="{{button_url}}"
-                    style="width:{{button_width}}px;height:40px;v-text-anchor:middle;"
-                    strokecolor="{{button_color}}" fillcolor="{{button_color}}">
-                <v:fill type="solid" color="{{button_color}}"/>
-                <v:textbox inset="0,0,0,0" style="mso-fit-shape-to-text:true;">
-                    <center style="color:{{text_color}};font-family:-apple-system,BlinkMacSystemFont,'Segoe UI','PingFang SC','Microsoft YaHei',sans-serif;font-size:14px;font-weight:600;">
-                        {{button_text}}
-                    </center>
-                </v:textbox>
-            </v:rect>
+            <v:roundrect xmlns:v="urn:schemas-microsoft-com:vml"
+                         xmlns:w="urn:schemas-microsoft-com:office:word"
+                         href="{{button_url}}"
+                         style="height:44px;v-text-anchor:middle;width:{{button_width}}px;"
+                         arcsize="14%"
+                         stroke="f"
+                         fillcolor="{{button_color}}">
+                <w:anchorlock/>
+                <center style="color:{{text_color}};
+                               font-family:-apple-system,BlinkMacSystemFont,'Segoe UI','PingFang SC','Microsoft YaHei','Hiragino Sans GB',sans-serif;
+                               font-size:14px;font-weight:600;">
+                    {{button_text}}
+                </center>
+            </v:roundrect>
             <![endif]-->
             <!--[if !mso]><!-->
-            <a href="{{button_url}}"
-               style="color:{{text_color}};font-size:14px;font-weight:600;
-                      text-decoration:none;display:inline-block;
-                      font-family:-apple-system,BlinkMacSystemFont,'Segoe UI','PingFang SC','Microsoft YaHei',sans-serif;">
+            <a href="{{button_url}}" role="button"
+               style="background-color:{{button_color}};border-radius:6px;
+                      color:{{text_color}};display:inline-block;
+                      font-family:-apple-system,BlinkMacSystemFont,'Segoe UI','PingFang SC','Microsoft YaHei','Hiragino Sans GB',sans-serif;
+                      font-size:14px;font-weight:600;line-height:44px;
+                      text-align:center;text-decoration:none;
+                      width:{{button_width}}px;
+                      -webkit-text-size-adjust:none;">
                 {{button_text}}
             </a>
             <!--<![endif]-->

@@ -35,9 +35,26 @@ def validate(html: str) -> dict:
     if re.search(r'display\s*:\s*grid', html, re.IGNORECASE):
         errors.append("GRID_LAYOUT: Found 'display:grid' — Outlook ignores CSS grid. Use table layout.")
 
-    # 3. border-radius (ignored in Outlook, visual inconsistency)
-    if re.search(r'border-radius\s*:', html, re.IGNORECASE):
-        errors.append("BORDER_RADIUS: Found 'border-radius' — Outlook ignores this. Remove it for consistency.")
+    # 3. border-radius — only flag if used outside <!--[if !mso]> blocks
+    # Inside non-mso blocks, Outlook never sees it, so it's safe (e.g., rounded buttons)
+    br_matches = list(re.finditer(r'border-radius\s*:', html, re.IGNORECASE))
+    if br_matches:
+        # Check if ALL occurrences are inside <!--[if !mso]>...<!--<![endif]--> blocks
+        non_mso_blocks = list(re.finditer(
+            r'<!--\[if !mso\]><!-->(.*?)<!--<!\[endif\]-->',
+            html, re.DOTALL | re.IGNORECASE
+        ))
+        non_mso_ranges = [(m.start(), m.end()) for m in non_mso_blocks]
+        unsafe_br = [
+            m for m in br_matches
+            if not any(start <= m.start() <= end for start, end in non_mso_ranges)
+        ]
+        if unsafe_br:
+            errors.append(
+                f"BORDER_RADIUS: Found {len(unsafe_br)} 'border-radius' outside "
+                f"<!--[if !mso]> blocks — Outlook ignores this. Move to non-mso "
+                f"block or remove."
+            )
 
     # 4. CSS border used for dividers (renders as black in Outlook)
     # Only flag border on td/tr elements that look like dividers (height=1)
@@ -253,6 +270,25 @@ def validate(html: str) -> dict:
             f"MEDIA_TAGS: Found {len(media_tags)} <video>/<audio> tag(s) — not supported in "
             f"Outlook, Gmail, or most email clients. Use a static image with a play button "
             f"linking to the video URL instead."
+        )
+
+    # 30. Layout tables missing role="presentation"
+    layout_tables = re.findall(
+        r'<table(?![^>]*role=)[^>]*(?:cellpadding|cellspacing)[^>]*>',
+        html, re.IGNORECASE
+    )
+    if layout_tables:
+        warnings.append(
+            f"TABLE_NO_ROLE: Found {len(layout_tables)} layout <table> without "
+            f"role=\"presentation\" — screen readers will announce table structure. "
+            f"Add role=\"presentation\" to layout tables."
+        )
+
+    # 31. Missing lang attribute on <html>
+    if not re.search(r'<html[^>]*\slang="[a-z]{2}', html, re.IGNORECASE):
+        warnings.append(
+            "MISSING_LANG: <html> tag is missing lang attribute — screen readers "
+            "need this to use correct pronunciation. Add lang=\"en\" or lang=\"zh\"."
         )
 
     passed = len(errors) == 0
