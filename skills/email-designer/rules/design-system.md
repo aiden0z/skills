@@ -180,28 +180,51 @@ For multi-section emails, add anchor links below the header:
 
 ### Column Width Calculation (CRITICAL)
 
-Table column widths MUST include padding. In email HTML, `<td width="X">` defines
-the **total** cell width including padding. If you set `width="200"` and
-`padding: 0 12px`, the content area is only 176px.
+**MANDATORY: Always use percentage widths for table columns.**
 
-**Formula:** Sum of all `<td width>` values MUST equal the `<table width>` value.
-Padding is already included in the `width` attribute.
+Email clients are inconsistent about whether `<td width="X">` means content-box
+or border-box. Some clients add padding on top of the width, others include it.
+This inconsistency causes tables to overflow unpredictably. Percentage widths
+eliminate this problem entirely.
 
-**Example** for an 800px container with 16px side padding (768px content):
+**Rules:**
+1. Table: `width="100%"` with `table-layout:fixed`
+2. Columns: use `width="N%"` where all percentages sum to **exactly 100%**
+3. NEVER use pixel widths on `<td>` elements in data tables
+4. Padding (`8px 12px` for headers, `10px 12px` for data) is always safe with percentages
+
+**Example** for a 6-column table:
 
 ```
-Table width: 768px
-Columns:  #(40) + Name(260) + Owner(120) + Status(160) + Progress(188) = 768px
-                                                                          ✓ exact match
+Columns:  #(5%) + Name(25%) + Owner(20%) + Status(20%) + Date(15%) + Progress(15%) = 100%
+                                                                                       ✓
 ```
 
-Each `<td>` uses `width="N"` where N already accounts for padding.
-The `padding` CSS controls where text sits within that fixed width.
+```html
+<table role="presentation" cellpadding="0" cellspacing="0" border="0"
+       width="100%" style="width:100%;border-collapse:collapse;table-layout:fixed;">
+  <tr>
+    <td width="5%" align="center" valign="middle" bgcolor="#f8fafc"
+        style="background-color:#f8fafc;padding:8px 12px;font-size:13px;font-weight:600;color:#334155;">#</td>
+    <td width="25%" align="left" valign="middle" bgcolor="#f8fafc"
+        style="background-color:#f8fafc;padding:8px 12px;font-size:13px;font-weight:600;color:#334155;">Name</td>
+    <td width="20%" align="left" valign="middle" bgcolor="#f8fafc"
+        style="background-color:#f8fafc;padding:8px 12px;font-size:13px;font-weight:600;color:#334155;">Owner</td>
+    <td width="20%" align="left" valign="middle" bgcolor="#f8fafc"
+        style="background-color:#f8fafc;padding:8px 12px;font-size:13px;font-weight:600;color:#334155;">Status</td>
+    <td width="15%" align="left" valign="middle" bgcolor="#f8fafc"
+        style="background-color:#f8fafc;padding:8px 12px;font-size:13px;font-weight:600;color:#334155;">Date</td>
+    <td width="15%" align="left" valign="middle" bgcolor="#f8fafc"
+        style="background-color:#f8fafc;padding:8px 12px;font-size:13px;font-weight:600;color:#334155;">Progress</td>
+  </tr>
+</table>
+```
 
-**Common mistake:** Setting column widths that sum to the table width, then
-ALSO adding padding — this causes the table to exceed the container width.
-The fix is either: (a) reduce column widths to account for padding, or
-(b) use percentage widths that always stay within bounds.
+**Why not pixel widths?** With `width="180"` and `padding:10px 12px`, some clients
+render the cell as 180px total (content=156px), while others render it as
+180px content + 24px padding = 204px total. A 6-column table can overflow by
+100+ pixels. Percentage widths avoid this entirely because the browser distributes
+space proportionally within the table's container.
 
 ### Column Alignment
 
@@ -218,6 +241,43 @@ The fix is either: (a) reduce column widths to account for padding, or
 | Multi-card images | `= (container - gaps) / N` |
 
 Always set: `display:block; border:0; width:Npx; height:auto;`
+
+### Image src format
+
+Use **relative local paths** for all images. CID conversion happens automatically during EML generation.
+
+```html
+<!-- CORRECT — relative path, browser preview works -->
+<img src="images/header_logo.png" width="120" height="40" alt="Logo"
+     style="display:block;width:120px;height:40px;border:0;" />
+
+<!-- WRONG — cid: only works in email clients, breaks browser preview -->
+<img src="cid:header_logo" ... />
+```
+
+### Image filename rules
+
+- **MANDATORY: ASCII-only filenames** — no Chinese, accented, or special characters
+- Use lowercase, underscores for spaces: `product_chart_01.png`
+- All images go in the `images/` subdirectory of the output project
+
+```
+✓ header_logo.png, product_chart_01.jpg, team_photo.png
+✗ 产品交付情况.png, report héader.png, 图表-01.jpg
+```
+
+If the user provides images with non-ASCII names, rename them before referencing in HTML.
+
+### Image container reset (Outlook spacing fix)
+
+Wrap images in a `<td>` with `line-height:0;font-size:0;` to prevent Outlook from adding invisible spacing below:
+
+```html
+<td style="padding:0;line-height:0;font-size:0;">
+    <img src="images/banner.png" width="600"
+         style="display:block;width:600px;height:auto;border:0;" alt="Banner" />
+</td>
+```
 
 ## 7. Mobile Responsiveness
 
