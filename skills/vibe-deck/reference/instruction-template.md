@@ -60,6 +60,16 @@ Generate CLAUDE.md and AGENTS.md with this content, replacing {{placeholders}}:
 - Format: pass as a string array `keyMessage={['bullet 1', 'bullet 2']}` — auto-formatted with bullets (also accepts ReactNode)
 - Maximum 3 bullets, each ≤ 25 Chinese characters / 60 English characters
 
+## Layout Capacity Limits
+Before building, check these hard limits — if exceeded, split into multiple slides or adapt:
+- MetricGrid: max 6 cards → split if more
+- CardGrid: max 6 cards → split if more
+- DataTable: max 8 rows × 6 cols → truncate or paginate
+- BarChart: max 8 categories → switch to horizontal if > 8, group if > 15
+- PieChart: max 6 slices → merge small slices into "Other"
+- TimelineFlow: max 5 phases → split if more
+- Mixed content: use composite layout (chart + metrics, chart + text) — max 2 zones per slide
+
 ## Space Utilization
 - NEVER use fixed pixel width (`w-[Npx]`) for card containers — use `grid grid-cols-N` or `flex-1`
 - Cards in a row: `grid grid-cols-N gap-5 h-full content-center` (N = number of cards)

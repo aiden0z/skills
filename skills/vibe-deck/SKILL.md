@@ -117,9 +117,18 @@ Read these three files first — skipping this step leads to duplicated content,
 - **Unit consistency**: confirm the same units as existing slides ($K vs $M, etc.)
 - **Content density**: Check [content-rules.md](reference/content-rules.md) for minimum content density standards — slides with sparse content (< 10 visual elements, single-line card descriptions) are not acceptable.
 
-### 3. Choose layout
+### 3. Layout Decision Engine
 
-See [layout-templates.md](reference/layout-templates.md) for code templates:
+**Don't guess the layout — derive it systematically.** Read [layout-engine.md](reference/layout-engine.md) and follow this sequence:
+
+0. **Intent Classification** — what type of slide is this? (data / concept / showcase / reference / tool / narrative). Different types have different density tolerances — a showcase slide can be dense on purpose, a data slide cannot.
+1. **Content Inventory** — count metrics, charts, text blocks, table rows, list items
+2. **Single Takeaway Check** — state the slide's ONE takeaway. For concept slides, "understand X" can naturally combine definition + components + comparison — that's one takeaway, not three.
+3. **Semantic Match** — use the content-to-layout mapping table to pick the layout
+4. **Capacity Check** — verify content fits within the layout's limits (which vary by intent type). If not: adapt or split — but don't split showcase/reference slides just for being dense.
+5. **Composite Layout** — if content is mixed (e.g., chart + metrics), use a composite pattern from layout-engine.md Phase 4
+
+Available layouts — see [layout-templates.md](reference/layout-templates.md) for code:
 
 | Layout | Best for |
 |--------|----------|
@@ -129,6 +138,10 @@ See [layout-templates.md](reference/layout-templates.md) for code templates:
 | **ComparisonView** | Before/after |
 | **DataTable** | Tool comparison, feature matrix, pricing |
 | **TimelineFlow** | Roadmap, milestones, phased plans |
+| **CardGrid** | 4–6 feature items with icon + text |
+| **CardRow** | 2–4 items in a single row |
+| **ConceptSlide** | Explanation / text-heavy, no data |
+| **Composite** | Mixed content — see layout-engine.md Phase 4 |
 
 Built-in slide templates (import from `src/slides/`):
 
