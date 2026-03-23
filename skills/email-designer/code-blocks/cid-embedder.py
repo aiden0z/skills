@@ -12,6 +12,7 @@ Dependencies: Python stdlib only
 """
 
 import base64
+import hashlib
 import mimetypes
 from pathlib import Path
 
@@ -41,6 +42,21 @@ def get_mime_type(path: str) -> str:
     """Detect MIME type for an image file."""
     mime, _ = mimetypes.guess_type(path)
     return mime or "application/octet-stream"
+
+
+def sanitize_image_name(filename: str) -> str:
+    """Generate an ASCII-safe CID from an image filename.
+
+    ASCII filenames: use the stem directly (e.g., 'logo.png' -> 'logo').
+    Non-ASCII filenames: use 'img_' + md5 hash prefix (e.g., '产品.png' -> 'img_a1b2c3d4e5f6g7h8').
+    """
+    stem = Path(filename).stem
+    try:
+        stem.encode("ascii")
+        return stem
+    except UnicodeEncodeError:
+        path_hash = hashlib.md5(filename.encode("utf-8")).hexdigest()[:16]
+        return f"img_{path_hash}"
 
 
 def validate_images(image_map: dict) -> list:
