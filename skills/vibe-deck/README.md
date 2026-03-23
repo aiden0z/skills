@@ -29,8 +29,9 @@ You describe a presentation in natural language, and VibeDeck builds it as a Rea
 
 ## Features
 
-- **2 workflows**: Create new deck from scratch, or add slides to existing deck
-- **7 layout templates**: FullChart, SplitView, MetricGrid, ComparisonView, Divider, Agenda, Cover
+- **3 workflows**: Create new deck, add slides to existing deck, or modify/reorder/delete slides
+- **10 layout templates**: FullChart, SplitView, MetricGrid, ComparisonView, DataTable, TimelineFlow, CardGrid, CardRow, ConceptSlide, plus Composite patterns
+- **Layout decision engine**: Intent-aware system that automatically matches content to the right layout
 - **7 chart components**: BarChart, LineChart, StackedBar, PieChart, FunnelChart, RingGauge, ConversionChart
 - **Theme system**: Corporate Blue and Minimal presets, custom colors via config
 - **Keyboard navigation**: Arrow keys to navigate, `F` for fullscreen
@@ -50,9 +51,10 @@ You describe a presentation in natural language, and VibeDeck builds it as a Rea
 
 ```
 vibe-deck/
-  SKILL.md              # Skill entry — create + build workflows
+  SKILL.md              # Skill entry — create + build + modify workflows
   reference/
-    layout-templates.md # 7 slide layout patterns with code
+    layout-engine.md    # Intent-aware layout decision engine (5 steps)
+    layout-templates.md # 10 slide layout patterns with code
     chart-components.md # 7 chart APIs with props and examples
     content-rules.md    # Data integrity and narrative rules
     style-guide.md      # Color, typography, spacing conventions

@@ -29,8 +29,9 @@
 
 ## 核心功能
 
-- **2 种工作流**: 从零创建新 deck，或向现有 deck 添加幻灯片
-- **7 种布局模板**: FullChart、SplitView、MetricGrid、ComparisonView、Divider、Agenda、Cover
+- **3 种工作流**: 从零创建、向现有 deck 添加幻灯片、修改/重排/删除已有页面
+- **10 种布局模板**: FullChart、SplitView、MetricGrid、ComparisonView、DataTable、TimelineFlow、CardGrid、CardRow、ConceptSlide + Composite 组合模式
+- **布局决策引擎**: 意图感知系统，自动根据内容类型匹配最佳布局
 - **7 个图表组件**: BarChart、LineChart、StackedBar、PieChart、FunnelChart、RingGauge、ConversionChart
 - **主题系统**: Corporate Blue 和 Minimal 两个预设，支持自定义配色
 - **键盘导航**: 方向键翻页，`F` 全屏
@@ -50,9 +51,10 @@
 
 ```
 vibe-deck/
-  SKILL.md              # Skill 入口 — 创建 + 构建工作流
+  SKILL.md              # Skill 入口 — 创建 + 构建 + 修改工作流
   reference/
-    layout-templates.md # 7 种幻灯片布局模式（含代码）
+    layout-engine.md    # 意图感知的布局决策引擎（5 步流程）
+    layout-templates.md # 10 种幻灯片布局模式（含代码）
     chart-components.md # 7 个图表组件 API（含属性和示例）
     content-rules.md    # 数据完整性和叙事规则
     style-guide.md      # 颜色、字体、间距规范
