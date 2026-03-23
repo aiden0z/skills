@@ -26,3 +26,13 @@ Thumbs.db
 
 # Temp
 *.tmp
+
+# AI tool skill caches
+.agent/
+.agents/
+.claude/
+.kiro/
+.windsurf/
+
+# Skill installer lock
+skills-lock.json
