@@ -1,275 +1,191 @@
 # Layout Decision Engine
 
-Before choosing a layout, run through this decision engine. It replaces guesswork with a systematic process: classify intent → analyze content → match layout → check capacity → compose if needed.
+A 5-step process for choosing the right slide layout. The key insight: different slides have different purposes, and layout rules should flex accordingly. A showcase slide's density is a feature; a data slide's density is a bug.
 
-## Phase 0: Slide Intent Classification
+## Step 1: Understand the Slide
 
-**Do this FIRST.** Different slide types have fundamentally different rules. Applying data-slide density rules to a showcase slide produces false alarms.
+Before touching layout, answer three questions about this slide.
 
-| Intent | Description | Examples | Density Tolerance |
-|--------|------------|---------|------------------|
-| **data** | Charts, metrics, quantitative analysis | Revenue chart, KPI dashboard, funnel analysis | Strict — every element must serve the takeaway |
-| **concept** | Explain what/why/how about a topic | "What is X?", "How does Y work?", comparison of approaches | Moderate — multi-dimensional explanation (definition + components + comparison) is normal for one slide |
-| **showcase** | Demonstrate capability, impress | "This PPT was made by AI", product demo results | Relaxed — density itself is the message, don't limit |
-| **reference** | Resource list, links, cheat sheet — audience will photograph | Resource links, installation guide, getting started paths | Relaxed — multiple sections OK, people save this slide |
-| **tool** | Introduce a specific tool with UI mockup | IDE walkthrough, terminal demo, tool comparison | Moderate — mockup colors are exempt from theme rules |
-| **narrative** | Story transition, chapter break, opening/closing | Cover, divider, agenda, thank you | Minimal — these are pacing elements, not content |
+### 1a. What's the intent?
 
-**How to classify:** Ask "What will the audience DO with this slide?"
-- Analyze a number → **data**
-- Understand a concept → **concept**
-- Feel impressed → **showcase**
-- Photograph for later → **reference**
-- Learn a tool → **tool**
-- Orient themselves in the talk → **narrative**
+The audience will interact with different slides in fundamentally different ways. A "What is X?" slide needs room to explain; a "Resources" slide will be photographed. Applying the same density rules to both produces bad advice.
 
-## Phase 1: Content Inventory
+| Intent | Audience will... | Examples | Density |
+|--------|-----------------|---------|---------|
+| **data** | Analyze a number or trend | Revenue chart, KPI dashboard, funnel | Strict — every element serves the takeaway |
+| **concept** | Understand an idea | "What is X?", "How does Y work?" | Moderate — definition + components + comparison is one concept, not three |
+| **showcase** | Feel impressed | "This was made by AI", demo results | Relaxed — density IS the message |
+| **reference** | Photograph for later | Resource links, install guide, cheat sheet | Relaxed — completeness > elegance |
+| **tool** | Learn a specific product | IDE walkthrough, terminal demo | Moderate — mockup brand colors are exempt from theme |
+| **narrative** | Orient themselves | Cover, divider, agenda, thank you | Minimal — pacing, not content |
 
-Count and classify everything the slide needs to show:
+### 1b. Who's the audience?
 
-```
-For each slide, list:
-  metrics:     N  (single numbers with labels, e.g., "$2.4M Revenue")
-  charts:      N  (bar, line, pie, funnel, ring, stacked bar)
-  text_blocks: N  (paragraphs, bullet lists, descriptions)
-  table_rows:  N  (comparison or data table rows)
-  table_cols:  N  (table columns)
-  list_items:  N  (feature items, steps, capabilities)
-  images:      N  (screenshots, icons, logos)
-  timeline:    N  (phases, milestones, steps in sequence)
-```
+Audience determines how much text each element can carry. Determine this once per deck, not per slide.
 
-**Single Takeaway Check — adjusted by intent:**
-- **data/concept/tool**: State the slide's ONE takeaway in a single sentence. If you can't → consider splitting.
-- **showcase**: The takeaway is "look how much was accomplished" — density serves it.
-- **reference**: The takeaway is "here's where to find everything" — completeness serves it.
-- For concept slides, "What is X?" naturally combines definition + components + comparison. That's ONE takeaway ("understand X"), not three.
+| Audience | Density Level | Font Sizes | Text per Card |
+|----------|--------------|-----------|---------------|
+| **Executive / Board** | Sparse — big numbers, minimal text | Title 32px, Body 14px | 1 line + value |
+| **Team / Internal** (default) | Standard — balanced | Title 28px, Body 12px | 2–3 lines |
+| **Technical / Workshop** | Dense — detailed, code OK | Title 24px, Body 11px | 3–4 lines |
 
-## Phase 2: Semantic Layout Matching
+Trigger words: "board meeting" / "investor" → Sparse. "training" / "workshop" / "internal share" → Dense.
 
-Match content profile to layout. This table encodes "what data pattern → what layout":
+### 1c. What's the single takeaway?
 
-| Content Profile | Layout | Why This Works |
-|----------------|--------|---------------|
+State what the audience should remember from this slide in one sentence.
+
+- **data/concept/tool**: If you can't state it in one sentence, the content probably belongs on 2 slides. But for concept slides, "understand X" can naturally span definition + structure + comparison — that's still one takeaway.
+- **showcase**: "Look how much was accomplished" — density serves this.
+- **reference**: "Here's where to find everything" — completeness serves this.
+
+## Step 2: Choose Layout
+
+Match the slide's content to a layout pattern. Two paths: use a single layout, or compose from zones.
+
+### Single Layout Matching
+
+| Content Profile | Layout | Why |
+|----------------|--------|-----|
 | 1 chart, ≤ 3 bullets | **FullChart** | Chart dominates, text supports |
-| 2 charts OR chart + text block | **SplitView** | Side-by-side lets eye compare |
+| 2 charts OR chart + text | **SplitView** | Side-by-side comparison |
 | 2–6 metrics, no chart | **MetricGrid** | Numbers in grid scan fastest |
-| 2 things being compared | **ComparisonView** | Symmetry shows differences |
-| 5+ rows × 3+ cols of data | **DataTable** | Grid structure = fastest scan for tabular data |
-| 3–5 sequential phases | **TimelineFlow** | Horizontal flow = time progression |
-| 4–6 feature items with descriptions | **CardGrid** | 2×2 or 2×3 grid with icon + text |
-| 2–4 items in a row (no deep description) | **CardRow** | Single row, items stretch to fill |
-| Concept explanation, no data | **ConceptSlide** | Larger fonts, breathing room, no KeyMessage |
-| Tool intro with UI mockup | **SplitView** or **custom** | Left: features/steps, Right: mockup screenshot |
-| Resource/link collection | **multi-section grid** | Multiple labeled grids stacked vertically |
-| 1 chart + 2–4 metrics | **Composite: chart + metrics** | See Phase 4 |
-| Chart + table | **Composite: chart + table** | See Phase 4 |
+| 2 things compared | **ComparisonView** | Symmetry highlights differences |
+| 5+ rows × 3+ cols | **DataTable** | Grid = fastest tabular scan |
+| 3–5 sequential phases | **TimelineFlow** | Horizontal flow = time |
+| 4–6 items with description | **CardGrid** | 2×2 or 2×3 with icon + text |
+| 2–4 items, brief | **CardRow** | Single row, stretch to fill |
+| Explanation, no data | **ConceptSlide** | Larger fonts, no KeyMessage |
+| Tool + UI mockup | **SplitView** or custom | Left: features, Right: mockup |
+| Resource collection | **multi-section grid** | Labeled grids stacked |
 
-**Ambiguous cases:**
-- If content matches multiple layouts → pick the one that best serves the takeaway
-- If content matches none → check intent first. Reference/showcase slides can break templates; data slides should split.
+For code templates of each layout, see [layout-templates.md](layout-templates.md).
 
-## Phase 3: Capacity Check
+### Composite Layouts (mixed content)
 
-Capacity limits vary by slide intent and audience density level.
-
-### Capacity Limits by Intent
-
-| Layout | data | concept | showcase/reference | Overflow Strategy |
-|--------|------|---------|-------------------|-------------------|
-| **MetricGrid** | 6 cards | 6 cards | 8 cards | Split or TabSwitcher |
-| **CardGrid** | 6 cards | 6 cards | 8 cards | Split or compact list |
-| **CardRow** | 4 items | 4 items | 4 items | Switch to CardGrid |
-| **DataTable** | 8 rows × 6 cols | 6 rows × 5 cols | 10 rows × 6 cols | Paginate or top-N |
-| **TimelineFlow** | 5 phases | 5 phases | 5 phases | Split into 2 slides |
-| **Zones per slide** | 2 | 2–3 | 3–4 | Split if exceeding |
-| **Visual elements** | 10–18 | 10–25 | no hard limit | Split if unreadable |
-| **Text per card** | 2–3 lines | 2–3 lines | 1–4 lines | Trim or split |
-
-### Audience Density Adjustment
-
-Phase 5 density levels further modify these limits:
-
-| | Executive | Team (default) | Technical |
-|---|----------|---------------|-----------|
-| MetricGrid max | 4 | 6 | 8 |
-| CardGrid max | 4 | 6 | 8 |
-| Font: Title | 32px | 28px | 24px |
-| Font: Body | 14px | 12px | 11px |
-| Text per card | 1 line | 2–3 lines | 3–4 lines |
-
-### Adaptive Component Behaviors
-
-When content hits the edge of a capacity limit, components should adapt before triggering overflow:
-
-**MetricCard — auto font sizing:**
-- Value ≤ 4 chars (e.g., `85%`): `text-[28px]`
-- Value 5–7 chars (e.g., `$1.2M`): `text-[28px]` (default)
-- Value 8+ chars (e.g., `$123,456`): `text-[22px]`
-
-**BarChart — auto orientation:**
-- Category labels ≤ 4 chars average: vertical bars (default)
-- Category labels > 8 chars average: switch to `horizontal={true}`
-- Categories > 8: switch to horizontal + consider top-N
-
-**PieChart — auto label strategy:**
-- ≤ 4 slices: external labels with value + percent
-- 5–6 slices: external labels, smaller font
-- > 6 slices: merge small slices into "Other", use Legend component below
-
-**DataTable — auto column compression:**
-- ≤ 4 cols: equal `1fr` widths
-- 5–6 cols: primary col wider (`1.2fr`), others `0.8fr`
-- 7+ cols: consider hiding lowest-priority columns, add "..." indicator
-
-## Phase 4: Composite Layouts
-
-For mixed content that no single template covers, compose from building blocks.
-
-### Composition Grammar
-
-Every slide's content area is a flex column. Divide it into **zones**:
+When a slide combines content types (e.g., chart + metrics, table + recommendation cards), divide the content area into **zones**:
 
 ```
-┌─────────────────────────────┐
-│  Zone A: Primary (60-70%)   │  ← chart, table, or main content
-├─────────────────────────────┤
-│  Zone B: Secondary (30-40%) │  ← metrics, summary, action items
-└─────────────────────────────┘
-
-OR horizontal split:
-
-┌──────────────┬──────────────┐
-│  Zone A      │  Zone B      │
-│  (50-60%)    │  (40-50%)    │
-└──────────────┴──────────────┘
+Vertical:                          Horizontal:
+┌─────────────────────────┐       ┌────────────┬────────────┐
+│  Zone A: Primary 60-70% │       │ Zone A     │ Zone B     │
+├─────────────────────────┤       │ 50-60%     │ 40-50%     │
+│  Zone B: Secondary 30%  │       └────────────┴────────────┘
+└─────────────────────────┘
 ```
 
-### Common Composite Patterns
+**Common composites** (see [layout-templates.md](layout-templates.md) for code):
 
-**Pattern: Chart + Metrics (most common composite)**
-```jsx
-<SlideLayout title="..." keyMessage={[...]}>
-  <div className="flex flex-col h-full gap-3">
-    {/* Zone A: Chart — takes 65% */}
-    <div className="flex-[2] min-h-0">
-      <BarChart data={...} />
-    </div>
-    {/* Zone B: Metrics row — takes 35% */}
-    <div className="grid grid-cols-3 gap-3">
-      <MetricCard value="$2.4M" label="Total" ... />
-      <MetricCard value="+18%" label="QoQ" ... />
-      <MetricCard value="85%" label="Target" ... />
-    </div>
-  </div>
-</SlideLayout>
-```
+| Pattern | Zone A | Zone B | Code Skeleton |
+|---------|--------|--------|--------------|
+| Chart + Metrics | Chart (`flex-[2]`) | MetricCard row (`grid-cols-3`) | `flex flex-col gap-3` |
+| Chart + Text | Chart (`w-3/5`) | Analysis bullets (`w-2/5`) | `flex gap-4 h-full` |
+| Mini Dashboard | Chart 1 | Chart 2 | `grid grid-cols-2 gap-3` |
+| Table + Cards | DataTable (`flex-[3]`) | Rec cards (`grid-cols-3`) | `flex flex-col gap-3` |
 
-**Pattern: Chart + Text Analysis**
-```jsx
-<div className="flex gap-4 h-full">
-  <div className="w-3/5 min-h-0"><LineChart ... /></div>
-  <div className="w-2/5 flex flex-col gap-3 justify-center">
-    {/* Analysis bullets or insight cards */}
-  </div>
-</div>
-```
+**Zone rules:**
+- One zone should dominate (60-70%). Equal splits feel indecisive.
+- Zone A = proves the takeaway. Zone B = contextualizes it.
+- Two unrelated charts = two different takeaways = two slides.
 
-**Pattern: Mini Charts Dashboard (2–3 small charts)**
-```jsx
-<div className="grid grid-cols-2 gap-3 h-full">
-  <div><PieChart ... height="100%" /></div>
-  <div><BarChart ... height="100%" /></div>
-</div>
-```
+**Zone count by intent:**
 
-**Pattern: Table + Recommendation Cards**
-```jsx
-<div className="flex flex-col h-full gap-3">
-  <div className="flex-[3]">{/* DataTable */}</div>
-  <div className="grid grid-cols-3 gap-2">{/* 3 recommendation cards */}</div>
-</div>
-```
+| Intent | Max Zones | Why |
+|--------|----------|-----|
+| data | 2 | Focus on one story |
+| concept / tool | 2–3 | Definition + illustration + comparison is natural |
+| showcase / reference | 3–4 | Completeness and density serve the purpose |
 
-### Composition Rules
+## Step 3: Check Capacity
 
-Zone limits depend on intent (see Phase 3 table):
-- **data slides**: Max 2 zones — focus on one story
-- **concept/tool slides**: Max 2–3 zones — definition + illustration + comparison is normal
-- **showcase/reference slides**: Max 3–4 zones — completeness and density serve the purpose
-- **One zone dominates** (60-70% of space) — equal splits feel indecisive
-- **Zone A = what proves the takeaway** (chart, data, main explanation)
-- **Zone B = what contextualizes it** (metrics, actions, details)
-- Never put 2 unrelated charts in the same slide — if they serve different takeaways, they need separate slides
+Every layout has limits. When content exceeds them, adapt before it breaks. The limits below are for **Team/Standard** density — scale down for Executive, up for Technical (see Step 1b).
 
-## Phase 5: Content Density Calibration
+### Layout Capacity Limits
 
-Calibrate density to audience. This phase connects directly to Phase 3's capacity limits.
+| Layout | Capacity | Overflow Strategy |
+|--------|----------|-------------------|
+| **MetricGrid** | 6 cards (3×2) | > 6 → split into 2 slides, or TabSwitcher |
+| **CardGrid** | 6 cards (2×3) | > 6 → split, or compact list |
+| **CardRow** | 4 items | > 4 → switch to CardGrid |
+| **DataTable** | 8 rows × 6 cols | Rows > 8 → top-N + footnote; Cols > 6 → hide low-priority |
+| **TimelineFlow** | 5 phases | > 5 → split into 2 timeline slides |
+| **BarChart** | 8 categories | > 8 → horizontal; > 15 → group or top-N |
+| **PieChart** | 6 slices | > 6 → merge small into "Other" |
+| **KeyMessage** | 3 bullets, 25 CJK / 60 EN | Excess → trim or footnote |
 
-| Audience | Density | Font Sizes | Items per Card |
-|----------|---------|-----------|----------------|
-| **Executive / Board** | Sparse — big numbers, minimal text | Title 32px, Body 14px | 1 metric + 1 line context |
-| **Team / Internal** | Standard — balanced data + context | Title 28px, Body 12px | Title + 2–3 lines + example |
-| **Technical / Workshop** | Dense — detailed data, code snippets | Title 24px, Body 11px | Title + 3–4 lines + aux data |
+**Intent adjustments** — showcase and reference slides get more room because their purpose demands it:
 
-When the user hasn't specified audience, default to **Standard**. If they say "board meeting" or "investor", use Sparse. If they say "training" or "workshop", use Dense.
+| | data | concept | showcase / reference |
+|---|------|---------|---------------------|
+| MetricGrid | 6 | 6 | 8 |
+| CardGrid | 6 | 6 | 8 |
+| DataTable rows | 8 | 6 | 10 |
+| Zones | 2 | 2–3 | 3–4 |
+| Visual elements | 10–18 | 10–25 | no hard limit |
 
-## Phase 6: Auto-Split Decision
+### When to Split
 
-When content exceeds a layout's capacity, split rather than cram — but check intent first.
+Split when content can't fit at readable sizes — but check intent first.
 
-**When NOT to split (even if dense):**
-- **showcase** slides where density IS the message ("look how much AI produced")
-- **reference** slides where completeness matters more than elegance (people will photograph it)
-- The slide renders cleanly at 1440×810 with all text readable
+**Don't split** (even if dense):
+- **showcase** slides — density IS the message
+- **reference** slides — completeness matters more than elegance
+- The slide renders at 1440×810 with all text readable
 
-**When to split:**
-- Content inventory exceeds capacity limits from Phase 3 (adjusted for intent)
-- Slide has 2+ distinct takeaways that serve different purposes (not just multi-dimensional explanation of one concept)
-- Text overflows the content area at minimum readable font size
-- For **data** slides: total visual elements > 18
+**Do split** when:
+- Content exceeds limits above (adjusted for intent)
+- Two genuinely different takeaways (not multi-dimensional explanation of one)
+- Text overflows at minimum readable font size
 
 **How to split:**
-1. Identify the natural break point (different data sources, different topics, overview vs detail)
-2. First slide: overview / summary / key numbers
-3. Second slide: breakdown / detail / supporting data
-4. Insert a SlideDivider between them if they start a new section
-5. Notify the user: "This content is too dense for one slide. I've split it into 2 slides: [title 1] and [title 2]."
+1. Find the natural break (different data sources, overview vs detail)
+2. Slide 1: overview / summary / key numbers
+3. Slide 2: breakdown / detail / supporting data
+4. Add SlideDivider if starting a new section
+5. Tell the user: "Split into 2 slides: [title 1] and [title 2]"
 
-## Phase 7: Color & Style Validation
+## Step 4: Adapt Components
 
-### Theme Color Rules
+When content is near the capacity edge, components should self-adjust before triggering a split. These are guidelines for the agent building the slide — the components themselves don't auto-adapt (yet).
 
-All design colors should use `import { colors } from '../theme'`. But some colors are exempt.
+**MetricCard — font sizing by value length:**
+- ≤ 7 chars (`$1.2M`, `85%`): `text-[28px]` (default)
+- 8+ chars (`$123,456`): `text-[22px]`
 
-**Must use theme colors** (semantic design choices):
-- Primary accents → `colors.primary`
-- Success/positive indicators → `colors.success`
-- Danger/negative indicators → `colors.danger`
-- Warning/attention → `colors.accent`
-- Text colors → `colors.text`, `colors.textSecondary`, `colors.muted`
-- Card backgrounds → `${colors.primary}08`, `${colors.primary}15`
+**BarChart — orientation by label length:**
+- Labels ≤ 4 chars average: vertical (default)
+- Labels > 8 chars average: `horizontal={true}`
+- Categories > 8: horizontal + consider top-N
 
-**Exempt from theme colors** (brand/mockup simulation):
-- Terminal window chrome (`#ff5f57` red dot, `#febc2e` yellow dot, `#28c840` green dot)
-- IDE/terminal backgrounds (`#1e1e2e`, `#181825`, etc.) — simulating real product UI
-- Third-party brand colors when showing their product (e.g., a specific tool's purple)
+**PieChart — label strategy by slice count:**
+- ≤ 4 slices: external labels with value + percent
+- 5–6 slices: external labels, smaller font
+- > 6 slices: merge small into "Other", use Legend below
 
-**The test:** "Is this color OUR design choice, or are we simulating someone else's product?" Our choices → theme. Their product → hardcode is fine.
+**DataTable — column sizing by count:**
+- ≤ 4 cols: equal `1fr`
+- 5–6 cols: primary wider (`1.2fr`), others `0.8fr`
+- 7+ cols: hide lowest-priority, add "..." indicator
 
-## Phase 8: Visual Self-Review (Optional)
+## Step 5: Validate
 
-After building a slide, verify the layout visually. Inspired by the excalidraw-diagram-skill's render → review → fix cycle.
+After building the slide, run through these checks. This is the same checklist as SKILL.md Step 7 (Layout Verification) — reference it there rather than duplicating here.
 
-**When the dev server is running**, use browser tools (if available) to screenshot the slide and check:
+**Quick sanity checks specific to the layout engine:**
+- [ ] Intent classification still holds? (did the content shift during building?)
+- [ ] Zone proportions match the 60/40 or 70/30 plan?
+- [ ] No layout was forced — if you struggled to fit content, reconsider splitting
+- [ ] Composite layouts have at most the zone count allowed for this intent type
 
-- [ ] No text truncated or overflowing its container
-- [ ] No overlapping elements
-- [ ] Clear visual hierarchy (title > keyMessage > content > footer)
-- [ ] Content fills ≥ 80% of slide area (no large empty zones)
-- [ ] Charts are readable (labels not overlapping, legend visible)
-- [ ] Color contrast is sufficient (text on backgrounds)
+For the full visual checklist (text truncation, overlap, hierarchy, whitespace, chart readability), see **SKILL.md Step 7: Layout Verification**.
 
-**When no browser tools available**, use the Layout Verification checklist from SKILL.md Step 7 instead.
+---
 
-If issues are found: fix the layout, then re-verify. Maximum 2 iterations — if it still doesn't work, the content needs splitting.
+## Quick Reference Card
+
+For fast decisions, this is the engine in 4 questions:
+
+1. **What will the audience DO?** → intent type → density tolerance
+2. **What content is there?** → match to layout or compose zones
+3. **Does it fit?** → check capacity limits (adjusted for intent + audience)
+4. **Does it look right?** → validate or split

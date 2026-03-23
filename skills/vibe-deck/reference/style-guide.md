@@ -22,10 +22,16 @@
 
 ## Colors
 
-ALWAYS import from theme:
+Import from theme — this ensures colors update when the theme changes:
 ```js
 import { colors } from '../theme'
 ```
+
+Use theme tokens for all design choices: `colors.primary`, `colors.success`, `colors.danger`, `colors.accent`, `colors.text`, `colors.textSecondary`, `colors.muted`. For semi-transparent variants, use hex alpha: `${colors.primary}08`.
+
+**Exempt from theme:** Colors that simulate third-party product UI are expected to be hardcoded. Terminal window chrome (`#ff5f57`, `#febc2e`, `#28c840`), IDE backgrounds (`#1e1e2e`, `#181825`), and third-party brand colors are fine to hardcode — they represent someone else's product, not our design choice.
+
+**The test:** "Is this color OUR design choice, or are we simulating someone else's product?" Ours → theme. Theirs → hardcode is fine.
 
 ## Cards
 
