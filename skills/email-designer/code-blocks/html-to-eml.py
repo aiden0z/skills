@@ -2,19 +2,25 @@
 """
 html-to-eml.py — Convert an HTML newsletter into a draft .eml file.
 
-Produces a standards-compliant MIME message with embedded CID images that
+Produces a standards-compliant MIME message with embedded images that
 opens as an editable draft in Outlook (Classic) and Thunderbird.
+
+Image handling:
+    HTML uses relative paths: src="images/logo.png"
+    This script automatically converts them to CID references and embeds
+    the image files as MIME parts during EML generation.
 
 MIME structure:
     multipart/alternative
     +-- text/plain              (fallback for text-only clients)
     +-- multipart/related
-        +-- text/html           (the newsletter)
-        +-- image/...           (CID-embedded images)
+        +-- text/html           (the newsletter, with cid: references)
+        +-- image/...           (embedded images)
 
 Python stdlib only — no third-party dependencies.
 """
 
+import hashlib
 import mimetypes
 import os
 import re
@@ -128,6 +134,51 @@ def scan_images(directory: str) -> dict:
     return images
 
 
+def replace_images_with_cid(html: str, image_dir: str) -> tuple:
+    """Parse HTML for <img src="images/..."> references, replace with CID,
+    and return (converted_html, {cid: filepath}).
+
+    CID generation:
+    - ASCII filenames: stem is the CID (e.g., images/logo.png -> cid:logo)
+    - Non-ASCII filenames: img_{md5[:16]} (e.g., images/产品.png -> cid:img_abc123)
+
+    Raises FileNotFoundError if any referenced image is missing.
+    """
+    img_dir = Path(image_dir)
+    cid_map = {}
+    missing = []
+
+    pattern = re.compile(r'(<img[^>]*\bsrc=")images/([^"]+)(")', re.IGNORECASE)
+
+    def _replace(match):
+        prefix, filename, suffix = match.group(1), match.group(2), match.group(3)
+        filepath = img_dir / filename
+
+        if not filepath.exists():
+            missing.append((f"images/{filename}", str(filepath)))
+            return match.group(0)
+
+        stem = Path(filename).stem
+        try:
+            stem.encode("ascii")
+            cid = stem
+        except UnicodeEncodeError:
+            cid = f"img_{hashlib.md5(filename.encode('utf-8')).hexdigest()[:16]}"
+
+        cid_map[cid] = str(filepath.resolve())
+        return f'{prefix}cid:{cid}{suffix}'
+
+    converted = pattern.sub(_replace, html)
+
+    if missing:
+        msg_lines = ["Referenced images not found:"]
+        for src, path in missing:
+            msg_lines.append(f"  - {src} (expected at {path})")
+        raise FileNotFoundError("\n".join(msg_lines))
+
+    return converted, cid_map
+
+
 def convert() -> None:
     """Read the HTML file, build a multipart MIME message with embedded
     images, and write the result as an ``.eml`` file.
@@ -170,21 +221,18 @@ def convert() -> None:
     msg.attach(MIMEText(plain_text, "plain", "utf-8"))
 
     # -- multipart/related (HTML + images) -------------------------------------
-    images = scan_images(IMAGE_DIR)
+    converted_html, cid_map = replace_images_with_cid(html_content, IMAGE_DIR)
 
-    if images:
-        # Wrap HTML and its images in a multipart/related container.
-        # RFC 2387 requires the root document (HTML) to be the *first* child.
+    if cid_map:
         msg_related = MIMEMultipart("related")
-        msg_related.attach(MIMEText(html_content, "html", "utf-8"))
+        msg_related.attach(MIMEText(converted_html, "html", "utf-8"))
 
-        for cid, img_path in images.items():
+        for cid, img_path in cid_map.items():
             attach_image(msg_related, cid, img_path)
             print(f"  Embedded image: cid:{cid} <- {Path(img_path).name}")
 
         msg.attach(msg_related)
     else:
-        # No images — attach HTML directly to the alternative container
         msg.attach(MIMEText(html_content, "html", "utf-8"))
 
     # -- Write .eml ------------------------------------------------------------
@@ -193,7 +241,7 @@ def convert() -> None:
     output_path.write_text(msg.as_string(), encoding="utf-8")
 
     print(f"  EML saved to: {OUTPUT_EML}")
-    print(f"  Images embedded: {len(images)}")
+    print(f"  Images embedded: {len(cid_map)}")
 
 
 # ---------------------------------------------------------------------------
