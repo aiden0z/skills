@@ -1,6 +1,28 @@
 # Chart Components API
 
-Import via: `import { StackedBar, BarChart, RingGauge, FunnelChart, PieChart, ConversionChart } from '../charts'`
+Import via: `import { StackedBar, BarChart, LineChart, RingGauge, FunnelChart, PieChart, ConversionChart } from '../charts'`
+
+## Chart Selection Guide
+
+Pick the chart based on what the data is trying to say:
+
+| Data pattern | Chart | Why |
+|-------------|-------|-----|
+| Compare categories (revenue by region) | **BarChart** | Bars let the eye compare magnitudes at a glance |
+| Show trend over time (monthly growth) | **LineChart** | Lines emphasize direction and rate of change |
+| Show composition of a total (budget split) | **PieChart** or **StackedBar** | Pie for ≤ 6 slices; StackedBar when you need to compare two totals side-by-side |
+| Show achievement / progress (85% of target) | **RingGauge** | The ring encodes a single % — compact and easy to scan in a grid |
+| Show pipeline / funnel stages | **FunnelChart** | The narrowing shape communicates drop-off intuitively |
+| Combine counts + rate (leads → conversion %) | **ConversionChart** | Dual-axis bar + line avoids two separate charts |
+| Compare composition of ONE total | **StackedBar** | Single horizontal bar with colored segments |
+
+**When in doubt:**
+- If the audience cares about **rank order** → BarChart (horizontal for long labels)
+- If the audience cares about **direction** → LineChart
+- If the audience cares about **share of whole** → PieChart (≤ 6 items) or StackedBar (> 6 items)
+- If showing a **single KPI percentage** → RingGauge
+
+---
 
 ## StackedBar
 
@@ -38,6 +60,34 @@ ECharts vertical/horizontal bar chart for simple category comparisons.
   { name: 'Region C', value: 150 },
 ]} />
 ```
+
+## LineChart
+
+ECharts line chart for trend visualization. Supports single or multi-series, smooth curves, and area fills.
+
+| Prop | Type | Default | Description |
+|------|------|---------|-------------|
+| `categories` | `string[]` | required | X-axis labels |
+| `series` | `[{ name, data, color? }]` | required | Line series |
+| `height` | `string` | '100%' | Chart height |
+| `smooth` | `boolean` | false | Smooth curves |
+| `showArea` | `boolean` | false | Show gradient area fill |
+| `showLabel` | `boolean` | true | Show value labels |
+| `yAxisFormatter` | `string` | - | Y-axis label format (e.g., `'{value}%'`) |
+
+```jsx
+<LineChart
+  categories={['Jan', 'Feb', 'Mar', 'Apr', 'May']}
+  series={[
+    { name: 'Revenue', data: [120, 132, 101, 134, 190], color: colors.primary },
+    { name: 'Cost', data: [80, 95, 70, 92, 110], color: colors.accent },
+  ]}
+  smooth
+  showArea
+/>
+```
+
+**When to use LineChart vs ConversionChart**: `LineChart` is for general trend lines (single or multi-series). `ConversionChart` is specifically for dual-axis bar+line combos (count bars + rate line).
 
 **When to use BarChart vs StackedBar**: `BarChart` is ECharts-based with axes, tooltips, and labels — use for comparing categories. `StackedBar` is HTML-based, renders a single horizontal bar with colored segments — use for showing composition of a single total.
 
@@ -87,7 +137,7 @@ Dual-axis: bar counts + line conversion rate.
 | `categories` | `string[]` | required | X-axis labels |
 | `countData` | `[{ name, data, color }]` | required | Bar series |
 | `rateData` | `number[]` | required | Line % values |
-| `rateName` | `string` | '转化率' | Line name |
+| `rateName` | `string` | 'Conversion' | Line name |
 
 ## ECharts General Rules
 

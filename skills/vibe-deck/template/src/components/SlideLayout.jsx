@@ -8,7 +8,7 @@ import KeyMessage from './KeyMessage'
  * Props:
  *   title       (string, required) — slide heading
  *   subtitle    (string)           — lighter text after the title
- *   keyMessage  (ReactNode)        — bullet content inside KeyMessage; omit to skip
+ *   keyMessage  (string[]|ReactNode) — string[] auto-formatted as bullets, or custom JSX; omit to skip
  *   keyLabel    (string)           — override KeyMessage label (default "Key Message")
  *   children    (ReactNode)        — main content area, fills remaining space
  *   className   (string)           — extra classes on root

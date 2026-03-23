@@ -100,7 +100,48 @@ Every slide MUST have exactly one core takeaway — the single thing the audienc
 - **Source attribution:** Every data-driven slide should have a footnote citing the source (e.g., "Gartner 2025", "McKinsey Global Institute").
 - **Don't repeat the same stat:** If "334+ Skills" is introduced on slide 2, don't repeat it verbatim on slides 6, 8, 9, and 11. Instead, reference it briefly or show a different angle of the same data.
 
-## Content Self-Review Checklist
+## Storyline Coherence (CRITICAL for multi-slide decks)
+
+After adding or reordering slides, always re-check the full deck storyline:
+
+### Narrative arc patterns
+Most effective decks follow one of these arcs:
+- **Problem → Solution → Proof → Action**: Hook with pain points, show the solution, prove it works, tell them what to do
+- **Context → Concepts → Tools → Practice → Resources**: For training/onboarding decks — build understanding before showing tools
+- **Status → Analysis → Recommendations → Next Steps**: For review/reporting decks
+
+### Storyline anti-patterns
+- **Concept after usage**: Explaining "What is X?" after already showing "How to use X" — always introduce before referencing
+- **Tool comparison before problem**: Showing tool features before the audience understands why they need a tool
+- **Demo before explanation**: Live demos are more impactful when the audience already understands the concepts
+- **Resources before content**: "Where to learn more" should come near the end, not in the middle
+- **Repeated information**: If slide 3 says "96K+ Skills", slide 9 should NOT repeat the same number — show a different angle or skip it
+
+### Audience-specific ordering
+- **Non-technical audience**: Start with relatable problems → show benefits (not features) → demo → hands-on guide. Keep technical details in footnotes
+- **Technical audience**: Can lead with architecture/concepts → then show capabilities → then performance data
+- **Mixed audience**: Use progressive disclosure — top-level benefits first, technical details in expandable sections or backup slides
+
+## Content Logic per Slide
+
+Each slide should pass this logic test:
+
+### The "So What?" test
+After reading each slide, ask: "So what? Why should the audience care?" If you can't answer in one sentence, the slide lacks a clear takeaway.
+
+### The "Why Here?" test
+For each slide's position, ask: "Why is this slide HERE and not earlier/later?" It should have a clear dependency on the previous slide and set up the next one.
+
+### The "Remove It?" test
+Try mentally removing the slide from the deck. If the story still makes sense without it, the slide may be redundant, tangential, or better merged into an adjacent slide.
+
+### Common logic failures
+- **Feature list without context**: Listing 6 features without explaining who benefits or when to use them
+- **Data without insight**: Showing a chart without explaining what the audience should take away
+- **Steps without motivation**: Showing "Step 1, 2, 3" without first explaining why the audience should follow these steps
+- **Comparison without recommendation**: Comparing 5 tools but not telling the audience which one to pick for their situation
+
+## Content Self-Review Checklist (per slide)
 Before finalizing any slide, verify:
 - [ ] Every card/panel has ≥ 2 lines of descriptive text
 - [ ] No large empty areas (> 20% of slide area unused)
@@ -112,3 +153,12 @@ Before finalizing any slide, verify:
 - [ ] The slide has ONE clear takeaway — can you state it in one sentence?
 - [ ] No element competes with the takeaway for attention
 - [ ] Content density is in the sweet spot (10-18 visual elements), not over-stuffed
+
+## Deck-Level Review Checklist (after ALL slides are done)
+- [ ] Read all slide titles in order — does the story arc make sense from titles alone?
+- [ ] Each section has 2-5 slides (not 1, not 8+)
+- [ ] Concepts are introduced before they're referenced
+- [ ] No statistic or claim is repeated verbatim across slides
+- [ ] Ordering matches audience level (simple → complex for non-tech, concepts → details for tech)
+- [ ] Every slide passes the "So What?" and "Why Here?" tests
+- [ ] The last content slide (before Thank You) gives a clear call to action or next step

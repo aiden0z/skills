@@ -47,9 +47,9 @@ import { stagger, fadeIn } from '../lib/animations'
 import SlideLayout from '../components/SlideLayout'
 
 <SlideLayout
-  title="Title"                    // required
-  subtitle="Optional"              // optional
-  keyMessage={<p>• Insight</p>}    // optional — omit prop entirely to skip
+  title="Title"                              // required
+  subtitle="Optional"                        // optional
+  keyMessage={['Insight with data point']}   // optional — string[] auto-formatted as bullets
 >
   {/* Content fills remaining space */}
 </SlideLayout>

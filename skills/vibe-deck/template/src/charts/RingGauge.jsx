@@ -1,4 +1,4 @@
-import ReactEChartsCore from 'echarts-for-react'
+import ReactECharts from 'echarts-for-react'
 import { TOOLTIP_STYLE } from '../lib/chart-theme'
 
 export default function RingGauge({
@@ -31,7 +31,7 @@ export default function RingGauge({
 
   return (
     <div className="flex flex-col items-center gap-1">
-      <ReactEChartsCore option={option} style={{ width: size, height: size }} opts={{ renderer: 'svg' }} />
+      <ReactECharts option={option} style={{ width: size, height: size }} opts={{ renderer: 'svg' }} />
       <div className="text-center">
         <div className="text-[13px] font-medium text-neutral-700 leading-tight">{label}</div>
         {sublabel && <div className="text-xs text-neutral-400 tabular-nums">{sublabel}</div>}

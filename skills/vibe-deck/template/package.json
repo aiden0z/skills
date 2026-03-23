@@ -6,6 +6,7 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
+    "build:single": "vite build --config vite.single.config.js",
     "preview": "vite preview"
   },
   "dependencies": {
@@ -20,6 +21,7 @@
     "vite": "^7.0.0",
     "@vitejs/plugin-react": "^5.2.0",
     "tailwindcss": "^4.2.1",
-    "@tailwindcss/vite": "^4.2.1"
+    "@tailwindcss/vite": "^4.2.1",
+    "vite-plugin-singlefile": "^2.0.3"
   }
 }

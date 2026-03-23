@@ -1,4 +1,4 @@
-import ReactEChartsCore from 'echarts-for-react'
+import ReactECharts from 'echarts-for-react'
 import { TOOLTIP_STYLE, CHART_COLORS } from '../lib/chart-theme'
 
 export default function FunnelChart({
@@ -10,7 +10,7 @@ export default function FunnelChart({
     tooltip: {
       ...TOOLTIP_STYLE,
       trigger: 'item',
-      formatter: (p) => `${p.name}<br/>数量: <b>${tiers[p.dataIndex].value}</b>`,
+      formatter: (p) => `${p.name}<br/>${tiers[p.dataIndex].value}`,
     },
     series: [{
       type: 'funnel',
@@ -37,5 +37,5 @@ export default function FunnelChart({
     } : {}),
   }
 
-  return <ReactEChartsCore option={option} style={{ height }} />
+  return <ReactECharts option={option} style={{ height }} />
 }

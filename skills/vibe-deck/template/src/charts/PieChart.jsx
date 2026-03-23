@@ -1,4 +1,4 @@
-import ReactEChartsCore from 'echarts-for-react'
+import ReactECharts from 'echarts-for-react'
 import { TOOLTIP_STYLE, CHART_COLORS } from '../lib/chart-theme'
 
 export default function PieChart({
@@ -29,5 +29,5 @@ export default function PieChart({
     }],
   }
 
-  return <ReactEChartsCore option={option} style={{ height }} />
+  return <ReactECharts option={option} style={{ height }} />
 }

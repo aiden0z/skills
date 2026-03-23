@@ -1,7 +1,7 @@
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import { config } from '../theme'
 
-const PASS_HASH = 'a1b2c3' // simple obfuscation, not real security
+const isCN = typeof navigator !== 'undefined' && /^zh\b/i.test(navigator.language)
 const STORAGE_KEY = 'vibedeck-auth'
 const EXPIRE_DAYS = 7
 
@@ -81,23 +81,23 @@ export default function PasswordGate({ children }) {
           type="password"
           value={input}
           onChange={(e) => { setInput(e.target.value); setError(false) }}
-          placeholder="输入访问密码"
+          placeholder={isCN ? '输入访问密码' : 'Enter password'}
           autoFocus
           className={`w-72 px-4 py-3 rounded-xl bg-white/[0.06] border text-white text-sm placeholder-white/25 outline-none transition-all backdrop-blur-sm ${
             error ? 'border-red-500/50 bg-red-500/[0.04]' : 'border-white/[0.08] focus:border-blue-500/40 focus:bg-white/[0.08]'
           }`}
         />
 
-        {error && <span className="text-red-400/90 text-xs font-medium">密码错误</span>}
+        {error && <span className="text-red-400/90 text-xs font-medium">{isCN ? '密码错误' : 'Wrong password'}</span>}
 
         <button
           type="submit"
           className="w-72 px-4 py-3 rounded-xl bg-blue-600 hover:bg-blue-500 active:bg-blue-700 text-white text-sm font-medium transition-all shadow-lg shadow-blue-600/20 hover:shadow-blue-500/30"
         >
-          进入
+          {isCN ? '进入' : 'Enter'}
         </button>
 
-        <span className="text-white/15 text-[10px] mt-6 font-mono tracking-wider">有效期 {EXPIRE_DAYS} 天</span>
+        <span className="text-white/15 text-[10px] mt-6 font-mono tracking-wider">{isCN ? `有效期 ${EXPIRE_DAYS} 天` : `Valid for ${EXPIRE_DAYS} days`}</span>
       </form>
 
       <style>{`

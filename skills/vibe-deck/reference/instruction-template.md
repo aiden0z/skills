@@ -28,7 +28,7 @@ Generate CLAUDE.md and AGENTS.md with this content, replacing {{placeholders}}:
 
 ## Charts
 - Use chart components from `src/charts/` — do NOT write inline ECharts options
-- Available: StackedBar, BarChart, RingGauge, FunnelChart, PieChart, ConversionChart
+- Available: StackedBar, BarChart, LineChart, RingGauge, FunnelChart, PieChart, ConversionChart
 - All tooltips MUST use `TOOLTIP_STYLE` from `src/lib/chart-theme.js` (has `appendToBody: true`)
 - All charts MUST have `label: { show: true }`
 
@@ -46,7 +46,7 @@ Generate CLAUDE.md and AGENTS.md with this content, replacing {{placeholders}}:
 - `SlideLayout` — **required wrapper for content slides** (title + optional KeyMessage + content)
 - `KeyMessage` — blue label + arrow, for key insights (used internally by SlideLayout; do NOT use directly)
 - `TabSwitcher` — multi-view toggle within a slide
-- `MetricCard` — big number + label + sublabel
+- `MetricCard` — big number + label + sublabel. **Always use this component for KPI/metric displays** — do not build metric cards inline
 - `Legend` — color dot + label list for charts
 
 ## Content Rules
@@ -56,8 +56,8 @@ Generate CLAUDE.md and AGENTS.md with this content, replacing {{placeholders}}:
 
 ## Key Message Usage
 - **Data slides ONLY** — only add `keyMessage` on slides with charts, metrics, or numbers
-- Do NOT use KeyMessage on concept/explanation slides (e.g., "什么是 X？", "为什么选择 Y？")
-- Format: pass as a string array `keyMessage={['bullet 1', 'bullet 2']}` — auto-formatted with bullets
+- Do NOT use KeyMessage on concept/explanation slides (e.g., "What is X?", "Why choose Y?")
+- Format: pass as a string array `keyMessage={['bullet 1', 'bullet 2']}` — auto-formatted with bullets (also accepts ReactNode)
 - Maximum 3 bullets, each ≤ 25 Chinese characters / 60 English characters
 
 ## Space Utilization

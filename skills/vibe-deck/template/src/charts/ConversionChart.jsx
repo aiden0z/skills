@@ -1,4 +1,4 @@
-import ReactEChartsCore from 'echarts-for-react'
+import ReactECharts from 'echarts-for-react'
 import { TOOLTIP_STYLE } from '../lib/chart-theme'
 import { colors } from '../theme'
 
@@ -6,7 +6,7 @@ export default function ConversionChart({
   categories,
   countData,
   rateData,
-  rateName = '转化率',
+  rateName = 'Conversion',
   height = '100%',
 }) {
   const option = {
@@ -39,5 +39,5 @@ export default function ConversionChart({
     ],
   }
 
-  return <ReactEChartsCore option={option} style={{ height }} />
+  return <ReactECharts option={option} style={{ height }} />
 }

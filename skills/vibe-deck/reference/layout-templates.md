@@ -10,10 +10,10 @@
 import SlideLayout from '../components/SlideLayout'
 
 <SlideLayout
-  title="Required Title"         // slide heading (required)
-  subtitle="Optional subtitle"   // lighter text next to title
-  keyMessage={<>...</>}          // content inside KeyMessage box; omit to skip
-  keyLabel="Key Message"         // override KeyMessage label (default "Key Message")
+  title="Required Title"                    // slide heading (required)
+  subtitle="Optional subtitle"              // lighter text next to title
+  keyMessage={['Bullet 1', 'Bullet 2']}    // string[] auto-formatted as bullets; omit to skip
+  keyLabel="Key Message"                    // override KeyMessage label (default "Key Message")
 >
   {/* Main content — fills remaining space */}
 </SlideLayout>
@@ -21,7 +21,7 @@ import SlideLayout from '../components/SlideLayout'
 
 **Rules:**
 - `title` is required on every content slide
-- `keyMessage` is optional — only use when the slide has a data-driven insight to highlight
+- `keyMessage` is optional — pass a string array (auto-formatted as bullets) or ReactNode
 - Do NOT render `<h2>` or `<KeyMessage>` manually — SlideLayout handles both
 - Do NOT wrap SlideLayout in another `motion.div` with stagger — it has its own
 
@@ -37,7 +37,7 @@ export default function SlideExample() {
     <SlideLayout
       title="Title Here"
       subtitle="Subtitle"
-      keyMessage={<p>• Insight with quantified data</p>}
+      keyMessage={['Insight with quantified data']}
     >
       {/* Chart component here — fills remaining space */}
     </SlideLayout>
@@ -62,7 +62,7 @@ Left/right panels. Best for comparison or chart + explanation.
 ```jsx
 <SlideLayout
   title="Title"
-  keyMessage={<p>• Key insight</p>}
+  keyMessage={['Key insight']}
 >
   <div className="flex gap-4 h-full">
     <div className="w-1/2">{/* Left */}</div>
@@ -73,7 +73,7 @@ Left/right panels. Best for comparison or chart + explanation.
 
 ## MetricGrid
 
-Multiple metric cards. Best for dashboards and scorecards.
+Multiple metric cards. Best for dashboards and scorecards. **MUST use `MetricCard` component** — do NOT build metric cards inline.
 
 ```jsx
 import SlideLayout from '../components/SlideLayout'
@@ -81,7 +81,7 @@ import MetricCard from '../components/MetricCard'
 
 <SlideLayout
   title="Key Metrics"
-  keyMessage={<p>• All metrics trending up QoQ</p>}
+  keyMessage={['All metrics trending up QoQ']}
 >
   <div className="grid grid-cols-4 gap-3">
     <MetricCard value="85" unit="%" label="Metric 1" color="text-blue-600" />
@@ -90,12 +90,14 @@ import MetricCard from '../components/MetricCard'
 </SlideLayout>
 ```
 
+**Why use MetricCard instead of inline?** MetricCard enforces consistent typography (28px font-black value, 12px label), spacing, and alignment across all metric displays. Inline cards inevitably drift in style across slides.
+
 ## ComparisonView
 
 Side-by-side comparison with card styling. Feature lists inside each panel MUST use `justify-center gap-4` or `justify-between` to fill vertical space — NEVER `justify-start` which bunches content at the top.
 
 ```jsx
-<SlideLayout title="Comparison" keyMessage={<p>• Option A outperforms by 20%</p>}>
+<SlideLayout title="Comparison" keyMessage={['Option A outperforms by 20%']}>
   <div className="flex gap-3 h-full">
     <div className="flex-1 bg-neutral-50/80 border border-neutral-100 rounded-xl px-4 py-3 flex flex-col">
       <h3 className="text-[10px] font-bold uppercase tracking-wider text-neutral-400 mb-2">Option A</h3>
@@ -280,6 +282,67 @@ Best for: "What is X?", "Why choose Y?", concept introductions, process overview
 - Use larger font sizes (`text-[14px]`+ for body, `text-[18px]` for card titles) since there's more vertical space without KeyMessage
 - Use `grid grid-cols-2` for side-by-side concepts, or single-column with generous spacing for linear flow
 - Highlight the "after" / "featured" side with `border-2` and primary color tint
+
+## TimelineFlow
+
+Horizontal timeline for roadmaps, milestones, and phased plans. Best for 3–5 steps with title + description per step.
+
+```jsx
+<SlideLayout title="Product Roadmap" subtitle="2025">
+  <div className="flex flex-col h-full justify-center gap-6">
+    {/* Timeline bar */}
+    <div className="relative flex items-center">
+      <div className="absolute left-4 right-4 h-[2px]" style={{ backgroundColor: `${colors.primary}20` }} />
+      <div className="relative flex justify-between w-full px-4">
+        {phases.map((phase, i) => (
+          <div key={i} className="flex flex-col items-center z-10">
+            <div
+              className="w-8 h-8 rounded-full flex items-center justify-center text-white text-[12px] font-bold shadow-md"
+              style={{ backgroundColor: phase.active ? colors.primary : `${colors.primary}40` }}
+            >
+              {String(i + 1).padStart(2, '0')}
+            </div>
+            <span className="text-[10px] font-bold uppercase tracking-wider mt-2" style={{ color: phase.active ? colors.primary : colors.muted }}>
+              {phase.label}
+            </span>
+          </div>
+        ))}
+      </div>
+    </div>
+
+    {/* Detail cards below the timeline */}
+    <div className="grid gap-3" style={{ gridTemplateColumns: `repeat(${phases.length}, 1fr)` }}>
+      {phases.map((phase, i) => (
+        <motion.div
+          key={i}
+          className="p-4 rounded-xl flex flex-col gap-2"
+          style={{
+            backgroundColor: phase.active ? `${colors.primary}08` : `${colors.muted}06`,
+            border: phase.active ? `1.5px solid ${colors.primary}25` : '1.5px solid transparent',
+          }}
+          variants={fadeIn}
+        >
+          <h4 className="text-[14px] font-bold" style={{ color: colors.text }}>{phase.title}</h4>
+          <p className="text-[12px] leading-relaxed" style={{ color: colors.textSecondary }}>{phase.desc}</p>
+          {phase.items && (
+            <ul className="text-[11px] space-y-1 mt-1" style={{ color: colors.muted }}>
+              {phase.items.map((item, j) => <li key={j}>• {item}</li>)}
+            </ul>
+          )}
+        </motion.div>
+      ))}
+    </div>
+  </div>
+</SlideLayout>
+```
+
+**Rules:**
+- 3–5 phases work best; more than 6 gets too cramped horizontally
+- Mark the current/active phase with `active: true` — it gets primary color accent
+- Each card should have title + description + 2-3 bullet items for density
+- The timeline bar uses absolute positioning with dots on top — cards sit below in a matching grid
+
+---
 
 ## Built-in Slide Templates
 

@@ -2,12 +2,20 @@
 name: vibe-deck
 description: >
   Vibe Deck — vibe-code professional slide presentations — describe what you
-  want, AI builds it. Handles project scaffolding, slide creation, chart
-  integration, and data extraction. Use when the user mentions slides, deck,
-  presentation, PPT, PPTX, slideshow, keynote, pitch deck, quarterly review,
-  add a slide, build a deck, create slides. Chinese triggers: 做PPT, 做个deck,
-  写pptx, 创建演示, 制作幻灯片, 做幻灯片, 加一页, 新增slide, 做演示文稿,
-  工作汇报, 述职报告, 季度回顾, 方案展示, 写个汇报.
+  want, AI builds it. Scaffolds a React + ECharts project, creates slides with
+  charts, animations, theming, and PDF export. Use PROACTIVELY when the user
+  mentions slides, deck, presentation, PPT, PPTX, slideshow, keynote, pitch
+  deck, quarterly review, board meeting, investor update, sales deck, training
+  deck, onboarding slides, report presentation, add a slide, build a deck,
+  create slides, make a roadmap slide, put this data into a presentation,
+  turn this Excel into slides, visualize this data as a deck. Also trigger
+  when the user wants to modify, reorder, or delete slides in an existing
+  slide-kit project. Also trigger when the user wants to share, export, or
+  package the deck as a single HTML file for email or offline viewing.
+  Chinese triggers: 做PPT, 做个deck, 写pptx, 创建演示, 制作幻灯片, 做幻灯片,
+  加一页, 新增slide, 做演示文稿, 工作汇报, 述职报告, 季度回顾, 方案展示,
+  写个汇报, 改一下这页, 调整幻灯片顺序, 删掉这页, 把数据做成图表展示,
+  帮我做个路线图, 导出单个HTML, 分享给别人看.
 ---
 
 # VibeDeck
@@ -120,6 +128,7 @@ See [layout-templates.md](reference/layout-templates.md) for code templates:
 | **MetricGrid** | Dashboard with N metric cards |
 | **ComparisonView** | Before/after |
 | **DataTable** | Tool comparison, feature matrix, pricing |
+| **TimelineFlow** | Roadmap, milestones, phased plans |
 
 Built-in slide templates (import from `src/slides/`):
 
@@ -153,12 +162,106 @@ Before moving on, verify:
 - [ ] Placed in correct position within `<Deck>` (narrative order)
 - [ ] `footnote` prop set if slide uses external data
 
-### 6. Data extraction (if needed)
+### 6. Storyline review (AFTER adding slides)
+
+Every time new slides are added, re-read the full `<Deck>` in `App.jsx` and verify the overall narrative:
+
+- [ ] **Logical flow**: Does each slide follow naturally from the previous one? Would the audience be confused by the transition?
+- [ ] **Progressive disclosure**: Concepts introduced before they're referenced? (e.g., "What is a Skill?" must come before "Recommended Skills")
+- [ ] **Audience-appropriate order**: For non-technical audiences, order from simple → complex, familiar → new (e.g., VS Code/Copilot before CLI tools)
+- [ ] **No orphan slides**: Every slide belongs to a clear section. If a slide doesn't fit any section, it may not belong in this deck
+- [ ] **Section balance**: Each section should have 2-5 slides. A section with 1 slide feels incomplete; a section with 8+ slides needs splitting
+- [ ] **Title scan test**: Read ONLY the slide titles in order — does the story make sense from titles alone? If not, rename titles to be more descriptive
+
+### 7. Layout verification (AFTER building)
+
+After building each slide, visually verify the layout or use the layout checklist:
+
+- [ ] **No bottom whitespace**: Content fills ≥ 80% of slide height. If bottom 20%+ is empty, use `justify-between` or add content
+- [ ] **No bunched content**: Items should NOT cluster at the top with empty space below. Use `justify-center gap-4` or `justify-between` instead of `justify-start`
+- [ ] **Consistent card heights**: In grid layouts, cards should have `h-full` so they stretch to fill their cell
+- [ ] **Readable text hierarchy**: Title (28px font-black) → Section label (10px uppercase bold) → Card title (14px bold) → Body (12px) → Aux (10px). No adjacent sizes that blur hierarchy
+- [ ] **Breathing room between sections**: Adjacent sections (e.g., "Details" and "Actions") need `mt-2` or `mt-3` gap — not `mt-auto` which pushes to bottom
+
+### 8. Data extraction (if needed)
 
 - Use `scripts/extract-xlsx.js` to inspect Excel structure
 - Write a custom extraction script, verify totals match
 - Save to `src/data/<name>.js`
 - NEVER fabricate data
+
+---
+
+## Modifying Existing Slides
+
+When the user asks to change, reorder, or remove slides in an existing deck:
+
+### 1. Read context first
+
+Same as Building Slides — read `CLAUDE.md`, `App.jsx`, and `slide-kit.config.js` before touching anything.
+
+### 2. Editing a slide
+
+- Open the slide component file (e.g., `src/slides/SlideRevenue.jsx`)
+- Make the requested changes while preserving the existing layout pattern
+- If the change involves data, update `src/data/` files and verify totals still match
+- After editing, run the Layout verification checklist (Step 7 from Building Slides)
+
+### 3. Reordering slides
+
+- Reorder the `<Slide>` entries in `App.jsx` — this is the only file that controls order
+- After reordering, run the post-edit verification below
+
+### 4. Removing slides
+
+- Remove the `<Slide>` entry from `App.jsx`
+- Check if any other slide references data or concepts introduced by the removed slide — if so, move that context to an earlier slide
+- Remove the slide component file if no longer imported
+- Run the post-edit verification below
+
+### 5. Replacing a slide's layout
+
+If the user wants to change a slide from one layout to another (e.g., FullChart → SplitView):
+
+- Read [layout-templates.md](reference/layout-templates.md) for the new layout's code template
+- Rewrite the component using the new layout, preserving the data and keyMessage
+- Verify the chart/content fits the new layout proportions
+
+### 6. Post-edit verification (MANDATORY after ANY modification)
+
+After every edit, reorder, or removal, do ALL of the following before reporting completion:
+
+**Import cleanup** — scan `App.jsx` line by line:
+- [ ] Every `import` at the top of `App.jsx` is actually used in the JSX below. Remove any that aren't (including leftover `config`, component, or data imports from removed slides)
+- [ ] No slide component file imports modules that no longer exist
+
+**Storyline review** — re-read the full `<Deck>` in `App.jsx` and verify:
+- [ ] **Logical flow**: Does each slide follow naturally from the previous one?
+- [ ] **Progressive disclosure**: Concepts introduced before they're referenced?
+- [ ] **No orphan slides**: Every slide belongs to a clear section
+- [ ] **Title scan test**: Read ONLY the slide titles in order — does the story make sense from titles alone?
+
+Report the final slide order with titles to the user so they can confirm.
+
+---
+
+## Sharing as Single HTML
+
+When the user wants to share the deck as a single portable HTML file (for email, IM, or offline viewing):
+
+```bash
+npm run build:single
+```
+
+This produces `dist-single/index.html` — a self-contained file with all JS, CSS, and SVG inlined. No server needed; just open in any browser.
+
+**How it works:** `vite.single.config.js` uses `vite-plugin-singlefile` to inline all assets. The logo SVG is imported as a module (not a `/public` reference) so it gets bundled too.
+
+**When to suggest this:** If the user says "share", "send to someone", "email the deck", "make it portable", "single file", "offline", or "不需要服务器".
+
+**Limitations:**
+- File size is ~380KB (ECharts + React bundle) — fine for sharing via email/IM, not ideal for web hosting
+- Custom logos in `public/` (e.g., `config.logo = '/my-logo.png'`) are automatically inlined as data URIs by the build plugin — no extra steps needed
 
 ---
 

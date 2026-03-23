@@ -31,10 +31,11 @@ You describe a presentation in natural language, and VibeDeck builds it as a Rea
 
 - **2 workflows**: Create new deck from scratch, or add slides to existing deck
 - **7 layout templates**: FullChart, SplitView, MetricGrid, ComparisonView, Divider, Agenda, Cover
-- **6 chart components**: BarChart, StackedBar, PieChart, FunnelChart, RingGauge, ConversionChart
+- **7 chart components**: BarChart, LineChart, StackedBar, PieChart, FunnelChart, RingGauge, ConversionChart
 - **Theme system**: Corporate Blue and Minimal presets, custom colors via config
 - **Keyboard navigation**: Arrow keys to navigate, `F` for fullscreen
 - **Print mode**: `Ctrl+P` for clean PDF export
+- **Single HTML export**: `npm run build:single` produces one portable HTML file for sharing
 - **Data extraction**: Extract data from Excel files via built-in script
 - **Animations**: Stagger and fade-in transitions via Framer Motion
 
@@ -52,7 +53,7 @@ vibe-deck/
   SKILL.md              # Skill entry — create + build workflows
   reference/
     layout-templates.md # 7 slide layout patterns with code
-    chart-components.md # 6 chart APIs with props and examples
+    chart-components.md # 7 chart APIs with props and examples
     content-rules.md    # Data integrity and narrative rules
     style-guide.md      # Color, typography, spacing conventions
     theme-presets.md    # Theme configuration options
@@ -70,7 +71,7 @@ vibe-deck/
 
 ## Requirements
 
-- **Node.js 18+** (for React dev server and build)
+- **Node.js 20+** (for React dev server and build)
 - **An AI CLI tool** (Claude Code, Copilot, Codex, Kimi Code)
 
 ## License
