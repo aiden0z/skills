@@ -113,26 +113,6 @@ def attach_image(msg: MIMEMultipart, cid: str, path: str) -> None:
     msg.attach(img)
 
 
-def scan_images(directory: str) -> dict:
-    """Scan *directory* for image files and return ``{stem: absolute_path}``.
-
-    The stem (filename without extension) is used as the CID value, which
-    must match the ``cid:stem`` references already present in the HTML.
-    Only files whose MIME type starts with ``image/`` are included.
-    """
-    images: dict = {}
-    dirpath = Path(directory)
-    if not dirpath.is_dir():
-        return images
-
-    for entry in sorted(dirpath.iterdir()):
-        if not entry.is_file():
-            continue
-        mime_type = mimetypes.guess_type(str(entry))[0] or ""
-        if mime_type.startswith("image/"):
-            images[entry.stem] = str(entry.resolve())
-    return images
-
 
 def replace_images_with_cid(html: str, image_dir: str) -> tuple:
     """Parse HTML for <img src="images/..."> references, replace with CID,
@@ -148,7 +128,7 @@ def replace_images_with_cid(html: str, image_dir: str) -> tuple:
     cid_map = {}
     missing = []
 
-    pattern = re.compile(r'(<img[^>]*\bsrc=")images/([^"]+)(")', re.IGNORECASE)
+    pattern = re.compile(r"""(<img[^>]*\bsrc=["'])images/([^"']+)(["'])""", re.IGNORECASE)
 
     def _replace(match):
         prefix, filename, suffix = match.group(1), match.group(2), match.group(3)

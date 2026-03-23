@@ -92,16 +92,24 @@ import MetricCard from '../components/MetricCard'
 
 ## ComparisonView
 
-Side-by-side comparison with card styling.
+Side-by-side comparison with card styling. Feature lists inside each panel MUST use `justify-center gap-4` or `justify-between` to fill vertical space — NEVER `justify-start` which bunches content at the top.
 
 ```jsx
 <SlideLayout title="Comparison" keyMessage={<p>• Option A outperforms by 20%</p>}>
-  <div className="flex gap-4 h-full">
-    <div className="flex-1 bg-neutral-50/80 border border-neutral-100 rounded-xl p-4">
-      <h3 className="text-sm font-semibold text-neutral-500 mb-3">Option A</h3>
+  <div className="flex gap-3 h-full">
+    <div className="flex-1 bg-neutral-50/80 border border-neutral-100 rounded-xl px-4 py-3 flex flex-col">
+      <h3 className="text-[10px] font-bold uppercase tracking-wider text-neutral-400 mb-2">Option A</h3>
+      <div className="flex flex-col gap-4 flex-1 justify-center">
+        {/* Feature items here — centered with consistent gap */}
+      </div>
+      <div className="text-[10px] text-neutral-400 mt-2">Footer info</div>
     </div>
-    <div className="flex-1 bg-neutral-50/80 border border-neutral-100 rounded-xl p-4">
-      <h3 className="text-sm font-semibold text-neutral-500 mb-3">Option B</h3>
+    <div className="flex-1 rounded-xl px-4 py-3 flex flex-col"
+      style={{ backgroundColor: `${colors.primary}08`, border: `1.5px solid ${colors.primary}25` }}>
+      <h3 className="text-[10px] font-bold uppercase tracking-wider" style={{ color: colors.primary }}>Option B</h3>
+      <div className="flex flex-col gap-4 flex-1 justify-center">
+        {/* Feature items here */}
+      </div>
     </div>
   </div>
 </SlideLayout>
@@ -143,35 +151,91 @@ N items in a single row (2–4 items). Cards stretch to fill available width —
 - `gap-5` (20px) between cards
 - Card padding: `p-5` or `p-6`
 
+## DataTable
+
+Comparison table using CSS grid. Best for tool comparisons, feature matrices, pricing tables.
+
+```jsx
+<SlideLayout title="Tool Comparison" subtitle="Key features at a glance">
+  <div className="flex flex-col h-full gap-2">
+    {/* Table */}
+    <motion.div className="flex flex-col gap-0 flex-1" variants={stagger} initial="hidden" animate="show">
+      {/* Header */}
+      <motion.div
+        className="grid grid-cols-[1.2fr_0.8fr_0.8fr_1fr_0.6fr_1.5fr] gap-2 px-4 py-2.5 rounded-t-xl"
+        style={{ backgroundColor: `${colors.primary}10` }}
+        variants={fadeIn}
+      >
+        {columns.map(col => (
+          <div key={col} className="text-[10px] font-bold uppercase tracking-wider text-neutral-600">{col}</div>
+        ))}
+      </motion.div>
+
+      {/* Rows */}
+      {rows.map((row, i) => (
+        <motion.div
+          key={i}
+          className="grid grid-cols-[1.2fr_0.8fr_0.8fr_1fr_0.6fr_1.5fr] gap-2 px-4 py-2.5 items-center flex-1"
+          style={{
+            backgroundColor: row.highlight ? `${colors.primary}06` : i % 2 === 0 ? '#fafafa' : '#fff',
+            borderLeft: row.highlight ? `3px solid ${colors.primary}` : '3px solid transparent',
+          }}
+          variants={fadeIn}
+        >
+          <div className="text-[13px] font-bold text-neutral-800">{row.name}</div>
+          <div className="text-[12px] text-neutral-500">{row.company}</div>
+          {/* ... more cells */}
+        </motion.div>
+      ))}
+
+      <div className="h-px rounded-b-xl" style={{ backgroundColor: `${colors.primary}15` }} />
+    </motion.div>
+
+    {/* Optional: recommendation cards below the table */}
+  </div>
+</SlideLayout>
+```
+
+**Rules:**
+- Column widths use `fr` units — NEVER fixed pixel widths
+- Header: `${colors.primary}10` background, `rounded-t-xl`
+- Rows: alternating `#fafafa` / `#ffffff`, highlighted rows get primary tint + left border
+- See `style-guide.md > Tables` for full styling reference
+
 ## CardGrid
 
-4+ items in a 2×2 grid with icon + text. Best for capability lists and feature overviews.
+4+ items in a 2×2 or 2×3 grid with icon + text. Best for capability lists and feature overviews.
+
+**IMPORTANT:** Add `h-full` to each card so it stretches to fill its grid cell. Without `h-full`, cards have natural height and leave empty space in the grid cell.
 
 ```jsx
 <SlideLayout title="Core Capabilities">
   <motion.div
-    className="grid grid-cols-2 gap-5 h-full content-center"
+    className="grid grid-cols-2 gap-2 flex-1"
     variants={stagger} initial="hidden" animate="show"
   >
     {items.map((item, i) => (
       <motion.div
         key={i}
-        className="flex items-start gap-4 p-5 rounded-xl"
+        className="flex items-start gap-3 p-4 rounded-xl h-full"
         style={{ backgroundColor: `${colors.primary}06` }}
         variants={fadeIn}
       >
         <div
-          className="w-12 h-12 rounded-xl flex items-center justify-center shrink-0 text-2xl"
+          className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0 text-xl"
           style={{ backgroundColor: `${colors.primary}12` }}
         >
           {item.icon}
         </div>
         <div>
-          <h3 className="text-[16px] font-semibold mb-1" style={{ color: colors.text }}>
+          <h3 className="text-[14px] font-bold mb-1" style={{ color: colors.text }}>
             {item.title}
           </h3>
-          <p className="text-[13px] leading-relaxed" style={{ color: colors.textSecondary }}>
+          <p className="text-[12px] leading-relaxed" style={{ color: colors.textSecondary }}>
             {item.desc}
+          </p>
+          <p className="text-[10px] leading-snug mt-1" style={{ color: colors.muted }}>
+            {item.example}
           </p>
         </div>
       </motion.div>

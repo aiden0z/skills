@@ -56,9 +56,14 @@ def _load_font(system_fallbacks: list, size: int):
 
 
 def _hex_to_rgb(hex_color: str) -> tuple:
-    """Convert hex color string to RGB tuple."""
+    """Convert hex color string to RGB tuple. Falls back to blue on invalid input."""
     hex_color = hex_color.lstrip("#")
-    return tuple(int(hex_color[i:i+2], 16) for i in (0, 2, 4))
+    if len(hex_color) != 6:
+        return (37, 99, 235)  # fallback: #2563eb
+    try:
+        return tuple(int(hex_color[i:i+2], 16) for i in (0, 2, 4))
+    except ValueError:
+        return (37, 99, 235)
 
 
 class HeaderGenerator:

@@ -118,9 +118,13 @@ def optimize_directory(
             str(p), str(output_path), max_width, quality
         )
 
-        # Remove original if output is a different file
+        # Remove original if output is a different file and output is valid
         if output_path != p and output_path.exists():
-            p.unlink()
+            try:
+                Image.open(str(output_path)).verify()
+                p.unlink()
+            except Exception:
+                pass  # Keep original if output is corrupt
 
         results.append((output_path.name, original_kb, compressed_kb))
 

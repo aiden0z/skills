@@ -265,7 +265,7 @@ class EmailChartGenerator:
             all_vals = [v for vals in series.values() for v in vals]
             if stacked:
                 # Sum across series per category
-                totals = [sum(s[i] for s in series.values()) for i in range(len(categories))]
+                totals = [sum(s[i] for s in series.values() if i < len(s)) for i in range(len(categories))]
                 max_val = max(totals) if totals else 0
             else:
                 max_val = max(all_vals) if all_vals else 0
@@ -371,7 +371,7 @@ class EmailChartGenerator:
             layout["xaxis"]["tickangle"] = -30
 
         # Add cell value annotations
-        max_val = max(max(row) for row in values) if values and values[0] else 1
+        max_val = max((max(row) for row in values if row), default=1)
         annotations = []
         for i, y_label in enumerate(y_labels):
             for j, x_label in enumerate(x_labels):

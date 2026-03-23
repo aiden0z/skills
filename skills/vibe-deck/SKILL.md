@@ -107,6 +107,7 @@ Read these three files first — skipping this step leads to duplicated content,
 - **Narrative continuity**: new slide should follow logically from the previous one
 - **No duplication**: if a data point is already shown elsewhere, present from a different angle
 - **Unit consistency**: confirm the same units as existing slides ($K vs $M, etc.)
+- **Content density**: Check [content-rules.md](reference/content-rules.md) for minimum content density standards — slides with sparse content (< 10 visual elements, single-line card descriptions) are not acceptable.
 
 ### 3. Choose layout
 
@@ -118,6 +119,7 @@ See [layout-templates.md](reference/layout-templates.md) for code templates:
 | **SplitView** | Side-by-side comparison |
 | **MetricGrid** | Dashboard with N metric cards |
 | **ComparisonView** | Before/after |
+| **DataTable** | Tool comparison, feature matrix, pricing |
 
 Built-in slide templates (import from `src/slides/`):
 
