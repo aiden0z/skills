@@ -114,32 +114,35 @@ def validate(html: str) -> dict:
     if tables_no_fixed:
         warnings.append(f"TABLE_NO_FIXED: Found {len(tables_no_fixed)} <table> with pixel width but no table-layout:fixed.")
 
-    # 17. Column pixel widths that may overflow parent table
-    # Find tables with pixel width, then check if child td pixel widths + padding exceed it
+    # 17. Data tables with pixel widths on <td> — must use percentage widths
+    # Match only leaf-level tables (no nested <table> inside) to avoid layout wrappers
     for table_match in re.finditer(
-        r'<table[^>]*width="(\d+)"[^>]*>(.+?)</table>', html, re.DOTALL | re.IGNORECASE
+        r'<table[^>]*>((?:(?!<table).)+?)</table>', html, re.DOTALL | re.IGNORECASE
     ):
-        table_width = int(table_match.group(1))
-        table_body = table_match.group(2)
-        # Find the first row's td widths
+        table_body = table_match.group(1)
         first_row = re.search(r'<tr[^>]*>(.*?)</tr>', table_body, re.DOTALL | re.IGNORECASE)
         if first_row:
             td_widths = re.findall(r'<td[^>]*width="(\d+)"', first_row.group(1), re.IGNORECASE)
-            if td_widths:
-                total = sum(int(w) for w in td_widths)
-                if total > table_width:
+            # If there are 3+ columns with pixel widths, it's a data table — flag it
+            if len(td_widths) >= 3:
+                has_padding = re.search(r'padding\s*:\s*\d+px\s+\d+px', first_row.group(1))
+                if has_padding:
                     errors.append(
-                        f"COLUMN_OVERFLOW: Table width={table_width}px but columns sum to {total}px "
-                        f"({'+'.join(td_widths)}). Use percentage widths or reduce column widths."
+                        f"TD_PIXEL_WIDTH: Data table has {len(td_widths)} columns with pixel widths "
+                        f"({'+'.join(td_widths)}px) AND padding. Email clients handle this inconsistently — "
+                        f"some add padding on top of width, causing overflow. "
+                        f"FIX: Change all <td width> to percentages (e.g., width=\"25%\") summing to 100%."
                     )
-                elif total == table_width:
-                    # Exact match means padding WILL cause overflow
-                    has_padding = re.search(r'padding\s*:\s*\d+px\s+\d+px', first_row.group(1))
-                    if has_padding:
-                        warnings.append(
-                            f"COLUMN_OVERFLOW_RISK: Table width={table_width}px and columns "
-                            f"sum to exactly {total}px — padding will cause overflow. "
-                            f"Use percentage widths instead."
+            elif len(td_widths) >= 1:
+                # Layout table with pixel widths — check sum against parent
+                table_w_match = re.search(r'width="(\d+)"', table_match.group(0)[:200])
+                if table_w_match:
+                    table_width = int(table_w_match.group(1))
+                    total = sum(int(w) for w in td_widths)
+                    if total > table_width:
+                        errors.append(
+                            f"COLUMN_OVERFLOW: Table width={table_width}px but columns sum to {total}px "
+                            f"({'+'.join(td_widths)}). Reduce column widths or use percentage widths."
                         )
 
     # 18. Inner tables/elements with pixel widths exceeding container
@@ -289,6 +292,20 @@ def validate(html: str) -> dict:
         warnings.append(
             "MISSING_LANG: <html> tag is missing lang attribute — screen readers "
             "need this to use correct pronunciation. Add lang=\"en\" or lang=\"zh\"."
+        )
+
+    # 32. Non-ASCII image filenames (will cause CID embedding issues)
+    img_srcs = re.findall(r'<img[^>]*\bsrc="images/([^"]+)"', html, re.IGNORECASE)
+    non_ascii_imgs = []
+    for fname in img_srcs:
+        try:
+            fname.encode("ascii")
+        except UnicodeEncodeError:
+            non_ascii_imgs.append(fname)
+    if non_ascii_imgs:
+        warnings.append(
+            f"IMG_NON_ASCII: Found {len(non_ascii_imgs)} image(s) with non-ASCII filenames: "
+            f"{', '.join(non_ascii_imgs)}. Rename to ASCII-only for reliable CID embedding."
         )
 
     passed = len(errors) == 0
