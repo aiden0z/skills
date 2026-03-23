@@ -53,7 +53,8 @@ def fill_batch(html: str, content: dict, image_dir: str = None) -> str:
         html: HTML with {{placeholder}} markers
         content: dict mapping placeholder names to values
         image_dir: optional directory path; if provided, auto-maps
-                   image filenames to CID placeholders
+                   image filenames to relative path placeholders
+                   (e.g., logo.png → images/logo.png)
 
     Returns:
         HTML with placeholders replaced
@@ -66,7 +67,7 @@ def fill_batch(html: str, content: dict, image_dir: str = None) -> str:
         if img_dir.exists():
             for p in img_dir.iterdir():
                 if p.suffix.lower() in img_exts and p.stem not in content:
-                    content[p.stem] = f"cid:{p.stem}"
+                    content[p.stem] = f"images/{p.name}"
 
     return fill_placeholders(html, content)
 
