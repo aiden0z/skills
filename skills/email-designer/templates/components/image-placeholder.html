@@ -2,13 +2,14 @@
      Image placeholder for CID-embedded images with optional caption.
      Outer table uses width="100%" — wrap in a parent td that controls max width.
      Image width/height use pixel values for correct rendering.
-     Variables: {{image_cid}}, {{image_width}}, {{image_height}}, {{image_alt}}, {{caption_text}}
+     Variables: {{image_file}}, {{image_width}}, {{image_height}}, {{image_alt}}, {{caption_text}}
+     Image src uses relative path for browser preview. CID conversion happens automatically during EML generation.
 -->
 <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" align="center"
        style="width: 100%; border-collapse: collapse;">
     <tr>
         <td align="center" valign="top" style="padding: 0;">
-            <img src="cid:{{image_cid}}"
+            <img src="images/{{image_file}}"
                  width="{{image_width}}" height="{{image_height}}"
                  alt="{{image_alt}}"
                  style="display: block; width: {{image_width}}px; height: {{image_height}}px; border: 0;" />
