@@ -232,19 +232,19 @@ class EmailChartGenerator:
                              "family": FONT_FAMILY, "weight": "bold"},
             }
 
-            if stacked:
-                bar_kwargs["textposition"] = "auto"
-                bar_kwargs["insidetextfont"] = {
-                    "size": FONT_SIZES["data_label"], "color": COLORS["text_on_dark"],
-                    "family": FONT_FAMILY, "weight": "bold",
-                }
-                bar_kwargs["outsidetextfont"] = {
-                    "size": FONT_SIZES["data_label"], "color": COLORS["text_on_light"],
-                    "family": FONT_FAMILY, "weight": "bold",
-                }
-                bar_kwargs["constraintext"] = "none"
-            else:
-                bar_kwargs["textposition"] = "inside"
+            # Use auto positioning with inside/outside font configs for all bar types
+            # This ensures labels stay inside dark bars (white text) or move outside
+            # small bars (dark text) gracefully
+            bar_kwargs["textposition"] = "auto"
+            bar_kwargs["insidetextfont"] = {
+                "size": FONT_SIZES["data_label"], "color": COLORS["text_on_dark"],
+                "family": FONT_FAMILY, "weight": "bold",
+            }
+            bar_kwargs["outsidetextfont"] = {
+                "size": FONT_SIZES["data_label"], "color": COLORS["text_on_light"],
+                "family": FONT_FAMILY, "weight": "bold",
+            }
+            bar_kwargs["constraintext"] = "none"
 
             if orientation == "h":
                 fig.add_trace(go.Bar(y=categories, x=values, orientation="h", **bar_kwargs))

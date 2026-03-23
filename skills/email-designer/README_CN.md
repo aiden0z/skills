@@ -35,12 +35,12 @@
 - **自定义布局** — 用自然语言描述，AI 自动设计
 - **设计系统** — 专业配色方案、字体层级、一致的间距体系
 - **品牌色提取** — 提供 Logo 图片，AI 自动提取品牌色
-- **12 个邮件组件** — 页头、页脚、表格、卡片、数据面板、进度条、按钮、导航栏、状态标签、分隔线、图片占位、内容区块
-- **18 条 HTML 验证规则** — 自动检查兼容性问题，输出前拦截错误
+- **19 个邮件组件** — 页头、页脚、表格、卡片、数据面板、进度条、按钮、导航栏、状态标签、分隔线、图片占位、内容区块、提示框、推荐语、功能列表、定价表、团队成员、警告、时间线
+- **32 条 HTML 验证规则** — 自动检查兼容性问题，输出前拦截错误
 - **内容填充** — 在对话中填入内容，或留空在 Outlook 中编辑
 - **模板复用** — 保存满意的设计，下次直接使用
 - **多语言支持** — 中文、英文、日文占位符
-- **零依赖** — 仅使用 Python 标准库，无需 pip install
+- **核心零依赖** — HTML/EML 生成仅需 Python 标准库；图表和图片处理的可选依赖（plotly、pillow）按需自动安装
 
 ## 安装使用
 
@@ -73,12 +73,12 @@ rules/
   placeholder-i18n.md       # 多语言占位符
   brand-color-extraction.md # 品牌色识别 + 预设调色板
 templates/
-  components/*.html         # 12 个经过验证的 HTML 邮件组件
-  layouts/*.md              # 4 种预设布局定义
+  components/*.html         # 19 个经过验证的 HTML 邮件组件
+  layouts/*.md              # 7 种预设布局定义
   guides/*.md               # Outlook 使用指引（中/英）
 code-blocks/
-  html-validator.py         # 18 条规则兼容性检查器
-  html-to-eml.py            # HTML → EML 转换（含 CID 图片嵌入）
+  html-validator.py         # 32 条规则兼容性检查器
+  html-to-eml.py            # HTML → EML 转换（自动 images/ → CID）
   eml-builder.py            # EML 构建器（链式 API）
   html-patcher.py           # 局部修改（无需重新生成）
   content-filler.py         # 批量占位符填充
@@ -100,7 +100,7 @@ AI 读取兼容性规则 + 设计系统
       ↓
 生成 Outlook 安全的 HTML（表格布局、VML、MSO 指令）
       ↓
-自动验证 18 条规则（捕获溢出、禁用 CSS 等）
+自动验证 32 条规则（捕获溢出、禁用 CSS 等）
       ↓
 浏览器打开预览 + 终端显示 ASCII 布局图
       ↓

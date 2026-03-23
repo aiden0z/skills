@@ -35,12 +35,12 @@ You describe the email you want — layout, colors, content — and the skill ge
 - **Custom layouts** — describe in natural language, the AI designs it
 - **Design system** — professional color palette, typography scale, consistent spacing
 - **Brand color extraction** — provide your logo, AI extracts your brand colors
-- **12 Outlook-safe components** — header, footer, table, card, stats grid, progress bar, CTA button, nav bar, status badge, divider, image placeholder, section
-- **18-rule HTML validator** — auto-checks for compatibility issues before output
+- **19 Outlook-safe components** — header, footer, table, card, stats grid, progress bar, CTA button, nav bar, status badge, divider, image placeholder, section, callout, testimonial, feature list, pricing table, team member, alert, timeline
+- **32-rule HTML validator** — auto-checks for compatibility issues before output
 - **Content filling** — fill placeholders in conversation or leave for Outlook editing
 - **Template save/reuse** — save confirmed designs for future use
 - **Multilingual** — Chinese, English, Japanese placeholder support
-- **Zero dependencies** — Python stdlib only, no pip install needed
+- **Zero core dependencies** — Python stdlib for HTML/EML; optional packages (plotly, pillow) auto-installed for charts and image processing
 
 ## Installation
 
@@ -73,12 +73,12 @@ rules/
   placeholder-i18n.md       # Multilingual placeholder text
   brand-color-extraction.md # Brand color detection + preset palettes
 templates/
-  components/*.html         # 12 battle-tested HTML email components
-  layouts/*.md              # 4 preset layout definitions
+  components/*.html         # 19 battle-tested HTML email components
+  layouts/*.md              # 7 preset layout definitions
   guides/*.md               # End-user Outlook guides (zh/en)
 code-blocks/
-  html-validator.py         # 18-rule compatibility checker
-  html-to-eml.py            # HTML → EML conversion (with CID images)
+  html-validator.py         # 32-rule compatibility checker
+  html-to-eml.py            # HTML → EML conversion (auto images/ → CID)
   eml-builder.py            # EML builder class (fluent API)
   html-patcher.py           # Targeted edits without regeneration
   content-filler.py         # Batch placeholder filling
@@ -100,7 +100,7 @@ AI reads compatibility rules + design system
         ↓
 Generates Outlook-safe HTML (table layout, VML, MSO directives)
         ↓
-Validates against 18 rules (catches overflow, forbidden CSS, etc.)
+Validates against 32 rules (catches overflow, forbidden CSS, etc.)
         ↓
 Opens preview in browser + shows ASCII layout in terminal
         ↓

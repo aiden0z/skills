@@ -207,7 +207,7 @@ Key principles when generating:
 
 After generating:
 1. **Validate first**: execute `code-blocks/html-validator.py` → `validate(html)`.
-   Checks 29 rules including: forbidden CSS, missing VML, column width overflow, text overflow,
+   Checks 32 rules including: forbidden CSS, missing VML, column width overflow, text overflow,
    Gmail 102KB size limit, missing alt text, non-HTTPS links, missing preheader,
    elements exceeding container width. Fix any errors before proceeding.
 2. **Organize output**: execute `code-blocks/output-manager.py` → `create_project(name)`

@@ -338,19 +338,6 @@ The last row of a data table (summary or total) should be visually distinct:
 - Font weight: 600 (bold)
 - Top divider: 1px `#cbd5e1` (heavier than row dividers)
 
-### Image Container Reset
-
-When placing images directly in `<td>`, reset the container to prevent extra
-spacing around the image:
-
-```html
-<td style="padding:0;line-height:0;font-size:0;">
-    <img src="cid:image" width="600" style="display:block;width:600px;height:auto;border:0;" />
-</td>
-```
-
-The `line-height:0;font-size:0;` on the parent prevents Outlook from adding
-invisible spacing below the image.
 
 ## 9. Design Principles
 
