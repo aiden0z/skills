@@ -27,7 +27,11 @@ what they want, you produce a pixel-perfect EML file that opens as a draft in Ou
 This skill has three layers:
 1. **Rules** — Outlook compatibility constraints you follow when generating HTML
 2. **Templates** — Pre-built components and layouts you assemble from
-3. **Code blocks** — Python scripts (stdlib only) you execute to produce EML files
+3. **Code blocks** — Python scripts you execute to produce EML files
+
+The core (HTML + EML) uses Python stdlib only. Optional features (charts, header
+banners, image optimization) require additional packages that are auto-installed
+when needed — see Step 0.
 
 ## Step 0: Environment Check
 
@@ -47,6 +51,23 @@ python --version     # Windows (check that output shows 3.x, not 2.x)
      >
      > **English**: Email Designer requires Python 3.8 or later. Please visit https://www.python.org/downloads/ to download and install the version for your OS, then try again.
   4. Stop here and wait for the user to install before continuing.
+
+### Optional Dependencies (auto-installed when needed)
+
+If Step 1 determines the email needs charts or image processing:
+
+1. Execute `code-blocks/deps-checker.py` → `check_and_install(features)`
+   - `features` is `['charts']`, `['images']`, or `['charts', 'images']`
+2. **All available** → continue silently
+3. **Just installed** → continue silently (installation is quiet)
+4. **Install failed** → inform user and offer alternatives:
+   - Charts unavailable → "I'll use HTML tables and stats-grid components instead"
+   - Images unavailable → "I'll use the HTML header component and skip compression"
+
+| Feature | Packages | What It Enables |
+|---------|----------|-----------------|
+| `charts` | plotly, kaleido | Bar, line, heatmap, pie chart generation |
+| `images` | pillow | Header banner compositing, image compression |
 
 ## Adaptive Flow
 
@@ -83,6 +104,67 @@ Parse what you already know from the user's message, then fill gaps:
 - **Saved templates**: Run `code-blocks/template-manager.py` → `list_templates()` to
   check for reusable templates. If any exist, offer them first.
 
+### Material Assessment
+
+After understanding layout/width/colors, assess what visual materials are needed:
+
+- **User provided data** (Excel, CSV, table, numbers in conversation) → plan chart generation (Step 1.5a)
+- **User provided background image** → plan header banner compositing (Step 1.5b)
+- **User provided local images** → plan image optimization (Step 1.5c)
+- **Email type is Dashboard/Weekly Report/Data Report but no data provided** → ask: "Do you have data you'd like visualized as charts?"
+
+If any material preparation is needed:
+1. Run dependency check (Step 0 optional deps)
+2. Proceed to Step 1.5
+
+If no materials needed → skip directly to Step 2.
+
+### Step 1.5: Material Preparation (when materials identified)
+
+Prepare visual assets before generating HTML. All outputs go to the project's `images/` directory.
+
+#### 1.5a: Chart Generation (if data provided)
+
+1. Read `rules/chart-design-system.md` for visual constraints
+2. Analyze data structure → recommend chart type:
+   - Categories × single value → horizontal bar
+   - Categories × multiple series → stacked bar
+   - Time × values → line chart
+   - 2D matrix → heatmap
+   - Parts of whole → pie/donut
+   - ≤ 5 data points → suggest HTML table or stats-grid instead
+3. Confirm with user: "Based on your data, I recommend a [type] chart. OK?"
+4. Execute `code-blocks/chart-generator.py`:
+   ```python
+   gen = EmailChartGenerator(container_width=WIDTH, output_dir='OUTPUT/images')
+   path = gen.bar_chart(categories=[...], series={...}, title='...', filename='chart_name.png')
+   ```
+5. Preview chart image with user, iterate if needed
+6. Final PNG ready at `images/{chart_name}.png`
+
+#### 1.5b: Header Banner (if background image provided)
+
+1. Execute `code-blocks/header-generator.py`:
+   ```python
+   gen = HeaderGenerator()
+   path = gen.generate(title='...', subtitle='...', output_path='OUTPUT/images/header_banner.jpg',
+                       bg_image='path/to/bg.png')  # or bg_color='#2563eb' for solid
+   ```
+2. If no background image but user wants a visual banner → offer solid-color option
+3. If user doesn't want a banner image → use the HTML header component instead (no Pillow needed)
+4. Output: `images/header_banner.jpg`
+
+#### 1.5c: Image Optimization (if local images provided)
+
+1. Ensure images are in the project's `images/` directory
+2. Check filenames — non-ASCII names must be renamed to ASCII (see `rules/design-system.md` § Image filename rules)
+3. Execute `code-blocks/image-optimizer.py`:
+   ```python
+   results = optimize_directory('OUTPUT/images/', threshold_kb=200)
+   # results = [(filename, original_kb, compressed_kb), ...]
+   ```
+4. Report savings to user if any files were optimized
+
 ### Step 2: Generate HTML
 
 Before generating HTML, read these files for guidance:
@@ -91,6 +173,8 @@ Before generating HTML, read these files for guidance:
   (this is what makes emails look **professional and modern**, not just compatible)
 - `rules/design-system-data-report.md` — ONLY for data-heavy emails (KPI dashboards,
   weekly reports, status updates). Skip this for simple newsletters/announcements.
+- `rules/chart-design-system.md` — ONLY when generating charts. Color system,
+  typography, sizing, and data label conventions for email-embedded charts.
 - `rules/email-best-practices.md` — design guidelines
 - `rules/style-presets.md` — design style presets (Corporate, Editorial, Minimal).
   Choose a style matching the email's purpose to guide spacing, font sizes, and color usage.
@@ -131,11 +215,16 @@ After generating:
    (e.g., `./output/2026-03-15_product-report/`). Never write output files
    into the skill's own installation directory.
 3. Save HTML to `{project_dir}/newsletter-preview.html`
-4. Auto-open in browser: execute `code-blocks/preview-helper.py` → `open_in_browser()`
-5. Show ASCII layout summary in conversation: → `ascii_layout_summary(html)`
-6. Ask if adjustments needed, iterate until satisfied
 
-### Step 3: Fill Content (Optional)
+### Step 3: Preview & Adjust
+
+1. Auto-open in browser: execute `code-blocks/preview-helper.py` → `open_in_browser()`
+   - All images render directly (charts, header banner, content images)
+   - No need to generate EML for preview
+2. Show ASCII layout summary in conversation: → `ascii_layout_summary(html)`
+3. Ask if adjustments needed, iterate until satisfied
+
+### Step 4: Fill Content (Optional)
 
 Ask: "Want to fill in content now, or leave placeholders for editing in Outlook?"
 
@@ -159,7 +248,7 @@ If the user asks for a targeted change (e.g., "change the header color to red",
 
 Re-validate after patching: `html-validator.py` → `validate(patched_html)`.
 
-### Step 4: Generate EML
+### Step 5: Generate EML
 
 This is where the HTML becomes a real email file. Execute `code-blocks/html-to-eml.py`:
 
@@ -180,7 +269,7 @@ The script uses Python's built-in `email` module — no pip install needed. It c
 a proper MIME structure (multipart/alternative → text/plain + multipart/related →
 text/html + CID images) with `X-Unsent: 1` so Outlook opens it in draft/compose mode.
 
-### Step 5: Wrap Up
+### Step 6: Wrap Up
 
 1. Offer to save the template: execute `code-blocks/template-manager.py` → `save_template()`
 2. Show the output file locations
@@ -198,6 +287,7 @@ rules/
   email-best-practices.md    ← Design guidance (widths, colors, typography)
   style-presets.md           ← 3 design styles: Corporate, Editorial, Minimal
   placeholder-i18n.md        ← Localized placeholder text (zh/en/ja)
+  chart-design-system.md     ← Chart colors, typography, sizing (read before chart generation)
   brand-color-extraction.md  ← Color extraction + preset palettes
 
 templates/
@@ -222,6 +312,10 @@ code-blocks/
   content-filler.py          ← {{placeholder}} replacement + batch filling
   template-manager.py        ← Save/load/list custom templates
   preview-helper.py          ← Browser auto-open + ASCII layout
+  deps-checker.py            ← Auto-install optional dependencies (charts, images)
+  chart-generator.py         ← Plotly chart generation (bar, line, heatmap, pie)
+  header-generator.py        ← Header banner image compositing (text on background)
+  image-optimizer.py         ← Image compression (PNG→JPEG, resize, optimize)
 
 examples/
   example-single-column.html ← Complete 600px single-column reference
