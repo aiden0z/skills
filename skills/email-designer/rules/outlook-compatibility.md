@@ -120,23 +120,36 @@ Use `table-layout: fixed` to prevent Outlook from auto-sizing columns:
 
 ### Table column width rule (CRITICAL)
 
-The sum of all `<td width>` values MUST exactly equal the `<table width>` value.
-Column widths in email HTML include padding — `width="200"` with `padding: 0 12px`
-means 176px content + 24px padding = 200px total.
+**MANDATORY: Use percentage widths for all data table columns.**
 
-**Wrong** (columns + padding exceed table width):
+Email clients (especially Outlook vs Gmail vs Apple Mail) are inconsistent about
+whether `<td width="X">` is content-box or border-box. This means pixel-based
+column widths + padding will overflow in some clients but not others.
+
+**Correct — percentage widths (always safe):**
+```html
+<table width="100%" style="width:100%;border-collapse:collapse;table-layout:fixed;">
+  <tr>
+    <td width="50%" style="padding:10px 12px;">...</td>
+    <td width="50%" style="padding:10px 12px;">...</td>
+  </tr>                                                <!-- = 100% ✓ -->
+</table>
+<!-- Padding is handled correctly regardless of box model -->
+```
+
+**Wrong — pixel widths (overflow risk):**
 ```html
 <table width="600">
   <tr>
-    <td width="300" style="padding:0 12px;">...</td>  <!-- 300px -->
-    <td width="300" style="padding:0 12px;">...</td>  <!-- 300px -->
-  </tr>                                                <!-- = 600px ✓ -->
+    <td width="300" style="padding:0 12px;">...</td>
+    <td width="300" style="padding:0 12px;">...</td>
+  </tr>
+  <!-- Some clients: 300+300=600 ✓  Other clients: 324+324=648 ✗ OVERFLOW -->
 </table>
-<!-- Padding is INCLUDED in the 300px, not added on top -->
 ```
 
-**If your table overflows the container**, reduce column widths so they sum
-to exactly the table width. Or use percentage widths (e.g., `width="33%"`).
+Pixel widths on `<td>` are only acceptable for layout tables (e.g., two-column
+layouts with nested tables) where padding is `0` on the outer `<td>`.
 
 ### Multi-column layouts with nested tables
 
@@ -619,7 +632,7 @@ For dividers where you need absolute minimal height (1px), use `&#8203;` instead
 Every `<img>` tag MUST include `width` and `height` HTML attributes, `display: block`, and `border: 0`:
 
 ```html
-<img src="cid:logo" alt="Logo"
+<img src="images/logo.png" alt="Logo"
      width="160" height="17"
      style="width: 160px; height: 17px; display: block; border: 0;">
 ```
@@ -638,23 +651,21 @@ Every `<img>` tag MUST include `width` and `height` HTML attributes, `display: b
 When you need to maintain aspect ratio, set width only and use `height: auto`. Do NOT set the `height` HTML attribute in this case:
 
 ```html
-<img src="cid:feature" alt="Feature screenshot"
+<img src="images/feature_screenshot.png" alt="Feature screenshot"
      width="370"
      style="width: 370px; height: auto; display: block; border: 0;">
 ```
 
-### CID image format
+### CID embedding (auto-handled)
 
-For embedded images in EML files, use the `cid:` URI scheme. The CID value must match the `Content-ID` header of the MIME image part:
+During EML generation, `html-to-eml.py` automatically:
+1. Scans all `<img src="images/...">` references
+2. Converts paths to `src="cid:xxx"` references
+3. Embeds image files as MIME parts with proper headers
 
-```html
-<img src="cid:company_logo" alt="Company Logo"
-     width="160" height="17"
-     style="width: 160px; height: 17px; display: block; border: 0;">
-```
+You do NOT need to write `cid:` references in HTML. Use relative paths (`images/filename.png`) and the tooling handles the rest.
 
-The corresponding MIME part must include `X-Attachment-Id` for Outlook Windows:
-
+The MIME headers set on each embedded image:
 ```
 Content-Type: image/png
 Content-Transfer-Encoding: base64
