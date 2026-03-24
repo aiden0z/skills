@@ -94,7 +94,9 @@ import MetricCard from '../components/MetricCard'
 
 ## ComparisonView
 
-Side-by-side comparison with card styling. Feature lists inside each panel MUST use `justify-center gap-4` or `justify-between` to fill vertical space — NEVER `justify-start` which bunches content at the top.
+Side-by-side comparison with card styling. This template already demonstrates the **title-top / content-centered** pattern correctly — notice how `<h3>` sits at the top of each panel while feature items live inside `flex-1 justify-center`. Feature lists inside each panel use `justify-center gap-4` or `justify-between` to fill vertical space — NEVER `justify-start` which bunches content at the top.
+
+**Unequal item counts:** When one side has significantly more items than the other (e.g., 6 vs 3), do NOT pad the short side with crossed-out placeholder items. Instead, let `flex-1 justify-center` vertically center the smaller list — the visual asymmetry communicates the gap. Add a summary line at the bottom of the short column (e.g., "Limited to 3 capabilities"). See [content-rules.md > Unequal content across columns](content-rules.md) for alternatives including switching to DataTable.
 
 ```jsx
 <SlideLayout title="Comparison" keyMessage={['Option A outperforms by 20%']}>
@@ -208,7 +210,7 @@ Comparison table using CSS grid. Best for tool comparisons, feature matrices, pr
 
 4+ items in a 2×2 or 2×3 grid with icon + text. Best for capability lists and feature overviews.
 
-**IMPORTANT:** Add `h-full` to each card so it stretches to fill its grid cell. Without `h-full`, cards have natural height and leave empty space in the grid cell.
+**IMPORTANT:** Add `h-full` to each card so it stretches to fill its grid cell. Inside the card, use the **title-top / content-centered** pattern — the icon + title row stays anchored at the top (`shrink-0`), while the description block centers in the remaining space (`flex-1 justify-center`). See [content-rules.md > Card Layout Alignment](content-rules.md) for the reasoning.
 
 ```jsx
 <SlideLayout title="Core Capabilities">
@@ -219,20 +221,24 @@ Comparison table using CSS grid. Best for tool comparisons, feature matrices, pr
     {items.map((item, i) => (
       <motion.div
         key={i}
-        className="flex items-start gap-3 p-4 rounded-xl h-full"
+        className="flex flex-col p-4 rounded-xl h-full"
         style={{ backgroundColor: `${colors.primary}06` }}
         variants={fadeIn}
       >
-        <div
-          className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0 text-xl"
-          style={{ backgroundColor: `${colors.primary}12` }}
-        >
-          {item.icon}
-        </div>
-        <div>
-          <h3 className="text-[14px] font-bold mb-1" style={{ color: colors.text }}>
+        {/* Title row — anchored at top */}
+        <div className="flex items-center gap-3 shrink-0">
+          <div
+            className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0 text-xl"
+            style={{ backgroundColor: `${colors.primary}12` }}
+          >
+            {item.icon}
+          </div>
+          <h3 className="text-[14px] font-bold" style={{ color: colors.text }}>
             {item.title}
           </h3>
+        </div>
+        {/* Content — centered in remaining space */}
+        <div className="flex-1 flex flex-col justify-center">
           <p className="text-[12px] leading-relaxed" style={{ color: colors.textSecondary }}>
             {item.desc}
           </p>
@@ -562,3 +568,9 @@ export default function SlideThankYou({
   )
 }
 ```
+
+---
+
+## Card Alignment in Stretched Layouts
+
+When cards are stretched by `h-full` or `flex-1` inside grids, their internal structure needs to follow the **title-top / content-centered** pattern. The CardGrid template above demonstrates this correctly. For the full reasoning, common mistakes, and guidance on grid cell structure, unequal columns, and child card lists, see [content-rules.md > Card Layout Alignment](content-rules.md).

@@ -2,10 +2,11 @@
 
 ## Key Message
 - **Optional** — only add when the slide has a data-driven insight worth highlighting
-- **Data slides ONLY** — KeyMessage is for slides with charts, metrics, or numbers. Do NOT use KeyMessage on:
+- **Data slides ONLY** — KeyMessage is for slides with charts, metrics, or numbers from a real data source. Do NOT use KeyMessage on:
   - Concept/explanation slides (e.g., "什么是 X？", "为什么选择 Y？")
   - Comparison slides without quantitative data
   - Feature showcase or capability overview slides
+  - User feedback / testimonial slides — even if you calculate an aggregate rating, that's derived decoration, not source data
   - When in doubt, **omit KeyMessage** — less is more
 - **Position is automatic** — pass content via `keyMessage` prop on `SlideLayout`; do NOT manually position `<KeyMessage>` in JSX
 - **Format**: pass as a string array: `keyMessage={['bullet 1', 'bullet 2']}`  — the component auto-adds bullet characters and line breaks
@@ -55,6 +56,77 @@ When working with multiple data sources (e.g., different Excel files for differe
 - **Card content depth:** Every card/panel MUST have at minimum: title (13-16px bold) + 2-3 lines of descriptive text (12px). Single-line descriptions are NOT acceptable.
 - **Space utilization:** Content should utilize ≥ 80% of available slide area. If more than 20% of a slide is empty whitespace, add more content or restructure.
 - **No sparse cards:** A card that is only 1/3 filled with content but takes up 1/3 of the slide area is a layout failure. Either add more content to the card or reduce its size.
+
+## Card Layout Alignment
+
+When cards live inside a grid or flex container, they get stretched to match their tallest neighbor. This is where layout breaks happen — the card has more height than its content needs, and the default behavior (content pinned to the top, empty space pooling at the bottom) looks obviously wrong.
+
+The core principle: **title anchors the card's identity at the top; content floats to the vertical center of whatever space remains.** This way the audience's eye finds the card title instantly (always in the same position), and the body text sits comfortably in the middle rather than hugging the top edge.
+
+### The pattern
+
+```jsx
+<div className="flex flex-col p-4 rounded-xl h-full">
+  {/* Title — always at the top, never pushed down */}
+  <div className="flex items-center gap-2 shrink-0">
+    <span className="badge">Tag</span>
+    <span className="font-bold">Card Title</span>
+  </div>
+  {/* Body — centered in whatever space the grid gives this card */}
+  <div className="flex-1 flex flex-col justify-center">
+    <p>Description line 1</p>
+    <p>Description line 2</p>
+  </div>
+</div>
+```
+
+`shrink-0` on the title row prevents it from being compressed when space is tight. `flex-1 justify-center` on the body wrapper distributes leftover height evenly above and below the content, so a short card in a tall grid row doesn't look empty.
+
+Three common alternatives that look right with equal-length content but break with uneven content:
+- `flex items-center` on the card — title and body center as one block, so the title drifts away from the top edge
+- `flex items-start` on the card — everything pins to the top; all extra space collects at the bottom
+- `flex flex-col justify-center` on the card itself — title gets centered too, losing its anchor
+
+### Grid cell structure
+
+Each cell in a grid row should hold one complete card. Wrapping a label + card in a container inside one cell — while its neighbors are plain cards — means the label eats into the card's height budget, making that card shorter than its neighbors.
+
+This is especially relevant for mockup components (terminal emulators, chat panels) that already have their own header bar. They're already complete cards — place them directly in the grid cell without an outer wrapper.
+
+### Unequal content across columns
+
+When two side-by-side columns have very different content lengths (e.g., 6 items vs 2), the shorter column will look empty. This is a common problem in ComparisonView slides.
+
+**Important:** Do NOT pad the short column with placeholder/crossed-out items just to match the count — that creates visual noise and dilutes the message. Instead, restructure:
+
+1. **Switch to DataTable** — if comparing across 3+ dimensions with uneven depth, a table is usually better than side-by-side panels. DataTable handles unequal cell content naturally.
+2. **Center and fill** (preferred for ComparisonView) — keep 2 columns, use `flex-1 justify-center` on the short column's content list so items float to the vertical center, and add a summary badge or callout at the bottom to use the remaining space. The asymmetry then communicates the advantage.
+3. **Split into three columns** — pull a third topic out so each column carries similar density.
+4. **Stack vertically** — arrange the two items top-to-bottom, removing the equal-width constraint.
+
+```jsx
+{/* Short column — items centered, summary at bottom */}
+<div className="flex-1 rounded-xl px-4 py-3 flex flex-col">
+  <h3 className="text-[10px] font-bold uppercase shrink-0">Competitor</h3>
+  <div className="flex flex-col gap-4 flex-1 justify-center">
+    {competitorFeatures.map(f => <div>...</div>)}
+  </div>
+  <div className="text-[10px] text-neutral-400 mt-2 shrink-0">Limited to 3 capabilities</div>
+</div>
+```
+
+The visual gap between columns is the message — our platform has 6 features, theirs has 3. Let the whitespace speak.
+
+### Child cards inside a grid cell
+
+When a grid cell contains a vertical list of smaller cards, avoid putting `flex-1` on each child — it stretches them unevenly. Let children keep their natural height and center the group as a unit:
+
+```jsx
+{/* Children at natural height, group centered in the cell */}
+<div className="flex flex-col gap-2 flex-1 justify-center">
+  {items.map(item => <div>...</div>)}
+</div>
+```
 
 ## Single Takeaway Principle
 

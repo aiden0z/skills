@@ -50,7 +50,8 @@ Match the slide's content to a layout pattern. Two paths: use a single layout, o
 | 1 chart, ≤ 3 bullets | **FullChart** | Chart dominates, text supports |
 | 2 charts OR chart + text | **SplitView** | Side-by-side comparison |
 | 2–6 metrics, no chart | **MetricGrid** | Numbers in grid scan fastest |
-| 2 things compared | **ComparisonView** | Symmetry highlights differences |
+| 2 things compared, similar depth | **ComparisonView** | Symmetry highlights differences |
+| 2 things compared, very unequal depth | **ComparisonView** with centered short column, or **DataTable** | See content-rules.md > Unequal columns |
 | 5+ rows × 3+ cols | **DataTable** | Grid = fastest tabular scan |
 | 3–5 sequential phases | **TimelineFlow** | Horizontal flow = time |
 | 4–6 items with description | **CardGrid** | 2×2 or 2×3 with icon + text |

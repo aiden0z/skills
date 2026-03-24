@@ -135,7 +135,7 @@ Available layouts — see [layout-templates.md](reference/layout-templates.md) f
 | **FullChart** | Single large chart + KeyMessage |
 | **SplitView** | Side-by-side comparison |
 | **MetricGrid** | Dashboard with N metric cards |
-| **ComparisonView** | Before/after |
+| **ComparisonView** | Before/after, similar-depth comparison |
 | **DataTable** | Tool comparison, feature matrix, pricing |
 | **TimelineFlow** | Roadmap, milestones, phased plans |
 | **CardGrid** | 4–6 feature items with icon + text |
@@ -190,11 +190,14 @@ Every time new slides are added, re-read the full `<Deck>` in `App.jsx` and veri
 
 After building each slide, visually verify the layout or use the layout checklist:
 
-- [ ] **No bottom whitespace**: Content fills ≥ 80% of slide height. If bottom 20%+ is empty, use `justify-between` or add content
-- [ ] **No bunched content**: Items should NOT cluster at the top with empty space below. Use `justify-center gap-4` or `justify-between` instead of `justify-start`
-- [ ] **Consistent card heights**: In grid layouts, cards should have `h-full` so they stretch to fill their cell
-- [ ] **Readable text hierarchy**: Title (28px font-black) → Section label (10px uppercase bold) → Card title (14px bold) → Body (12px) → Aux (10px). No adjacent sizes that blur hierarchy
-- [ ] **Breathing room between sections**: Adjacent sections (e.g., "Details" and "Actions") need `mt-2` or `mt-3` gap — not `mt-auto` which pushes to bottom
+- [ ] **No bottom whitespace**: Content fills ≥ 80% of slide height
+- [ ] **No bunched content**: Use `justify-center` or `justify-between`, not `justify-start`
+- [ ] **Consistent card heights**: Grid cards use `h-full` to fill their cell
+- [ ] **Card internal alignment**: Title at top (`shrink-0`), body in `flex-1 justify-center` — see [content-rules.md > Card Layout Alignment](reference/content-rules.md) for the pattern and common mistakes
+- [ ] **One card per grid cell**: No label + card wrappers; mockups go directly in cells
+- [ ] **Balanced columns**: Unequal content? Split into 3 cols, stack vertically, or center-fill
+- [ ] **Text hierarchy**: 28px title → 10px section label → 14px card title → 12px body → 10px aux
+- [ ] **Section spacing**: `mt-2` or `mt-3` between sections, not `mt-auto`
 
 ### 8. Data extraction (if needed)
 
