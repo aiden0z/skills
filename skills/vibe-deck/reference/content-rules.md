@@ -57,6 +57,21 @@ When working with multiple data sources (e.g., different Excel files for differe
 - **Space utilization:** Content should utilize ≥ 80% of available slide area. If more than 20% of a slide is empty whitespace, add more content or restructure.
 - **No sparse cards:** A card that is only 1/3 filled with content but takes up 1/3 of the slide area is a layout failure. Either add more content to the card or reduce its size.
 
+## Card Spacing — The Golden Ratio Principle
+
+Card spacing that "feels right" follows a simple rule: **the gap between cards should be ~1.6× the card's vertical padding (`py`).** This comes from the golden ratio (1.618) and prevents the common mistake of making inter-card gaps smaller than intra-card padding, which makes cards feel cramped together.
+
+Practical Tailwind mapping (all layout templates already follow this):
+- Card padding `py-2` (8px) → gap between cards `gap-3` (12px) or `gap-3.5` (14px)
+- Card padding `py-2.5` (10px) → gap between cards `gap-4` (16px)
+- Card padding `py-3` (12px) → gap between cards `gap-5` (20px)
+
+This applies to CardGrid, TimelineFlow detail cards, feedback grids, and any card-based layout. It does NOT apply to DataTable rows (which need tight gaps for visual continuity) or MetricCard grids (MetricCard encapsulates its own padding).
+
+When cards are inside a flex container with `justify-center` (natural height, not stretched), generous gaps create breathing room that makes each card feel like a distinct visual unit rather than a dense wall of information.
+
+**When NOT to stretch cards:** If all cards have similar content depth, `flex-1` + `h-full` is fine. But if cards have varying content (e.g., a 6-row comparison vs a 3-row one), let cards keep their natural height and center the group with `justify-center` + the appropriate gap. The breathing room between cards becomes the visual rhythm of the slide.
+
 ## Card Layout Alignment
 
 When cards live inside a grid or flex container, they get stretched to match their tallest neighbor. This is where layout breaks happen — the card has more height than its content needs, and the default behavior (content pinned to the top, empty space pooling at the bottom) looks obviously wrong.
@@ -66,7 +81,7 @@ The core principle: **title anchors the card's identity at the top; content floa
 ### The pattern
 
 ```jsx
-<div className="flex flex-col p-4 rounded-xl h-full">
+<div className="flex flex-col py-2.5 px-4 rounded-xl h-full">
   {/* Title — always at the top, never pushed down */}
   <div className="flex items-center gap-2 shrink-0">
     <span className="badge">Tag</span>

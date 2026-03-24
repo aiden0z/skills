@@ -198,6 +198,7 @@ After building each slide, visually verify the layout or use the layout checklis
 - [ ] **Balanced columns**: Unequal content? Split into 3 cols, stack vertically, or center-fill
 - [ ] **Text hierarchy**: 28px title → 10px section label → 14px card title → 12px body → 10px aux
 - [ ] **Section spacing**: `mt-2` or `mt-3` between sections, not `mt-auto`
+- [ ] **Card gap ratio**: Gap between cards ≈ 1.6× card internal padding (e.g., `py-2.5` → `gap-4`). See [content-rules.md > Card Spacing](reference/content-rules.md)
 
 ### 8. Data extraction (if needed)
 

@@ -215,13 +215,13 @@ Comparison table using CSS grid. Best for tool comparisons, feature matrices, pr
 ```jsx
 <SlideLayout title="Core Capabilities">
   <motion.div
-    className="grid grid-cols-2 gap-2 flex-1"
+    className="grid grid-cols-2 gap-4 flex-1"
     variants={stagger} initial="hidden" animate="show"
   >
     {items.map((item, i) => (
       <motion.div
         key={i}
-        className="flex flex-col p-4 rounded-xl h-full"
+        className="flex flex-col py-2.5 px-4 rounded-xl h-full"
         style={{ backgroundColor: `${colors.primary}06` }}
         variants={fadeIn}
       >
@@ -317,11 +317,11 @@ Horizontal timeline for roadmaps, milestones, and phased plans. Best for 3–5 s
     </div>
 
     {/* Detail cards below the timeline */}
-    <div className="grid gap-3" style={{ gridTemplateColumns: `repeat(${phases.length}, 1fr)` }}>
+    <div className="grid gap-4" style={{ gridTemplateColumns: `repeat(${phases.length}, 1fr)` }}>
       {phases.map((phase, i) => (
         <motion.div
           key={i}
-          className="p-4 rounded-xl flex flex-col gap-2"
+          className="py-2.5 px-4 rounded-xl flex flex-col gap-2"
           style={{
             backgroundColor: phase.active ? `${colors.primary}08` : `${colors.muted}06`,
             border: phase.active ? `1.5px solid ${colors.primary}25` : '1.5px solid transparent',
