@@ -199,6 +199,7 @@ After building each slide, visually verify the layout or use the layout checklis
 - [ ] **Text hierarchy**: 28px title → 10px section label → 14px card title → 12px body → 10px aux
 - [ ] **Section spacing**: `mt-2` or `mt-3` between sections, not `mt-auto`
 - [ ] **Card gap ratio**: Gap between cards ≈ 1.6× card internal padding (e.g., `py-2.5` → `gap-4`). See [content-rules.md > Card Spacing](reference/content-rules.md)
+- [ ] **No emoji**: Use `lucide-react` icons, not emoji characters. Store as component refs in data arrays (`icon: Mail`), render as `<item.icon size={14} />`
 
 ### 8. Data extraction (if needed)
 

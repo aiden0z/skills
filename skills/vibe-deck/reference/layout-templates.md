@@ -136,7 +136,7 @@ N items in a single row (2–4 items). Cards stretch to fill available width —
         style={{ backgroundColor: `${colors.primary}06` }}
         variants={fadeIn}
       >
-        <span className="text-3xl mb-3">{item.icon}</span>
+        <item.icon size={28} className="mb-3" style={{ color: colors.primary }} />
         <h3 className="text-[16px] font-semibold mb-2" style={{ color: colors.text }}>
           {item.title}
         </h3>
@@ -228,10 +228,10 @@ Comparison table using CSS grid. Best for tool comparisons, feature matrices, pr
         {/* Title row — anchored at top */}
         <div className="flex items-center gap-3 shrink-0">
           <div
-            className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0 text-xl"
-            style={{ backgroundColor: `${colors.primary}12` }}
+            className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0"
+            style={{ backgroundColor: `${colors.primary}12`, color: colors.primary }}
           >
-            {item.icon}
+            <item.icon size={20} />
           </div>
           <h3 className="text-[14px] font-bold" style={{ color: colors.text }}>
             {item.title}
