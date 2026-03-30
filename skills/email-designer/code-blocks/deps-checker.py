@@ -26,6 +26,9 @@ FEATURE_DEPS = {
     "images": [
         ("PIL", "pillow>=12.0.0"),
     ],
+    "excel": [
+        ("openpyxl", "openpyxl"),
+    ],
 }
 
 

@@ -68,6 +68,25 @@ If Step 1 determines the email needs charts or image processing:
 |---------|----------|-----------------|
 | `charts` | plotly, kaleido | Bar, line, heatmap, pie chart generation |
 | `images` | pillow | Header banner compositing, image compression |
+| `excel` | openpyxl | Excel template generation and data loading (Production Mode) |
+
+### Production Mode Detection
+
+After environment checks pass, check for existing crystallized projects:
+
+1. Look for `email-projects/` directory in the user's current working directory
+2. If found, scan subdirectories for projects (must contain both `template.html` and `template.xlsx`)
+3. If projects exist, present them to the user:
+
+   > "检测到以下邮件模板项目：
+   > 1. {project-name-1}
+   > 2. {project-name-2}
+   > ...
+   > 请选择项目编号并提供 Excel 数据文件路径（如：1 /path/to/data.xlsx），
+   > 或输入 'new' 创建新邮件。"
+
+4. If user selects a project → read `rules/production-mode.md` and follow the Production Mode Workflow
+5. If user types `new` or no projects exist → continue with Design Mode (Step 1 below)
 
 ## Adaptive Flow
 
@@ -271,6 +290,15 @@ text/html + CID images) with `X-Unsent: 1` so Outlook opens it in draft/compose 
 
 ### Step 6: Wrap Up
 
+### Crystallize as Reusable Project (Optional)
+
+After the user is satisfied with the email, offer to crystallize:
+
+> "邮件设计完成。是否要将此模板沉淀为可复用项目？以后只需填 Excel 即可重复生成。"
+
+If the user agrees, read `rules/production-mode.md` § "Crystallization Process" and follow steps C1-C5.
+If the user declines, continue with the existing wrap-up flow below.
+
 1. Offer to save the template: execute `code-blocks/template-manager.py` → `save_template()`
 2. Show the output file locations
 3. Display the appropriate usage guide:
@@ -289,6 +317,7 @@ rules/
   placeholder-i18n.md        ← Localized placeholder text (zh/en/ja)
   chart-design-system.md     ← Chart colors, typography, sizing (read before chart generation)
   brand-color-extraction.md  ← Color extraction + preset palettes
+  production-mode.md         ← Production mode: detection, workflow, crystallization, Excel integration
 
 templates/
   components/*.html          ← 19 Outlook-safe HTML building blocks
@@ -316,6 +345,7 @@ code-blocks/
   chart-generator.py         ← Plotly chart generation (bar, line, heatmap, pie)
   header-generator.py        ← Header banner image compositing (text on background)
   image-optimizer.py         ← Image compression (PNG→JPEG, resize, optimize)
+  excel-template-generator.py ← Generate & load Excel data templates (openpyxl)
 
 examples/
   example-single-column.html ← Complete 600px single-column reference
