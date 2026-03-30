@@ -17,6 +17,7 @@ try:
     from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
     from openpyxl.worksheet.datavalidation import DataValidation
     from openpyxl.comments import Comment
+    from openpyxl.utils import get_column_letter
 except ImportError:
     raise ImportError(
         "openpyxl is required for Excel template generation. "
@@ -173,9 +174,8 @@ def _build_data_sheet(ws, section: Dict, header_fill: PatternFill):
             dv.error = f"请从下拉列表中选择{col_def['name']}的值"
             dv.errorTitle = "无效值"
             ws.add_data_validation(dv)
-            col_letter = chr(64 + col_idx) if col_idx <= 26 else None
-            if col_letter:
-                dv.add(f"{col_letter}2:{col_letter}100")
+            col_letter = get_column_letter(col_idx)
+            dv.add(f"{col_letter}2:{col_letter}100")
     num_examples = 1 if section.get("single_row") else 3
     for row_idx in range(2, 2 + num_examples):
         for col_idx, col_def in enumerate(columns, start=1):
@@ -185,9 +185,8 @@ def _build_data_sheet(ws, section: Dict, header_fill: PatternFill):
             cell.border = THIN_BORDER
     for col_idx, col_def in enumerate(columns, start=1):
         max_len = max(len(col_def["name"]), len(str(col_def.get("example", ""))), 10)
-        col_letter = chr(64 + col_idx) if col_idx <= 26 else None
-        if col_letter:
-            ws.column_dimensions[col_letter].width = min(max_len + 4, 50)
+        col_letter = get_column_letter(col_idx)
+        ws.column_dimensions[col_letter].width = min(max_len + 4, 50)
     ws.freeze_panes = "A2"
 
 
