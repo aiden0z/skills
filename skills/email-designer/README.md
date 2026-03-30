@@ -42,6 +42,17 @@ You describe the email you want — layout, colors, content — and the skill ge
 - **Multilingual** — Chinese, English, Japanese placeholder support
 - **Zero core dependencies** — Python stdlib for HTML/EML; optional packages (plotly, pillow) auto-installed for charts and image processing
 
+## Production Mode (量产模式)
+
+Once you've designed an email template you're happy with, crystallize it for repeated use:
+
+1. **Crystallize**: After design, the agent converts your email into a reusable project (Jinja2 template + Excel data template)
+2. **Fill Excel**: Open the generated `template.xlsx`, fill in your data following the instructions sheet
+3. **Generate**: Next time you start the email designer, it auto-detects your project and asks for the Excel file
+4. **Repeat**: Same template, different data — consistent professional emails every time
+
+No coding required. The AI agent handles everything.
+
 ## Installation
 
 Copy this skill directory into your AI tool's skills path:
