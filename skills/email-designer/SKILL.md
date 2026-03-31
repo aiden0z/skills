@@ -296,8 +296,9 @@ After the user is satisfied with the email, offer to crystallize:
 
 > "邮件设计完成。是否要将此模板沉淀为可复用项目？以后只需填 Excel 即可重复生成。"
 
-If the user agrees, read `rules/production-mode.md` § "Crystallization Process" and follow steps C1-C5.
-If the user declines, continue with the existing wrap-up flow below.
+If the user agrees, read `rules/production-mode.md` § "Crystallization Process" and follow steps C0-C5.
+After crystallization completes, continue with items 1-3 below.
+If the user declines, continue with items 1-3 below.
 
 1. Offer to save the template: execute `code-blocks/template-manager.py` → `save_template()`
 2. Show the output file locations

@@ -38,7 +38,7 @@ MARKUP_COLORS = {
 
 def process_markup(text: str) -> str:
     if not text or not isinstance(text, str):
-        return text or ""
+        return ""
     html = text
     for color_name, color_hex in MARKUP_COLORS.items():
         pattern = rf"<({color_name})>(.+?)</\1>"
