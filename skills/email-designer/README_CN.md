@@ -1,6 +1,6 @@
 # Email Designer
 
-> 通过自然对话生成专业邮件模板。**全面兼容所有主流邮件客户端** — Outlook、Gmail、Apple Mail、Yahoo Mail 等。
+> 通过自然对话生成专业邮件模板。**为所有主流邮件客户端设计兼容** — Outlook、Gmail、Apple Mail、Yahoo Mail 等。
 
 [English](README.md)
 
@@ -8,7 +8,7 @@
 
 制作一封在所有邮件客户端都能正确显示的精美邮件，远比你想象的要难。**Outlook 2007–2019 使用 Microsoft Word 的渲染引擎**而非浏览器引擎，这意味着现代 CSS（flexbox、grid、border-radius、margin）完全不生效。网上找到的大多数邮件模板在 Outlook 中都会排版错乱。
 
-这个 Skill 解决了这个问题。生成的每一封邮件都**经过最严苛的邮件客户端（Outlook）验证**，同时为现代客户端（Gmail、Apple Mail）做了渐进增强。能在 Outlook 里正常显示，就能在所有地方正常显示。
+这个 Skill 解决了这个问题。生成的每一封邮件都**基于 Outlook 兼容规则验证，针对最严苛的邮件客户端（Outlook）设计**，同时为现代客户端（Gmail、Apple Mail）做了渐进增强。能在 Outlook 里正常显示，就能在所有地方正常显示。
 
 ### 兼容的邮件客户端
 
@@ -40,18 +40,26 @@
 - **内容填充** — 在对话中填入内容，或留空在 Outlook 中编辑
 - **模板复用** — 保存满意的设计，下次直接使用
 - **多语言支持** — 中文、英文、日文占位符
-- **核心零依赖** — HTML/EML 生成仅需 Python 标准库；图表和图片处理的可选依赖（plotly、pillow）按需自动安装
+- **依赖极少** — 核心功能仅需 Python 标准库；量产模式按需自动安装 openpyxl；图表和图片处理可选安装 plotly、pillow
 
 ## 量产模式
 
 设计好邮件模板后，可以将其沉淀为可复用项目：
 
-1. **沉淀**：设计完成后，AI 将邮件转化为可复用项目（Jinja2 模板 + Excel 数据模板）
+1. **沉淀**：设计完成后，AI 将邮件转化为可复用项目（参考模板 + Excel 数据模板）
 2. **填写 Excel**：打开生成的 `template.xlsx`，按照说明 Sheet 填写数据
 3. **生成**：下次启动 email designer 时，自动检测到已有项目，提供 Excel 文件即可生成邮件
 4. **重复**：同一模板，不同数据 — 每次都能输出一致的专业邮件
 
 全程无需编码，AI 自动处理一切。
+
+## 导入模式
+
+想要复刻一封现有邮件？只需提供 `.eml` 文件：
+
+1. **导入**：AI 从 EML 文件中提取 HTML 和嵌入图片
+2. **预览**：在浏览器中查看提取的邮件
+3. **调整或沉淀**：修改设计，或直接沉淀为量产项目
 
 ## 安装使用
 
@@ -70,7 +78,7 @@
 帮我做一个邮件模板，蓝色主题，800px 宽
 ```
 
-> 需要系统安装 Python 3.8+（仅标准库，无需 pip install）。
+> 需要系统安装 Python 3.8+。核心功能仅需标准库；量产模式按需自动安装 openpyxl。
 
 ## 项目结构
 
@@ -90,6 +98,7 @@ templates/
 code-blocks/
   html-validator.py         # 32 条规则兼容性检查器
   html-to-eml.py            # HTML → EML 转换（自动 images/ → CID）
+  eml-to-html.py            # 从 .eml 文件提取 HTML + 图片（导入模式）
   eml-builder.py            # EML 构建器（链式 API）
   html-patcher.py           # 局部修改（无需重新生成）
   content-filler.py         # 批量占位符填充
@@ -97,6 +106,7 @@ code-blocks/
   output-manager.py         # 按时间戳组织输出目录
   preview-helper.py         # 自动浏览器预览 + ASCII 布局图
   cid-embedder.py           # 图片扫描 + 占位图创建
+  excel-template-generator.py  # 生成和加载 Excel 数据模板（openpyxl）
 examples/
   example-single-column.html  # 完整 600px 单栏参考
   example-two-column.html     # 完整 800px 双栏参考
@@ -140,7 +150,7 @@ Skill 自动处理所有这些问题：
 - **双重声明**（HTML 属性 + CSS）确保最大兼容
 - **间距行**替代 margin 实现可靠的间距
 
-最终结果：邮件在每个客户端都看起来一致。
+最终结果：邮件在各个客户端都能一致地呈现。
 
 ## 设计系统
 
@@ -156,7 +166,7 @@ Skill 内置了从真实企业邮件系统中提炼的设计规范：
 
 ## 环境要求
 
-- **Python 3.8+**（用于 EML 生成 — 仅使用标准库，无需安装额外包）
+- **Python 3.8+**（核心功能仅需标准库；量产模式按需自动安装 openpyxl）
 - **AI CLI 工具**（Claude Code、Kimi CLI 或类似工具）
 
 ## 许可证

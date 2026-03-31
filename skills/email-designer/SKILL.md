@@ -326,6 +326,22 @@ If the user declines, continue with items 1-3 below.
    - Chinese user → `templates/guides/outlook-usage-guide-zh.md`
    - English user → `templates/guides/outlook-usage-guide-en.md`
 
+## Placeholder Systems
+
+This skill uses two different placeholder mechanisms for different purposes:
+
+- **`{{placeholder}}`** (Design Mode) — used by `code-blocks/content-filler.py` for
+  one-time placeholder filling during interactive design. Simple string replacement.
+  Use this when building emails from scratch in Design Mode.
+
+- **`<!-- SECTION/FIELD -->` comments** (Production Mode) — used in crystallized
+  `template.html` files as structural markers that the AI agent reads to understand
+  where to insert Excel data. These are NOT processed by content-filler.py.
+  See `rules/production-mode.md` for details.
+
+The two systems serve different workflows and do not interact. content-filler.py
+is a Design Mode tool; Production Mode uses the AI agent as the rendering engine.
+
 ## File Map
 
 ```
@@ -358,7 +374,7 @@ code-blocks/
   output-manager.py          ← Timestamped project directories for organized output
   eml-builder.py             ← EML builder class (fluent API)
   cid-embedder.py            ← Image scanning + placeholder PNG creation
-  html-to-eml.py             ← Complete HTML→EML script (execute this)
+  html-to-eml.py             ← HTML→EML conversion (edit CONFIG section, then execute)
   eml-to-html.py             ← Extract HTML + images from .eml files (Import Mode)
   content-filler.py          ← {{placeholder}} replacement + batch filling
   template-manager.py        ← Save/load/list custom templates

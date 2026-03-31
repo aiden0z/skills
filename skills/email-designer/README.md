@@ -1,6 +1,6 @@
 # Email Designer
 
-> Generate professional email templates through natural conversation. Works perfectly across **all major email clients** — Outlook, Gmail, Apple Mail, Yahoo Mail, and more.
+> Generate professional email templates through natural conversation. Designed for compatibility with **all major email clients** — Outlook, Gmail, Apple Mail, Yahoo Mail, and more.
 
 [中文文档](README_CN.md)
 
@@ -8,7 +8,7 @@
 
 Creating beautiful emails that render correctly everywhere is surprisingly hard. **Outlook 2007–2019 uses Microsoft Word's rendering engine** instead of a browser engine, which means modern CSS (flexbox, grid, border-radius, margin) simply doesn't work. Most email templates you find online break in Outlook.
 
-This skill solves that. Every template it generates is **tested against the toughest email client** (Outlook) and gracefully enhanced for modern clients (Gmail, Apple Mail, web). If it works in Outlook, it works everywhere.
+This skill solves that. Every template it generates is **validated against Outlook-safe rules and designed for the toughest email client** (Outlook) and gracefully enhanced for modern clients (Gmail, Apple Mail, web). If it works in Outlook, it works everywhere.
 
 ### Supported Email Clients
 
@@ -40,18 +40,26 @@ You describe the email you want — layout, colors, content — and the skill ge
 - **Content filling** — fill placeholders in conversation or leave for Outlook editing
 - **Template save/reuse** — save confirmed designs for future use
 - **Multilingual** — Chinese, English, Japanese placeholder support
-- **Zero core dependencies** — Python stdlib for HTML/EML; optional packages (plotly, pillow) auto-installed for charts and image processing
+- **Minimal dependencies** — Python stdlib for core HTML/EML; openpyxl auto-installed for Production Mode; optional plotly and pillow for charts and image processing
 
 ## Production Mode (量产模式)
 
 Once you've designed an email template you're happy with, crystallize it for repeated use:
 
-1. **Crystallize**: After design, the agent converts your email into a reusable project (Jinja2 template + Excel data template)
+1. **Crystallize**: After design, the agent converts your email into a reusable project (reference template + Excel data template)
 2. **Fill Excel**: Open the generated `template.xlsx`, fill in your data following the instructions sheet
 3. **Generate**: Next time you start the email designer, it auto-detects your project and asks for the Excel file
 4. **Repeat**: Same template, different data — consistent professional emails every time
 
 No coding required. The AI agent handles everything.
+
+## Import Mode
+
+Have an existing email you want to replicate? Provide the `.eml` file:
+
+1. **Import**: The agent extracts HTML and images from the EML file
+2. **Preview**: Review the extracted email in your browser
+3. **Adjust or Crystallize**: Modify the design, or directly crystallize it for production use
 
 ## Installation
 
@@ -70,7 +78,7 @@ Then ask naturally or invoke with `/email-designer`:
 帮我做一个邮件模板，蓝色主题，800px 宽
 ```
 
-> Requires Python 3.8+ (stdlib only, no pip install needed).
+> Requires Python 3.8+. Core features use stdlib only; Production Mode auto-installs openpyxl when needed.
 
 ## Project Structure
 
@@ -90,6 +98,7 @@ templates/
 code-blocks/
   html-validator.py         # 32-rule compatibility checker
   html-to-eml.py            # HTML → EML conversion (auto images/ → CID)
+  eml-to-html.py            # Extract HTML + images from .eml files (Import Mode)
   eml-builder.py            # EML builder class (fluent API)
   html-patcher.py           # Targeted edits without regeneration
   content-filler.py         # Batch placeholder filling
@@ -97,6 +106,7 @@ code-blocks/
   output-manager.py         # Timestamped output directories
   preview-helper.py         # Auto browser preview + ASCII layout
   cid-embedder.py           # Image scanning + placeholder creation
+  excel-template-generator.py  # Generate & load Excel data templates (openpyxl)
 examples/
   example-single-column.html  # Complete 600px reference
   example-two-column.html     # Complete 800px reference
@@ -140,7 +150,7 @@ This skill handles all of this automatically using:
 - **Dual declarations** (HTML attributes + CSS) for maximum compatibility
 - **Spacer rows** instead of margin for reliable spacing
 
-The result: emails that look identical across every client.
+The result: emails designed to render consistently across clients.
 
 ## Design System
 
@@ -156,7 +166,7 @@ The skill includes a production-tested design system extracted from a real enter
 
 ## Requirements
 
-- **Python 3.8+** (for EML generation — uses only stdlib, no packages needed)
+- **Python 3.8+** (core features use stdlib only; Production Mode requires openpyxl, auto-installed on first use)
 - **An AI CLI tool** (Claude Code, Kimi CLI, or similar)
 
 ## License
