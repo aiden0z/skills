@@ -79,6 +79,58 @@ step. Instead:
 4. The column names in Excel (English) directly correspond to the content positions
    in the template — this mapping is established during crystallization
 
+#### Worked Example
+
+Given this template fragment:
+```html
+<!-- SECTION: Stats (repeating rows) -->
+<tr>
+<td align="center" style="...">
+  <td style="..."><!-- FIELD: metric -->新增用户<!-- /FIELD --></td>
+  <td style="..."><!-- FIELD: value -->1,234<!-- /FIELD --></td>
+  <td style="..."><!-- FIELD: change -->↑12%<!-- /FIELD --></td>
+</td>
+</tr>
+<!-- /SECTION -->
+```
+
+And this Excel data (loaded via `load_excel_data()`):
+```python
+{"Stats": [
+    {"metric": "新增用户", "value": "1,456", "change": "↑18%"},
+    {"metric": "活跃用户", "value": "9,012", "change": "↑5%"},
+    {"metric": "转化率",   "value": "3.8%",  "change": "↑0.6%"},
+]}
+```
+
+The agent generates 3 `<tr>` blocks (one per data row), replacing field content:
+```html
+<tr>
+<td align="center" style="...">
+  <td style="...">新增用户</td>
+  <td style="...">1,456</td>
+  <td style="...">↑18%</td>
+</td>
+</tr>
+<tr>
+<td align="center" style="...">
+  <td style="...">活跃用户</td>
+  <td style="...">9,012</td>
+  <td style="...">↑5%</td>
+</td>
+</tr>
+<tr>
+<td align="center" style="...">
+  <td style="...">转化率</td>
+  <td style="...">3.8%</td>
+  <td style="...">↑0.6%</td>
+</td>
+</tr>
+```
+
+The key: copy the template's HTML structure exactly, replace `<!-- FIELD: xxx -->...<!-- /FIELD -->`
+with the corresponding Excel value, and repeat the row pattern for each data row.
+
 ### Step P3: Validate & Preview
 
 1. Run `code-blocks/html-validator.py` → `validate(filled_html)` to check Outlook compatibility

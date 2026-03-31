@@ -4,17 +4,22 @@ description: >
   Generate professional, Outlook-compatible email templates (EML + HTML) through
   natural conversation. Creates pixel-perfect newsletter layouts, announcement emails,
   weekly reports, event invitations, and any formatted email that needs to render
-  correctly in Outlook. MUST use this skill when the user wants to: create or design
-  an email template, generate an EML file, make a newsletter, format an email for
-  Outlook, design a 邮件模板, do 邮件排版 or 邮件设计, create HTML email with
-  Outlook compatibility, build a professional-looking email to send via Outlook,
-  or produce any kind of formatted/styled email output. Also trigger when the user
-  mentions: weekly report email (周报邮件), product update email, event invitation
-  email (活动邀请邮件), announcement email (公告邮件), company newsletter, or wants
-  to make an email "look professional/beautiful" for sending. This skill handles
-  the visual design and EML generation — not email sending, SMTP setup, or email
-  parsing. Without this skill, Outlook emails will have broken layouts because
-  Outlook uses Word's rendering engine which ignores modern CSS.
+  correctly in Outlook. Supports three modes: Design Mode (create from scratch),
+  Import Mode (import and replicate an existing .eml file), and Production Mode
+  (fill Excel data to repeatedly generate emails from a crystallized template).
+  MUST use this skill when the user wants to: create or design an email template,
+  generate an EML file, make a newsletter, format an email for Outlook, import or
+  replicate an existing email (导入/复刻邮件), design a 邮件模板, do 邮件排版 or
+  邮件设计, create HTML email with Outlook compatibility, build a professional-looking
+  email to send via Outlook, or produce any kind of formatted/styled email output.
+  Also trigger when the user mentions: weekly report email (周报邮件), product update
+  email, event invitation email (活动邀请邮件), announcement email (公告邮件),
+  company newsletter, importing an .eml file, replicating an email template, or
+  wants to make an email "look professional/beautiful" for sending. This skill
+  handles the visual design, EML generation, and EML import — not email sending,
+  SMTP setup, or email account management. Without this skill, Outlook emails will
+  have broken layouts because Outlook uses Word's rendering engine which ignores
+  modern CSS.
 ---
 
 # Email Designer
@@ -70,23 +75,38 @@ If Step 1 determines the email needs charts or image processing:
 | `images` | pillow | Header banner compositing, image compression |
 | `excel` | openpyxl | Excel template generation and data loading (Production Mode) |
 
-### Production Mode Detection
+### Mode Detection
 
-After environment checks pass, check for existing crystallized projects:
+After environment checks pass, determine the appropriate mode based on user input
+and existing projects. The three modes are:
 
-1. Look for `email-projects/` directory in the user's current working directory
-2. If found, scan subdirectories for projects (must contain both `template.html` and `template.xlsx`)
-3. If projects exist, present them to the user:
+**1. Import Mode** — if the user provides a `.eml` file (or mentions importing/复刻 an
+existing email):
+1. Execute `code-blocks/eml-to-html.py` → `extract_from_eml(eml_path)` to extract
+   HTML and embedded images
+2. Execute `save_extracted(result, output_dir)` to save HTML + images with CID
+   references converted to relative paths
+3. Auto-open the extracted HTML in browser for preview
+4. Ask the user: "已提取邮件内容并预览。接下来您想：
+   A) 在此基础上调整设计（进入设计模式 Step 3）
+   B) 直接沉淀为可复用量产项目（进入沉淀流程）"
+5. If A → load the extracted HTML as the starting point, skip to Step 3 (Preview & Adjust)
+6. If B → read `rules/production-mode.md` § "Crystallization Process" and follow steps C0-C5
 
+**2. Production Mode** — if `email-projects/` directory exists with crystallized projects:
+1. Scan for subdirectories containing both `template.html` and `template.xlsx`
+2. If projects exist, present them:
    > "检测到以下邮件模板项目：
    > 1. {project-name-1}
    > 2. {project-name-2}
    > ...
    > 请选择项目编号并提供 Excel 数据文件路径（如：1 /path/to/data.xlsx），
    > 或输入 'new' 创建新邮件。"
+3. If user selects a project → read `rules/production-mode.md` and follow steps P0-P4
+4. If user types `new` → continue with Design Mode
 
-4. If user selects a project → read `rules/production-mode.md` and follow the Production Mode Workflow
-5. If user types `new` or no projects exist → continue with Design Mode (Step 1 below)
+**3. Design Mode** — default when no EML file provided and no existing projects (or user
+chose `new`). Continue with Step 1 below.
 
 ## Adaptive Flow
 
@@ -339,6 +359,7 @@ code-blocks/
   eml-builder.py             ← EML builder class (fluent API)
   cid-embedder.py            ← Image scanning + placeholder PNG creation
   html-to-eml.py             ← Complete HTML→EML script (execute this)
+  eml-to-html.py             ← Extract HTML + images from .eml files (Import Mode)
   content-filler.py          ← {{placeholder}} replacement + batch filling
   template-manager.py        ← Save/load/list custom templates
   preview-helper.py          ← Browser auto-open + ASCII layout
