@@ -121,14 +121,74 @@ type are clear from context), skip ahead. For example, "帮我做一个蓝色的
 模板，600px" already tells you: single-column, blue (#2563eb), 600px. Go straight to
 generating.
 
-**If the request is vague** (e.g., "生成一个邮件模板"), use the wizard steps below
-to gather what you need — but ask efficiently, combining questions when natural.
+**If the request needs clarification**, use the guided interaction below to gather
+what you need. The goal is to make decisions easy — especially for non-technical
+users who may not know email design terminology.
+
+### Guided Interaction
+
+Email design has 6 decision dimensions. The agent's job is to infer what it can
+from the user's request, then ask about the rest — one question at a time, always
+with a recommended default.
+
+**The 6 dimensions (ask in this order — earlier answers inform later defaults):**
+
+| # | Dimension | What to decide | How to handle |
+|---|-----------|---------------|---------------|
+| 1 | **Purpose & Layout** | Email type → determines structure | Usually inferable from request. Confirm, don't ask from scratch |
+| 2 | **Content Modules** | Which sections to include (KPI cards, charts, article list, table...) | Recommend a default set based on layout type. Let user add/remove |
+| 3 | **Visual Style** | Color scheme, design tone | Ask unless user mentioned brand/color. Offer 3-4 named presets |
+| 4 | **Data & Assets** | Has data files? Images? Logo? Need charts? | Inferable from layout type (dashboards need data). Ask to confirm |
+| 5 | **Width** | 600 / 800 / 1200px | Default based on layout (newsletters→600, reports→800). Confirm |
+| 6 | **Content** | Real content or placeholders? | Ask only if not already clear |
+
+**Interaction principles:**
+
+- **Infer first, confirm second.** Parse everything the user already said. For
+  "商机季度报告邮件", you already know: Dashboard layout, likely needs charts and
+  KPI cards, 800px is appropriate. State your inference and ask for confirmation —
+  don't present all 7 layouts and ask them to choose.
+
+- **One question per message.** Each message asks about one dimension. This keeps
+  the user focused and makes it easy to answer. If a dimension is already known
+  (inferred or stated by user), skip it entirely.
+
+- **Always recommend.** Every question includes a labeled recommendation with brief
+  reasoning: "推荐 A（深蓝商务），适合正式的季度报告". Users who don't have a
+  preference can just accept.
+
+- **Multiple choice preferred.** Use A/B/C/D options with short descriptions rather
+  than open-ended questions. Include an open option for customization (e.g., "D) 自定义颜色").
+
+- **3 questions maximum.** If you've asked 3 questions and still have unknowns,
+  use sensible defaults for the rest. Most users lose patience beyond 3 rounds.
+  Combine questions only when two dimensions are tightly related (e.g., layout + width).
+
+**Example flow for "帮我做一个商机季度报告邮件":**
+
+Agent infers: Dashboard layout, 800px, needs charts/KPI.
+
+Question 1 (confirm inference + ask modules):
+> "季度商机报告 — 我推荐 Dashboard 布局（800px）。这类报告通常包含：
+> A) KPI 指标卡  B) 趋势图表  C) 漏斗图  D) 分布图  E) Top 列表  F) 总结文字
+> 推荐：全选，季度报告信息量大。你要哪些？"
+
+Question 2 (visual style):
+> "配色风格？
+> A) 深蓝商务  B) 深绿增长  C) 紫色科技  D) 自定义颜色
+> 推荐：A 深蓝商务，适合正式的季度报告"
+
+Question 3 (data):
+> "你有现成的数据吗？
+> A) 有，我提供数据  B) 先用示例数据，之后替换"
+
+Then start generating — no more questions.
 
 ### Step 1: Understand the Request
 
-Parse what you already know from the user's message, then fill gaps:
+Using the guided interaction above, resolve these dimensions:
 
-- **Layout**: Which layout fits? Check `templates/layouts/` for options:
+- **Layout**: Check `templates/layouts/` for options:
   - Single Column (单栏) — product updates, announcements, weekly digests
   - Two Column (双栏) — reports with sidebar data
   - Magazine (杂志) — editorial with hero image and articles
