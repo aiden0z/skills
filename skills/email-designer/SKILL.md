@@ -121,55 +121,12 @@ type are clear from context), skip ahead. For example, "帮我做一个蓝色的
 模板，600px" already tells you: single-column, blue (#2563eb), 600px. Go straight to
 generating.
 
-**If the request needs clarification**, use the guided interaction pattern below.
-The goal is to make decisions easy for the user — especially non-technical users
-who may not know email design terminology.
-
-### Guided Interaction Pattern
-
-When gathering requirements, follow these principles:
-
-**1. Infer first, confirm second.** Extract everything you can from the user's
-request before asking. For "商机季度报告邮件", you already know: Dashboard layout,
-data-heavy, likely needs charts and KPI cards. State your inference and ask for
-confirmation, not for a choice from scratch.
-
-**2. Present options as structured choices.** Use tables or labeled options (A/B/C)
-rather than open-ended questions. Users find it easier to pick from options than
-to describe what they want:
-
-```
-🎨 风格选择
-A) 深蓝商务风 — 企业级、专业稳重
-B) 深绿增长风 — 业绩导向、正向增长
-C) 自定义颜色 — 提供你的品牌色
-
-推荐：基于季度报告场景，建议选 A（深蓝商务风）
-```
-
-**3. Group related questions into one message.** Aim to gather all remaining info
-in a single well-structured message. Separate sections with clear headings. At the
-end, offer a shortcut: "或者直接描述你想要的样式，比如：'深蓝色，4个KPI卡片+漏斗图+Top列表'"
-
-**4. Always give a recommendation.** For each choice, state which option you recommend
-and why. Users who don't have a preference can just accept the default.
-
-**5. Offer content module selection.** For complex emails (dashboards, reports),
-list available modules as a checklist and let the user select which ones to include:
-
-```
-📊 内容模块（可多选）
-• KPI 指标卡 — 展示核心数字
-• 趋势图表 — 季度趋势折线图
-• 漏斗图 — 商机各阶段转化
-• Top 列表 — 重点商机排名
-• 总结文字 — 季度总结与展望
-```
+**If the request is vague** (e.g., "生成一个邮件模板"), use the wizard steps below
+to gather what you need — but ask efficiently, combining questions when natural.
 
 ### Step 1: Understand the Request
 
-Parse what you already know from the user's message, then fill gaps using the
-guided interaction pattern above:
+Parse what you already know from the user's message, then fill gaps:
 
 - **Layout**: Which layout fits? Check `templates/layouts/` for options:
   - Single Column (单栏) — product updates, announcements, weekly digests
