@@ -90,7 +90,9 @@ existing email):
 4. Ask the user: "已提取邮件内容并预览。接下来您想：
    A) 在此基础上调整设计（进入设计模式 Step 3）
    B) 直接沉淀为可复用量产项目（进入沉淀流程）"
-5. If A → load the extracted HTML as the starting point, skip to Step 3 (Preview & Adjust)
+5. If A → validate the extracted HTML (`code-blocks/html-validator.py` → `validate(html)`),
+   organize output via `code-blocks/output-manager.py` → `create_project(name)`,
+   then skip to Step 3 (Preview & Adjust) with the extracted HTML as starting point
 6. If B → read `rules/production-mode.md` § "Crystallization Process" and follow steps C0-C5
 
 **2. Production Mode** — if `email-projects/` directory exists with crystallized projects:
@@ -102,7 +104,9 @@ existing email):
    > ...
    > 请选择项目编号并提供 Excel 数据文件路径（如：1 /path/to/data.xlsx），
    > 或输入 'new' 创建新邮件。"
-3. If user selects a project → read `rules/production-mode.md` and follow steps P0-P4
+3. If user selects a project → first run `code-blocks/deps-checker.py` →
+   `check_and_install(features=['excel'])` to ensure openpyxl is available,
+   then read `rules/production-mode.md` and follow steps P0-P4
 4. If user types `new` → continue with Design Mode
 
 **3. Design Mode** — default when no EML file provided and no existing projects (or user
@@ -289,13 +293,28 @@ Re-validate after patching: `html-validator.py` → `validate(patched_html)`.
 
 ### Step 5: Generate EML
 
-This is where the HTML becomes a real email file. Execute `code-blocks/html-to-eml.py`:
+This is where the HTML becomes a real email file. Two options:
+
+**Option A (recommended): Use `eml-builder.py` fluent API**
+
+Write a short Python script that uses the EMLBuilder class:
 
 ```python
-# How to execute: write a modified copy of the script with filled-in CONFIG values,
-# then run it with: python3 /path/to/modified_script.py
+from pathlib import Path
+# Read the eml-builder.py source, then use:
+eml = (
+    EMLBuilder(sender="", subject="Newsletter Title")
+    .set_html(Path("output/newsletter-preview.html").read_text())
+    .add_image("logo", "output/images/logo.png")   # for each CID image
+    .build("output/newsletter.eml")
+)
+```
 
-# The CONFIG section to modify:
+**Option B: Use `html-to-eml.py` script template**
+
+Copy the script, edit the CONFIG section at the top, then run it:
+
+```python
 HTML_FILE = "output/newsletter-preview.html"   # your generated HTML
 OUTPUT_EML = "output/newsletter.eml"           # output path
 SUBJECT = "..."                                # ask user
@@ -304,13 +323,15 @@ TO_ADDRS = []                                  # optional
 IMAGE_DIR = "output/images"                    # if images exist
 ```
 
-The script uses Python's built-in `email` module — no pip install needed. It creates
+Both approaches use Python's built-in `email` module — no pip install needed. They create
 a proper MIME structure (multipart/alternative → text/plain + multipart/related →
 text/html + CID images) with `X-Unsent: 1` so Outlook opens it in draft/compose mode.
 
 ### Step 6: Wrap Up
 
-### Crystallize as Reusable Project (Optional)
+Before closing out, offer the user the option to crystallize this design for future reuse.
+
+#### Crystallize as Reusable Project (Optional)
 
 After the user is satisfied with the email, offer to crystallize:
 
