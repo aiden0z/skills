@@ -1,5 +1,14 @@
 """End-to-end test for Production Mode: crystallize → produce."""
 
+# Auto-install openpyxl if missing (required for these tests)
+import subprocess
+try:
+    import openpyxl
+except ImportError:
+    print("openpyxl not found, installing...")
+    subprocess.check_call(["pip", "install", "openpyxl", "-q"])
+    import openpyxl
+
 import os
 import sys
 import tempfile
