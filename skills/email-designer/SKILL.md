@@ -327,25 +327,33 @@ Both approaches use Python's built-in `email` module — no pip install needed. 
 a proper MIME structure (multipart/alternative → text/plain + multipart/related →
 text/html + CID images) with `X-Unsent: 1` so Outlook opens it in draft/compose mode.
 
+**After EML is generated, you MUST proceed to Step 6** — do not end the conversation here.
+
 ### Step 6: Wrap Up
 
-Before closing out, offer the user the option to crystallize this design for future reuse.
+**Always perform all of the following**, in order:
 
-#### Crystallize as Reusable Project (Optional)
+#### 6a. Offer to Crystallize for Repeated Use
 
-After the user is satisfied with the email, offer to crystallize:
+This is important — many users will want to reuse this template with different data
+in the future (e.g., weekly reports, periodic newsletters). Always ask:
 
 > "邮件设计完成。是否要将此模板沉淀为可复用项目？以后只需填 Excel 即可重复生成。"
 
 If the user agrees, read `rules/production-mode.md` § "Crystallization Process" and follow steps C0-C5.
-After crystallization completes, continue with items 1-3 below.
-If the user declines, continue with items 1-3 below.
+After crystallization completes, continue with 6b and 6c below.
+If the user declines, continue with 6b and 6c below.
+
+#### 6b. Save Template and Show Output
 
 1. Offer to save the template: execute `code-blocks/template-manager.py` → `save_template()`
-2. Show the output file locations
-3. Display the appropriate usage guide:
-   - Chinese user → `templates/guides/outlook-usage-guide-zh.md`
-   - English user → `templates/guides/outlook-usage-guide-en.md`
+2. Show the output file locations (HTML, EML, images)
+
+#### 6c. Show Usage Guide
+
+Display the appropriate Outlook usage guide:
+- Chinese user → `templates/guides/outlook-usage-guide-zh.md`
+- English user → `templates/guides/outlook-usage-guide-en.md`
 
 ## Placeholder Systems
 
