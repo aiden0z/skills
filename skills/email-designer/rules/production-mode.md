@@ -16,7 +16,7 @@ Crystallized projects live in `email-projects/` under the user's working directo
 email-projects/
   {project-name}/
     template.html           # Reference template (structure + styles fixed, dynamic content marked with comments)
-    template.xlsx           # Excel data template (instructions + data sheets + validation + examples)
+    template.xlsx           # Excel data template (邮件数据 + 填写说明, single data sheet mirroring email layout)
     assets/                 # Static resources (logo, background images, etc.)
     output/                 # Generation output directory
 ```
@@ -47,8 +47,10 @@ Execute `code-blocks/deps-checker.py` → `check_and_install(features=['excel'])
    that shows the email's layout, styles, and where dynamic content goes
 2. Read the user-provided Excel file using openpyxl:
    execute `code-blocks/excel-template-generator.py` → `load_excel_data(excel_path)`
-3. The returned data is a dict mapping sheet names to lists of row dicts:
+3. The returned data is a dict mapping section names to lists of row dicts:
    `{"Header": [{"title": "周报", "date": "2026-03-30"}], "Articles": [...]}`
+   (All sections come from a single "邮件数据" sheet; legacy multi-sheet format
+   is also supported for backward compatibility)
 4. Markup syntax in cell values is automatically processed by `load_excel_data()`:
    - `<black>` → `#374151`, `<red>` → `#b91c1c`, `<green>` → `#059669`
    - `<orange>` → `#d97706`, `<blue>` → `#2563eb`
@@ -213,13 +215,19 @@ Example:
 
 Execute `code-blocks/excel-template-generator.py` → `generate_template(sections, output_path)`
 
+This generates a 2-sheet Excel file:
+- **邮件数据** — All sections in one sheet, laid out top-to-bottom mirroring the email's
+  visual flow. Each section has a `[SectionName]` anchor row, column headers, and example
+  data rows. Users fill data in this single sheet without switching tabs.
+- **填写说明** — Instructions, field descriptions, and markup syntax reference.
+
 The `sections` argument is a list of dicts with this structure:
 
 ```python
 sections = [
     {
-        "name": "Header",              # Sheet name (English, matches SECTION comment)
-        "description": "邮件标题区",    # Chinese description for instructions sheet
+        "name": "Header",              # Section name (English, matches SECTION comment)
+        "description": "邮件标题区",    # Chinese description shown in section title row
         "columns": [
             {
                 "name": "title",       # Column header (English, matches FIELD comment)

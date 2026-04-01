@@ -144,6 +144,18 @@ with a recommended default.
 
 **Interaction principles:**
 
+> **CRITICAL — DO NOT ask multiple questions in one message.**
+> Each message MUST ask about ONE dimension only. Listing all questions
+> at once overwhelms the user and defeats the guided interaction purpose.
+>
+> ❌ **BAD** (dumping all questions at once):
+> "请告诉我：1. 报告内容范围 2. 视觉风格 3. 布局偏好 4. 邮件宽度 5. 其他"
+>
+> ✅ **GOOD** (one question per message, with recommendation):
+> Message 1: "季度商机报告 — 我推荐 Dashboard 布局（800px）。通常包含：A) KPI 指标卡 B) 趋势图表 ..."
+> Message 2: "配色风格？A) 深蓝商务 B) ..."
+> Message 3: "你有现成的数据吗？A) 有 B) 先用示例数据"
+
 - **Infer first, confirm second.** Parse everything the user already said. For
   "商机季度报告邮件", you already know: Dashboard layout, likely needs charts and
   KPI cards, 800px is appropriate. State your inference and ask for confirmation —
@@ -387,7 +399,24 @@ Both approaches use Python's built-in `email` module — no pip install needed. 
 a proper MIME structure (multipart/alternative → text/plain + multipart/related →
 text/html + CID images) with `X-Unsent: 1` so Outlook opens it in draft/compose mode.
 
-**After EML is generated, you MUST proceed to Step 6** — do not end the conversation here.
+> **CRITICAL — Use the provided scripts only.**
+> You MUST use `eml-builder.py` (Option A) or `html-to-eml.py` (Option B)
+> to generate EML. DO NOT write your own temporary/inline Python script for
+> EML generation — it will likely produce incorrect MIME structure or miss
+> CID image embedding, resulting in broken images in Outlook.
+
+**After EML is generated, validate before proceeding:**
+
+1. Execute `code-blocks/eml-validator.py` → `validate_eml(eml_path)`.
+   Checks 14 rules including: MIME structure, text/plain fallback, CID forward
+   completeness (every `src="cid:xxx"` has a matching embedded image), residual
+   unresolved image paths, Content-ID format (RFC 2392), X-Unsent header,
+   Content-Disposition inline, and file size. Checks are adaptive — image-related
+   rules only fire when the HTML actually references images; pure-text emails
+   pass cleanly.
+2. Fix any errors before proceeding to Step 6.
+
+**After validation passes, you MUST proceed to Step 6** — do not end the conversation here.
 
 ### Step 6: Wrap Up
 
@@ -407,7 +436,14 @@ If the user declines, continue with 6b and 6c below.
 #### 6b. Save Template and Show Output
 
 1. Offer to save the template: execute `code-blocks/template-manager.py` → `save_template()`
-2. Show the output file locations (HTML, EML, images)
+2. Show the output file locations using **absolute paths** (not just filenames) so the
+   user can easily locate and open the files. For example:
+   ```
+   EML 文件:  /Users/name/project/output/2026-03-15_report/newsletter.eml
+   HTML 预览: /Users/name/project/output/2026-03-15_report/newsletter-preview.html
+   图片目录:  /Users/name/project/output/2026-03-15_report/images/
+   ```
+   Use the actual working directory path, not relative paths like `output/...`.
 
 #### 6c. Show Usage Guide
 
@@ -458,7 +494,8 @@ templates/
   guides/*.md                ← End-user Outlook usage guides (zh/en)
 
 code-blocks/
-  html-validator.py          ← Run AFTER generating, BEFORE EML (auto-check 32 rules)
+  html-validator.py          ← Run AFTER generating HTML, BEFORE EML (auto-check 32 rules)
+  eml-validator.py           ← Run AFTER generating EML, BEFORE Step 6 (auto-check 14 rules)
   html-patcher.py            ← Targeted edits (color, width, text) without regenerating
   output-manager.py          ← Timestamped project directories for organized output
   eml-builder.py             ← EML builder class (fluent API)
