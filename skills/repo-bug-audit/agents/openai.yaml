@@ -1,0 +1,4 @@
+interface:
+  display_name: "Repo Bug Audit"
+  short_description: "用于仓库级 Bug 审计、续跑复核、架构风险与提交包"
+  default_prompt: "Use $repo-bug-audit to audit or continue auditing this repository for evidence-backed Bugs, architecture risks, candidate triage, deduplication, and developer-ready findings."

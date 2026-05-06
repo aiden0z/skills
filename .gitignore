@@ -36,3 +36,4 @@ Thumbs.db
 
 # Skill installer lock
 skills-lock.json
+.archive/

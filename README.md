@@ -9,6 +9,7 @@ A collection of production-grade Agent Skills for AI coding assistants.
 | Skill | What it does | Stack |
 |-------|-------------|-------|
 | [**Email Designer**](skills/email-designer/) | Generate email templates that render perfectly across Outlook, Gmail, Apple Mail | Python stdlib |
+| [**Repo Bug Audit**](skills/repo-bug-audit/) | Audit repositories for evidence-backed Bugs, architecture risks, reusable knowledge, and developer-ready finding packages | Python stdlib |
 | [**VibeDeck**](skills/vibe-deck/) | Vibe-code professional slide presentations from natural language | React + ECharts |
 
 ## Install
@@ -16,10 +17,12 @@ A collection of production-grade Agent Skills for AI coding assistants.
 ```bash
 # Install via npx (recommended)
 npx skills add aiden0z/skills --skill email-designer
+npx skills add aiden0z/skills --skill repo-bug-audit
 npx skills add aiden0z/skills --skill vibe-deck
 
 # Or specify the agent
 npx skills add aiden0z/skills --skill email-designer -a claude-code
+npx skills add aiden0z/skills --skill repo-bug-audit -a codex
 npx skills add aiden0z/skills --skill vibe-deck -a codex
 ```
 
@@ -32,10 +35,11 @@ Then ask naturally or invoke with `/<skill-name>`.
 ```
 skills/
   email-designer/    →  SKILL.md + rules/ + templates/ + code-blocks/
+  repo-bug-audit/    →  SKILL.md + references/ + scripts/
   vibe-deck/          →  SKILL.md + reference/ + template/
 ```
 
-Each skill is self-contained. See the skill's own README for details.
+Each skill is self-contained. See its `SKILL.md` or README where present.
 
 ## License
 

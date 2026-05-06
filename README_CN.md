@@ -9,6 +9,7 @@
 | Skill | 功能 | 技术栈 |
 |-------|------|--------|
 | [**Email Designer**](skills/email-designer/) | 生成完美兼容 Outlook、Gmail、Apple Mail 的邮件模板 | Python 标准库 |
+| [**Repo Bug Audit**](skills/repo-bug-audit/) | 对仓库进行证据驱动的 Bug 审计、架构风险分析、知识沉淀和审计交付物整理 | Python 标准库 |
 | [**VibeDeck**](skills/vibe-deck/) | 用自然语言生成专业演示文稿 | React + ECharts |
 
 ## 安装
@@ -16,10 +17,12 @@
 ```bash
 # 通过 npx 安装（推荐）
 npx skills add aiden0z/skills --skill email-designer
+npx skills add aiden0z/skills --skill repo-bug-audit
 npx skills add aiden0z/skills --skill vibe-deck
 
 # 指定 AI 工具
 npx skills add aiden0z/skills --skill email-designer -a claude-code
+npx skills add aiden0z/skills --skill repo-bug-audit -a codex
 npx skills add aiden0z/skills --skill vibe-deck -a codex
 ```
 
@@ -32,10 +35,11 @@ npx skills add aiden0z/skills --skill vibe-deck -a codex
 ```
 skills/
   email-designer/    →  SKILL.md + rules/ + templates/ + code-blocks/
+  repo-bug-audit/    →  SKILL.md + references/ + scripts/
   vibe-deck/          →  SKILL.md + reference/ + template/
 ```
 
-每个 skill 自包含。详情见各 skill 自己的 README。
+每个 skill 自包含。详情见对应的 `SKILL.md` 或已有 README。
 
 ## 许可证
 
