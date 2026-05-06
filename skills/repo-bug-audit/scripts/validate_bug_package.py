@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import argparse
+import json
 import re
 import struct
 from pathlib import Path
@@ -20,6 +21,8 @@ REQUIRED_DIRS = [
 ]
 REQUIRED_FILES = [
     "README.md",
+    "indexes/findings.generated.md",
+    "indexes/findings.generated.json",
     "quality/submission-scope.md",
     "quality/repository-versions.md",
     "standards/bug-report-standard.md",
@@ -47,9 +50,23 @@ REQUIRED_META = [
     "category",
     "issue_family",
     "infra_domains",
+    "fix_risk",
 ]
 REQUIRED_SECTIONS = {
-    "zh": ["结论", "影响范围", "前置条件", "静态复现路径", "实际表现", "期望表现", "代码证据", "误报排查", "修复建议", "验证标准"],
+    "zh": [
+        "结论",
+        "影响范围",
+        "前置条件",
+        "静态复现路径",
+        "实际表现",
+        "期望表现",
+        "代码证据",
+        "误报排查",
+        "修复边界",
+        "修复建议",
+        "建议验证命令",
+        "验证标准",
+    ],
     "en": [
         "Conclusion",
         "Impact Scope",
@@ -59,9 +76,29 @@ REQUIRED_SECTIONS = {
         "Expected Behavior",
         "Code Evidence",
         "False-positive Review",
+        "Fix Boundary",
         "Fix Suggestion",
+        "Suggested Verification Commands",
         "Validation Standard",
     ],
+}
+SECTION_MIN_CHARS = {
+    "zh": {
+        "代码证据": 20,
+        "误报排查": 20,
+        "修复边界": 20,
+        "修复建议": 20,
+        "建议验证命令": 8,
+        "验证标准": 20,
+    },
+    "en": {
+        "Code Evidence": 20,
+        "False-positive Review": 20,
+        "Fix Boundary": 20,
+        "Fix Suggestion": 20,
+        "Suggested Verification Commands": 8,
+        "Validation Standard": 20,
+    },
 }
 DEFAULT_BANNED = [
     "AI 分析",
@@ -91,6 +128,7 @@ DEFAULT_BANNED = [
 ]
 PRIORITIES = {"P1", "P2", "P3", "P4"}
 CONFIDENCE = {"high", "medium", "low"}
+FIX_RISK = {"low", "medium", "high", "unknown"}
 BUG_FILE_RE = re.compile(r"^P[1-4]-BUG-\d{4}-[a-z0-9]+(?:-[a-z0-9]+)*\.md$")
 
 
@@ -168,9 +206,37 @@ def body_len(path: Path) -> int:
     return len(body)
 
 
+def section_body(text: str, section: str) -> str | None:
+    marker = f"## {section}"
+    lines = text.splitlines()
+    start = None
+    for index, line in enumerate(lines):
+        if line.strip() == marker:
+            start = index + 1
+            break
+    if start is None:
+        return None
+    body = []
+    for line in lines[start:]:
+        if line.startswith("## "):
+            break
+        body.append(line)
+    return "\n".join(body).strip()
+
+
+def has_verification_command_or_marker(body: str) -> bool:
+    normalized = body.lower()
+    return bool(
+        re.search(r"`[^`]+`", body)
+        or "未确认" in body
+        or "not confirmed" in normalized
+        or "unconfirmed" in normalized
+    )
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description="Validate Bug audit package")
-    parser.add_argument("root", help="Bug package root")
+    parser.add_argument("root", help="Bug audit output root")
     parser.add_argument("--language", choices=["zh", "en"], default="zh", help="Expected Bug section language")
     parser.add_argument("--max-image-kb", type=int, default=500, help="Warn if PNG exceeds this size")
     parser.add_argument("--require-knowledge", action="store_true", help="Require reusable knowledge docs for final handoff packages")
@@ -208,7 +274,7 @@ def main() -> int:
                 warnings.append(f"{f} appears empty; fill it or remove it before packaging")
     for temporary_dir in ("candidates", "eval", "infographic", "scanner-output", "drafts", "tmp"):
         if (root / temporary_dir).exists():
-            errors.append(f"Temporary directory must not be in submission package: {temporary_dir}")
+            errors.append(f"Temporary directory must not be in audit output: {temporary_dir}")
 
     seen_ids = {}
     finding_count = 0
@@ -238,6 +304,9 @@ def main() -> int:
         confidence = meta.get("confidence")
         if confidence not in CONFIDENCE:
             errors.append(f"{rel} confidence must be high/medium/low")
+        fix_risk = meta.get("fix_risk")
+        if fix_risk not in FIX_RISK:
+            errors.append(f"{rel} fix_risk must be low/medium/high/unknown")
         if meta.get("status") != "open":
             errors.append(f"{rel} status must be open")
         if meta.get("source") != "static-analysis":
@@ -254,6 +323,47 @@ def main() -> int:
         for section in REQUIRED_SECTIONS[args.language]:
             if f"## {section}" not in text:
                 errors.append(f"{rel} missing section: {section}")
+                continue
+            min_len = SECTION_MIN_CHARS[args.language].get(section)
+            if min_len is not None:
+                body = section_body(text, section) or ""
+                if len(body) < min_len:
+                    errors.append(f"{rel} section is too thin: {section}")
+                if section in ("建议验证命令", "Suggested Verification Commands") and not has_verification_command_or_marker(body):
+                    errors.append(f"{rel} suggested verification commands must include a confirmed command or an explicit unconfirmed marker")
+
+    index_json = root / "indexes/findings.generated.json"
+    if index_json.is_file():
+        try:
+            index_payload = json.loads(index_json.read_text(encoding="utf-8"))
+        except json.JSONDecodeError as exc:
+            errors.append(f"indexes/findings.generated.json is not valid JSON: {exc}")
+        else:
+            if index_payload.get("total") != finding_count:
+                errors.append(
+                    "indexes/findings.generated.json total is stale: "
+                    f"index={index_payload.get('total')}, findings={finding_count}"
+                )
+            indexed_findings = index_payload.get("findings")
+            if not isinstance(indexed_findings, list):
+                errors.append("indexes/findings.generated.json must contain a findings list")
+            else:
+                indexed_ids = {str(item.get("id", "")) for item in indexed_findings if isinstance(item, dict)}
+                actual_ids = {str(bug_id) for bug_id in seen_ids}
+                if indexed_ids != actual_ids:
+                    missing = sorted(actual_ids - indexed_ids)
+                    extra = sorted(indexed_ids - actual_ids)
+                    errors.append(
+                        "indexes/findings.generated.json ids are stale: "
+                        f"missing={missing or []}, extra={extra or []}"
+                    )
+                for item in indexed_findings:
+                    if not isinstance(item, dict):
+                        errors.append("indexes/findings.generated.json findings entries must be objects")
+                        continue
+                    for key in ("entry_points", "files", "related_repos"):
+                        if key not in item:
+                            errors.append(f"indexes/findings.generated.json finding {item.get('id', '<unknown>')} missing {key}")
 
     if args.require_knowledge and finding_count:
         for f in REQUIRED_KNOWLEDGE_FOR_HANDOFF:

@@ -49,8 +49,8 @@ def zh_readme(args, domain_summary: str, analyst_line: str) -> str:
 ## 范围
 
 - 代码范围：`{args.scope}`。
-- 收录标准：`status=open` 且 `confidence=high` 优先进入提交包，`confidence=medium/low` 留在 `../work/candidates/` 或明确标注。
-- 排除范围：候选线索、低置信记录、仍需故障注入确认的问题，不进入正式提交包。
+- 收录标准：`status=open` 且 `confidence=high` 优先进入审计交付物，`confidence=medium/low` 留在 `../work/candidates/` 或明确标注。
+- 排除范围：候选线索、低置信记录、仍需故障注入确认的问题，不进入正式审计交付物。
 - 文档语言：中文。
 
 ## 总览
@@ -65,7 +65,7 @@ def zh_readme(args, domain_summary: str, analyst_line: str) -> str:
 - `quality/submission-scope.md`：收录口径、排除边界和质量门禁。
 - `standards/bug-report-standard.md`：Bug 描述规范。
 
-临时评估记录可放在 `../work/eval/`，不进入提交包。
+临时评估记录可放在 `../work/eval/`，不进入审计交付物。
 """
 
 
@@ -85,8 +85,8 @@ Bug audit findings for {args.project}. Focus: {domain_summary}
 ## Scope
 
 - Code scope: `{args.scope}`.
-- Inclusion: `status=open` and `confidence=high` should enter the submission package first; `confidence=medium/low` belongs in `../work/candidates/` or must be clearly marked.
-- Exclusion: leads without code evidence, low-confidence records, and issues requiring fault-injection proof should not enter the final submission package.
+- Inclusion: `status=open` and `confidence=high` should enter the audit output first; `confidence=medium/low` belongs in `../work/candidates/` or must be clearly marked.
+- Exclusion: leads without code evidence, low-confidence records, and issues requiring fault-injection proof should not enter the final audit output.
 - Language: English.
 
 ## Overview
@@ -101,7 +101,7 @@ Run `scripts/generate_bug_index.py` and update this section.
 - `quality/submission-scope.md`: inclusion rules, exclusion boundaries, and quality gates.
 - `standards/bug-report-standard.md`: Bug report standard.
 
-Temporary evaluation notes can live in `../work/eval/`; keep them out of the submission package.
+Temporary evaluation notes can live in `../work/eval/`; keep them out of the audit output.
 """
 
 
@@ -141,13 +141,14 @@ def main() -> int:
 
 每条 Bug 使用一个 Markdown 文件，并在文件顶部写入元信息。不得使用单独 YAML 文件。
 
-必需字段：`id`、`priority`、`confidence`、`status`、`source`、`repo`、`module`、`category`、`issue_family`、`infra_domains`。
+必需字段：`id`、`priority`、`confidence`、`status`、`source`、`repo`、`module`、`category`、`issue_family`、`infra_domains`、`fix_risk`。
 
-必需章节：结论、影响范围、前置条件、静态复现路径、实际表现、期望表现、代码证据、误报排查、修复建议、验证标准。
+必需章节：结论、影响范围、前置条件、静态复现路径、实际表现、期望表现、代码证据、误报排查、修复边界、修复建议、建议验证命令、验证标准。
 
 不写 SLA 字段；修复周期属于后续排期，不属于静态分析发现阶段。
 
-正文只写结论、证据、影响、误报排查、修复建议和验证标准，不写分析过程、自我说明或受众说明。
+正文只写结论、证据、影响、误报排查、修复边界、修复建议、建议验证命令和验证标准，不写分析过程、自我说明或受众说明。
+建议验证命令必须能追溯到仓库文件；找不到可信命令时写“未确认”，不要编造。
 """
         quality = f"""# {args.project} Bug 提交口径
 
@@ -160,7 +161,7 @@ def main() -> int:
 
 - `source=static-analysis`
 - `status=open`
-- `confidence=high` 优先进入提交包。
+- `confidence=high` 优先进入审计交付物。
 - `confidence=medium/low` 留在 `../work/candidates/` 或在记录中明确标注。
 
 ## 排除
@@ -197,7 +198,7 @@ def main() -> int:
 """
         candidates = """# 候选线索
 
-候选线索用于记录暂不进入提交包的问题。每条线索建议单独一个 Markdown 文件。
+候选线索用于记录暂不进入审计交付物的问题。每条线索建议单独一个 Markdown 文件。
 
 ```markdown
 # <标题>
@@ -221,6 +222,7 @@ def main() -> int:
 ## 口径
 
 知识库先形成最小底图，再随 Bug 证据持续补充。最终提交版本应能支持后续复核、继续分析和修复定位。
+记录主要语言生态、构建文件、测试命令来源和未确认的验证命令缺口。
 """
     else:
         status = "pending developer review" if args.status == "待开发复核" else args.status
@@ -232,13 +234,14 @@ def main() -> int:
 
 Use one Markdown file per Bug and keep metadata in the file frontmatter. Do not create separate YAML files.
 
-Required fields: `id`, `priority`, `confidence`, `status`, `source`, `repo`, `module`, `category`, `issue_family`, `infra_domains`.
+Required fields: `id`, `priority`, `confidence`, `status`, `source`, `repo`, `module`, `category`, `issue_family`, `infra_domains`, `fix_risk`.
 
-Required sections: conclusion, scope, preconditions, static reproduction path, actual behavior, expected behavior, code evidence, false-positive review, fix suggestion, validation standard.
+Required sections: conclusion, scope, preconditions, static reproduction path, actual behavior, expected behavior, code evidence, false-positive review, fix boundary, fix suggestion, suggested verification commands, validation standard.
 
 Do not add SLA fields. Fix timeline belongs to later planning, not static discovery.
 
-Write conclusions, evidence, impact, false-positive review, fix suggestions, and validation standards. Do not include process narration, self-reference, or audience explanation.
+Write conclusions, evidence, impact, false-positive review, fix boundaries, fix suggestions, suggested verification commands, and validation standards. Do not include process narration, self-reference, or audience explanation.
+Suggested verification commands must trace to repository files. If no reliable command is visible, mark the command as not confirmed instead of guessing.
 """
         quality = f"""# {args.project} Bug Submission Scope
 
@@ -278,7 +281,7 @@ Write conclusions, evidence, impact, false-positive review, fix suggestions, and
 
 | Repository | Role | Branch | Commit | Dirty | Notes |
 |---|---|---|---|---|---|
-| `{args.scope}` | target | `pending` | `pending` | `pending` | Starter placeholder; update before final submission. |
+| `{args.scope}` | target | `pending` | `pending` | `pending` | Starter placeholder; update before final audit output. |
 
 ## Scope
 
@@ -288,7 +291,7 @@ Write conclusions, evidence, impact, false-positive review, fix suggestions, and
 """
         candidates = """# Candidate Leads
 
-Candidate leads are plausible issues that are not ready for the submitted package. Prefer one Markdown file per lead.
+Candidate leads are plausible issues that are not ready for the audit output. Prefer one Markdown file per lead.
 
 ```markdown
 # <Title>
@@ -312,6 +315,7 @@ Candidate leads are plausible issues that are not ready for the submitted packag
 ## Scope
 
 Build a minimal map first, then enrich knowledge as Bug evidence accumulates. The final submitted knowledge should support later review, continued analysis, and fix planning.
+Record primary language ecosystems, build files, test command sources, and unconfirmed verification command gaps.
 """
 
     write_if_missing(root / "submit/README.md", readme, args.force)
@@ -322,7 +326,7 @@ Build a minimal map first, then enrich knowledge as Bug evidence accumulates. Th
     write_if_missing(root / "work/candidates/README.md", candidates, args.force)
 
     print(f"Initialized repository Bug audit workspace: {root}")
-    print(f"Submission package root: {root / 'submit'}")
+    print(f"Audit output root: {root / 'submit'}")
     print(f"Temporary work root: {root / 'work'}")
     return 0
 

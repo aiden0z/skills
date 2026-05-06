@@ -9,7 +9,7 @@ A collection of production-grade Agent Skills for AI coding assistants.
 | Skill | What it does | Stack |
 |-------|-------------|-------|
 | [**Email Designer**](skills/email-designer/) | Generate email templates that render perfectly across Outlook, Gmail, Apple Mail | Python stdlib |
-| [**Repo Bug Audit**](skills/repo-bug-audit/) | Audit repositories for evidence-backed Bugs, architecture risks, reusable knowledge, and developer-ready finding packages | Python stdlib |
+| [**Repo Bug Audit**](skills/repo-bug-audit/) | Audit repositories for evidence-backed Bugs, architecture risks, reusable knowledge, and fix-ready audit outputs | Python stdlib |
 | [**VibeDeck**](skills/vibe-deck/) | Vibe-code professional slide presentations from natural language | React + ECharts |
 
 ## Install

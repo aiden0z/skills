@@ -21,6 +21,17 @@ Use `domain-profiles.md` to tune search focus for infra, backend, frontend, SDK,
 | medium | Strong suspicion but depends on runtime/config assumptions. | Keep if important, mark clearly, or move to `work/candidates/`. |
 | low | Pattern-only lead without enough proof. | Do not submit as confirmed Bug; keep in `work/candidates/`. |
 
+## Fix Risk
+
+`fix_risk` describes the expected change risk for a later fix, not the Bug impact priority.
+
+| Fix risk | Meaning |
+|---|---|
+| low | Localized change, clear module boundary, limited blast radius. |
+| medium | Shared code, async state, compatibility behavior, or multiple call paths may be affected. |
+| high | Cross-repo contract, data migration, storage/network/control-plane lifecycle, or security boundary may be affected. |
+| unknown | Bug evidence is enough to submit, but fix impact cannot be assessed from static evidence. |
+
 ## Categories
 
 Use one primary category and optional secondary tags.

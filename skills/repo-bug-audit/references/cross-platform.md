@@ -38,22 +38,24 @@ Preferred when `rg` is installed:
 
 ```bash
 rg --files
-rg -n "requests\.|subprocess|os\.system|pickle|eval\(|transaction\.atomic|while True|sleep\(" .
+rg -n "timeout|retry|transaction|subprocess|shell|eval\\(|deserialize|pickle|yaml\\.load|while True|sleep\\(|TODO|FIXME" .
 ```
 
 Unix, Linux, and macOS fallback:
 
 ```bash
 find . -type f
-find . -name '*.py' -print0 | xargs -0 wc -l | sort -n | tail
+git ls-files | grep -E '\\.(py|js|ts|tsx|java|kt|go|rs|cs|php|rb|c|cc|cpp|h|hpp)$' | xargs wc -l | sort -n | tail
 ```
 
 Windows PowerShell fallback:
 
 ```powershell
 Get-ChildItem -Recurse -File
-Get-ChildItem -Recurse -File | Select-String -Pattern 'requests\.|subprocess|os\.system|pickle|eval\(|transaction\.atomic|while True|sleep\('
-Get-ChildItem -Recurse -Filter *.py | Sort-Object Length -Descending | Select-Object -First 20 FullName,Length
+Get-ChildItem -Recurse -File | Select-String -Pattern 'timeout|retry|transaction|subprocess|shell|eval\(|deserialize|pickle|yaml\.load|while True|sleep\(|TODO|FIXME'
+Get-ChildItem -Recurse -File -Include *.py,*.js,*.ts,*.tsx,*.java,*.kt,*.go,*.rs,*.cs,*.php,*.rb,*.c,*.cpp,*.h |
+  Sort-Object Length -Descending |
+  Select-Object -First 20 FullName,Length
 ```
 
 If the repository is very large, prefer `git ls-files` inside Git worktrees to avoid scanning generated or vendored files.

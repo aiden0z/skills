@@ -26,6 +26,7 @@ Do not wait for a complete knowledge base before hunting Bugs. Do not submit a p
 Before writing many Bugs, collect enough facts to guide the first search:
 
 - Repository list, branch context, language, framework, and build system.
+- Language ecosystem evidence from `language-ecosystems.md`: package/build files, test command sources, framework conventions, and module boundaries.
 - Main entry points: API, task, worker, CLI, scheduler, UI route, SDK public API.
 - External systems: database, cache, queue, cloud API, storage backend, network controller, shell, device, auth, billing, monitoring.
 - Primary domain profile from `domain-profiles.md`.
@@ -56,6 +57,7 @@ Include:
 - Analysis scope and repository responsibilities.
 - Branch/commit evidence summary or pointer to `quality/repository-versions.md`.
 - Runtime shape: API, workers, schedulers, UI, SDK, services.
+- Language/framework ecosystems and where verification commands come from.
 - Core workflows and resource lifecycles.
 - Data stores, external systems, and state owners.
 - Auth, tenant boundary, async jobs, and recovery surfaces.
@@ -70,6 +72,7 @@ Include:
 - External system relationships.
 - Source-of-truth ownership for key resources.
 - Cross-repo call chains tied to Bug families.
+- Contracts a fix should preserve when visible in code: API fields, state enums, resource lifecycle owner, async job terminal states, external IDs, and compatibility expectations.
 
 ### `risk-paths.md`
 
@@ -95,6 +98,7 @@ One file per important repo. Include:
 
 - Repo responsibility and primary domain profile.
 - Key modules, entry points, background jobs, and external dependencies.
+- Language ecosystem, build metadata, and confirmed or missing test command sources.
 - Main resource lifecycles or user workflows.
 - Submitted Bug families affecting the repo.
 - Important candidates or unknowns that should guide later passes.

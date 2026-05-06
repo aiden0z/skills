@@ -84,6 +84,14 @@ def as_list(value) -> list[str]:
     return [str(value)]
 
 
+def as_json_list(value) -> list:
+    if isinstance(value, list):
+        return value
+    if value in (None, ""):
+        return []
+    return [value]
+
+
 def stability_rank(item: dict) -> int:
     keys = [item.get("category", "")] + as_list(item.get("infra_domains"))
     ranks = [STABILITY_ORDER[x] for x in keys if x in STABILITY_ORDER]
@@ -110,6 +118,10 @@ def collect(root: Path) -> list[dict]:
             "category": meta.get("category", ""),
             "issue_family": meta.get("issue_family", ""),
             "infra_domains": as_list(meta.get("infra_domains", [])),
+            "fix_risk": meta.get("fix_risk", ""),
+            "entry_points": as_json_list(meta.get("entry_points", [])),
+            "files": as_json_list(meta.get("files", [])),
+            "related_repos": as_json_list(meta.get("related_repos", [])),
             "title": first_heading(text),
             "path": str(path.relative_to(root)),
         }
@@ -140,7 +152,7 @@ def md_table(title: str, counter: Counter, language: str = "zh") -> str:
 
 def main() -> int:
     parser = argparse.ArgumentParser(description="Generate Bug audit indexes")
-    parser.add_argument("root", help="Bug package root")
+    parser.add_argument("root", help="Bug audit output root")
     parser.add_argument("--language", choices=["zh", "en"], default="zh", help="Output language")
     args = parser.parse_args()
     root = Path(args.root).expanduser().resolve()
@@ -153,6 +165,7 @@ def main() -> int:
     repo = Counter(x["repo"] for x in findings)
     family = Counter(x["issue_family"] for x in findings)
     infra = Counter(domain for x in findings for domain in x["infra_domains"])
+    fix_risk = Counter(x["fix_risk"] for x in findings)
 
     if args.language == "zh":
         md = [
@@ -164,12 +177,13 @@ def main() -> int:
             md_table("置信度分布", confidence, args.language),
             md_table("类型分布", category, args.language),
             md_table("影响域分布", infra, args.language),
+            md_table("修复风险分布", fix_risk, args.language),
             md_table("仓库分布", repo, args.language),
             md_table("问题族分布", family, args.language),
             "## 明细",
             "",
-            "| ID | 优先级 | 置信度 | 仓库 | 模块 | 类型 | 问题族 | 标题 | 文件 |",
-            "|---|---|---|---|---|---|---|---|---|",
+            "| ID | 优先级 | 置信度 | 修复风险 | 仓库 | 模块 | 类型 | 问题族 | 标题 | 文件 |",
+            "|---|---|---|---|---|---|---|---|---|---|",
         ]
     else:
         md = [
@@ -181,17 +195,18 @@ def main() -> int:
             md_table("Confidence Distribution", confidence, args.language),
             md_table("Category Distribution", category, args.language),
             md_table("Impact Domain Distribution", infra, args.language),
+            md_table("Fix Risk Distribution", fix_risk, args.language),
             md_table("Repository Distribution", repo, args.language),
             md_table("Issue Family Distribution", family, args.language),
             "## Details",
             "",
-            "| ID | Priority | Confidence | Repo | Module | Category | Issue Family | Title | File |",
-            "|---|---|---|---|---|---|---|---|---|",
+            "| ID | Priority | Confidence | Fix Risk | Repo | Module | Category | Issue Family | Title | File |",
+            "|---|---|---|---|---|---|---|---|---|---|",
         ]
     for x in findings:
         title = x["title"].replace("|", "\\|")
         md.append(
-            f"| {x['id']} | {x['priority']} | {x['confidence']} | {x['repo']} | {x['module']} | "
+            f"| {x['id']} | {x['priority']} | {x['confidence']} | {x['fix_risk']} | {x['repo']} | {x['module']} | "
             f"{x['category']} | {x['issue_family']} | {title} | `{x['path']}` |"
         )
     md.append("")
@@ -203,6 +218,7 @@ def main() -> int:
         "confidence": dict(confidence),
         "category": dict(category),
         "infra_domains": dict(infra),
+        "fix_risk": dict(fix_risk),
         "repo": dict(repo),
         "issue_family": dict(family),
         "findings": findings,

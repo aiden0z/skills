@@ -20,7 +20,7 @@ Use this mode when a Bug analysis task still needs design before execution. The 
 
 Write a concise charter before scanning:
 
-- **目标**: exploratory audit, developer submission package, architecture review, security pass, or fix-planning input.
+- **目标**: exploratory audit, audit output, architecture review, security pass, or fix-planning input.
 - **范围**: target repos, reference repos, excluded paths, branches if known.
 - **输出目录**: workspace root and final package location.
 - **语言和口吻**: usually Chinese, developer-facing, no meta wording.

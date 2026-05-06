@@ -12,7 +12,7 @@
 
 ## Phase 0: Setup
 
-- Confirm workspace root, submission package root, repos, reference repos, provided analyst when available, date, and language.
+- Confirm workspace root, audit output root, repos, reference repos, provided analyst when available, date, and language.
 - Record repository branch, commit hash, and dirty status when available; use `metadata.md`.
 - If the workspace already exists, read `resume-audit.md` before editing findings.
 - If the task triggers Deep Discussion Mode, read `deep-discussion.md` and write a short analysis charter before inventory.
@@ -32,6 +32,7 @@ Collect enough facts before hunting Bugs; do not wait for complete documentation
 - Largest files/functions and generic directories: `utils`, `common`, `helpers`, `shared`.
 - Cross-repo dependencies and call chains.
 - Primary domain profile from `domain-profiles.md`.
+- Language ecosystem facts from `language-ecosystems.md`: build metadata, framework entry points, package/test command sources, and language-specific false-positive guards.
 - Initial resource lifecycles, state owners, async workflows, security boundaries, and high-risk paths.
 - Use `knowledge-base.md` to decide what belongs in the minimal map.
 
@@ -39,19 +40,21 @@ Suggested commands. Use `rg` when available; use `cross-platform.md` when runnin
 
 ```bash
 rg --files
-rg -n "requests\.|subprocess|os\.system|pickle|eval\(|transaction\.atomic|while True|sleep\(" .
+rg -n "timeout|retry|transaction|subprocess|shell|eval\\(|deserialize|pickle|yaml\\.load|while True|sleep\\(|TODO|FIXME" .
 ```
 
-Unix, Linux, and macOS example for large Python files:
+Unix, Linux, and macOS example for large source files:
 
 ```bash
-find . -name '*.py' -print0 | xargs -0 wc -l | sort -n | tail
+git ls-files | grep -E '\\.(py|js|ts|tsx|java|kt|go|rs|cs|php|rb|c|cc|cpp|h|hpp)$' | xargs wc -l | sort -n | tail
 ```
 
 Windows PowerShell equivalent:
 
 ```powershell
-Get-ChildItem -Recurse -Filter *.py | Sort-Object Length -Descending | Select-Object -First 20 FullName,Length
+Get-ChildItem -Recurse -File -Include *.py,*.js,*.ts,*.tsx,*.java,*.kt,*.go,*.rs,*.cs,*.php,*.rb,*.c,*.cpp,*.h |
+  Sort-Object Length -Descending |
+  Select-Object -First 20 FullName,Length
 ```
 
 ## Phase 2: Candidate Search
@@ -89,6 +92,7 @@ Use `candidate-triage.md` for candidate notes and `deduplication.md` before deci
 - Filename must include priority, Bug id, and short description.
 - On continuation runs, use the next ID after the largest existing `BUG-xxxx`; do not renumber old records.
 - Keep static-analysis status clear: do not say “已验证” unless runtime proof exists.
+- Add fix boundary, minimum safe fix, and suggested verification commands. Commands must be traceable to repository files; write `未确认` when no trustworthy command is visible.
 
 ## Phase 5: Architecture and Knowledge
 

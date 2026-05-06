@@ -1,6 +1,6 @@
 ---
 name: repo-bug-audit
-description: Use when an agent needs repository-level Bug audits, static-analysis Bug discovery, architecture/security/reliability risk review, cross-repo relationship mapping, false-positive triage, deduplication, incremental/resume audits, evidence-backed Bug records, reusable repo knowledge, or developer-ready Bug package preparation.
+description: Use when an agent needs repository-level Bug audits, static-analysis Bug discovery, architecture/security/reliability risk review, cross-repo relationship mapping, false-positive triage, deduplication, incremental/resume audits, evidence-backed Bug records, reusable repo knowledge, or fix-ready Bug audit outputs.
 ---
 
 # Repo Bug Audit
@@ -9,7 +9,7 @@ IRON LAW: Do not submit a Bug unless code evidence, trigger path, realistic fail
 
 ## Purpose
 
-Find evidence-backed Bugs and architecture risk signals across one or more repositories, then package the results so developers can review, reproduce, triage, and fix them.
+Find evidence-backed Bugs and architecture risk signals across one or more repositories, then package the results so developers or later Agents can review, reproduce, triage, and fix them safely.
 
 This skill is review-first. Do not patch code unless the user explicitly asks for fixes after the analysis.
 
@@ -76,6 +76,7 @@ In this mode:
 
 3. **Build minimal knowledge map ⚠️ REQUIRED**
    - Inventory languages, frameworks, entry points, largest files/functions, external dependencies, background jobs, data stores, and risky integration points.
+   - Use `references/language-ecosystems.md` to identify build metadata, framework entry points, and evidence-backed verification command sources.
    - Build enough repo relationship and risk-path knowledge to choose high-risk paths; do not wait for a complete knowledge base before hunting Bugs.
    - Use `references/knowledge-base.md` to separate minimal discovery knowledge from final submitted knowledge.
    - For detailed mapping, use `acquire-codebase-knowledge` if available.
@@ -96,7 +97,7 @@ In this mode:
 6. **Write Bug records ⚠️ REQUIRED**
    - Use `references/bug-schema.md` for the Markdown metadata and QA-style sections.
    - Use `references/writing-style.md` to keep wording natural and submission-ready.
-   - Include priority, confidence, category, issue family, infra domains, evidence, static reproduction path, expected behavior, actual behavior, fix suggestion, and validation checks.
+   - Include priority, confidence, category, issue family, infra domains, fix risk, evidence, static reproduction path, expected behavior, actual behavior, fix boundary, fix suggestion, suggested verification commands, and validation checks.
    - Sort and name files as `P1-BUG-0001-short-description.md`.
    - On continuation runs, keep existing IDs stable and continue from the current maximum `BUG-xxxx`.
 
@@ -130,7 +131,7 @@ In this mode:
 - `scripts/validate_bug_package.py` reports zero errors.
 - `indexes/findings.generated.md` and `indexes/findings.generated.json` are current.
 - Every submitted Bug has P1-P4 priority, high/medium/low confidence, `status=open`, and `source=static-analysis`.
-- Every submitted Bug has code evidence, static reproduction path, false-positive review, fix suggestion, and validation standard.
+- Every submitted Bug has code evidence, static reproduction path, false-positive review, fix boundary, fix suggestion, suggested verification commands, and validation standard.
 - P1/P2 Bugs pass `references/evaluation.md` priority and evidence gates.
 - Large packages have issue-family and risk-domain samples checked through `references/evaluation.md`.
 - `work/candidates/` contains weak leads instead of mixing them into submitted findings.
@@ -176,6 +177,7 @@ In this mode:
 - `references/bug-schema.md` — Bug record schema and example.
 - `references/risk-taxonomy.md` — priorities, confidence, categories, and sorting.
 - `references/domain-profiles.md` — domain-specific audit lenses for infra, backend, frontend, SDK, mobile, and generic repositories.
+- `references/language-ecosystems.md` — language/build-system discovery, entry-point hints, verification command evidence, and language-specific false-positive checks.
 - `references/candidate-triage.md` — candidate lead format and promotion rules.
 - `references/deduplication.md` — merge/split rules for repeated findings.
 - `references/architecture-review.md` — architecture-risk analysis vocabulary.

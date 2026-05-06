@@ -18,7 +18,9 @@ A Bug passes only when these are explicit:
 - False-positive review: existing wrapper, transaction, retry, policy, cleanup, or config has been checked.
 - Priority: P1/P2 is justified by blast radius, data/security risk, recovery cost, or core workflow impact.
 - Confidence: high/medium/low matches evidence strength.
+- Fix boundary: safest affected files/functions/contracts are named, and unrelated modules are not implied.
 - Fix suggestion: actionable but not overly prescriptive.
+- Suggested verification commands: commands are traceable to repository files, or the record clearly says they are not confirmed.
 - Validation standard: clear checks for the developer or fixing Agent.
 
 If any item is weak:
@@ -37,6 +39,7 @@ Check the package as a single artifact:
 - Repeated issue families are grouped in indexes or README without hiding concrete Bugs.
 - Stability risks are ordered ahead of cosmetic or narrow issues when priorities tie.
 - Knowledge files explain the relationships used by submitted findings.
+- Knowledge files identify language ecosystems, build/test metadata, and cross-repo contracts when they affect later fixes.
 - Architecture review describes discovered risk signals, not solution principles.
 - `audit-overview.png`, README, indexes, and knowledge use the same counts and risk names.
 - No temporary files, candidates, scanner dumps, old images, or drafts are inside `submit/`.
@@ -71,4 +74,4 @@ Use when editing this skill itself:
 - P1/P2 inflation should be caught by priority calibration.
 - Package handoff should include aligned README, indexes, knowledge, quality notes, and optional image.
 
-Keep regression notes outside submitted Bug packages unless the user asks for them.
+Keep regression notes outside submitted audit outputs unless the user asks for them.

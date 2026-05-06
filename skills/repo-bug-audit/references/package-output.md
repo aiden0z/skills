@@ -57,6 +57,7 @@ Include:
 - Repository version evidence summary: branch/hash/dirty status coverage when available.
 - Scope, collection standard, exclusion boundary, language.
 - Summary counts by priority, confidence, category, impact domain, repo, and issue family.
+- Fix-readiness summary when available: fix risk distribution, verification-command coverage, and important cross-repo or cross-language contract impact.
 - Main findings and architecture risk signals.
 - File guide and reading order.
 - Candidate handling and confidence threshold when applicable.
@@ -98,6 +99,7 @@ If creating `audit-overview.png`, read `audit-overview-image.md`.
 - Evaluation notes: priority calibration, issue-family samples, weak high-risk areas, and unreviewed exclusions when applicable.
 - Runtime validation still belongs to developers/test owners.
 - No SLA fields in Bug records unless requested.
+- Suggested verification commands must be traceable to repository files. When no trustworthy command is available, Bug records should say so instead of guessing.
 
 `quality/repository-versions.md` should state:
 
@@ -115,6 +117,7 @@ Before packaging, check `knowledge-base.md`.
 - `submit/knowledge/` should be complete enough for another Agent to continue analysis or start fixes without rescanning basics.
 - Knowledge should reflect submitted Bugs and repeated issue families, not only initial inventory.
 - Cross-repo relationship maps should explain the risk paths used by submitted findings.
+- Cross-repo relationship maps should also identify contracts that a later fix Agent must preserve: API parameters, state enums, resource lifecycle owner, async job terminal states, external system IDs, and compatibility expectations when visible in code.
 - Empty, stale, or repetitive optional knowledge files should be removed.
 - Run `evaluation.md` before final packaging; keep temporary eval notes in `work/eval/` unless they affect submission scope.
 - For large or multi-repo packages, run `validate_bug_package.py --require-knowledge`.
