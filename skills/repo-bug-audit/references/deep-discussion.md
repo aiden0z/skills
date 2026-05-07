@@ -42,7 +42,7 @@ Useful questions:
 - “这次结果更偏提交给开发修复，还是先做内部风险摸底？”
 - “低置信线索要放进候选区，还是这次只保留能提交的 Bug？”
 - “是否把存储、网络、恢复能力这类私有云稳定性风险排在普通功能问题前面？”
-- “最终需要 README、图片、关系图谱和 zip 包，还是只需要 Bug 列表？”
+- “最终是否需要 README、`audit-overview.png`、关系图谱和 zip 包，还是只需要 Bug 列表？”
 
 ## When Updating This Skill
 

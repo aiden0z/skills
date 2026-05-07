@@ -4,6 +4,7 @@
 
 - Workspace Structure
 - README Content
+- Overview Image Decision
 - Image Guidance
 - Quality Scope
 - Knowledge Quality
@@ -64,6 +65,17 @@ Include:
 - Continuation notes when findings were downgraded, removed, merged, or promoted from candidates.
 - Knowledge coverage: system overview, repo relationships, risk paths, architecture signals, and important repo profiles.
 - Natural developer-facing wording without process narration, self-reference, or AI-flavored phrases.
+
+## Overview Image Decision
+
+`audit-overview.png` is optional, but valuable when the audit output will be shared, reviewed in a meeting, attached to an email, or zipped as a final handoff package.
+
+- Recommend generating it for multi-repo audits, large Bug sets, README-plus-zip handoff, architecture-risk summaries, or any result likely to be forwarded outside the immediate chat.
+- Skip it by default for quick scans, narrow single-Bug reviews, internal candidate triage, or when the user only asks for a Bug list.
+- In interactive runs, mention the option once near kickoff: `如果这次结果要整理成最终交付物，我也可以附带生成 audit-overview.png；如果只需要 Bug 列表，会默认跳过。`
+- Ask once only when the package shape is unclear and the image would change the final deliverable.
+- In automatic runs, do not pause for image preference. Generate it when final handoff is implied; otherwise omit it and record the assumption in `quality/submission-scope.md`.
+- Record the final decision in `quality/submission-scope.md`: included, omitted by request, omitted as lightweight scan, or pending user preference.
 
 ## Image Guidance
 

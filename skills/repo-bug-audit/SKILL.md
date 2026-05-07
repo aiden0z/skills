@@ -60,6 +60,7 @@ In this mode:
 - Keep progress updates to phase boundaries or major assumption changes; do not report every candidate Bug.
 - Keep optional skill installation suggestions short, one-time, and limited to the most relevant three skills.
 - Do not expose `work/` scratch content unless it affects a user decision or the user asks for candidates.
+- In interactive runs, mention once at kickoff that an `audit-overview.png` can be generated for final handoff packages; ask only if the answer changes the final package shape.
 - In automatic mode, do not pause for optional skills, package style choices, image choices, or candidate triage preferences.
 
 ## Workflow Checklist
@@ -67,6 +68,7 @@ In this mode:
 1. **Set scope ⚠️ REQUIRED**
    - Identify target repositories, reference repositories, branch context, output root, provided analyst, analysis date, and package audience.
    - Record audit metadata and repository version evidence when available; use `references/metadata.md`.
+   - Decide overview image intent using `references/package-output.md`: requested, recommended, omitted, or unknown. For non-automatic runs, remind the user once when the audit looks like a final handoff package.
    - If the user gives no output root, create a descriptive lowercase workspace under the repo group, with `submit/` for final files and `work/` for temporary artifacts.
    - If the output root already exists or the user asks to continue/deepen/review, read `references/resume-audit.md` before changing findings.
 
