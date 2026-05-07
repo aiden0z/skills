@@ -186,15 +186,16 @@ def main() -> int:
 """
         versions = f"""# {args.project} 仓库版本凭证
 
-| 仓库 | 角色 | 分支 | Commit | 工作区状态 | 备注 |
-|---|---|---|---|---|---|
-| `{args.scope}` | target | `待采集` | `待采集` | `待采集` | 初始化占位，提交前更新。 |
+| 仓库 | 角色 | 审计分支 | Commit | 工作区状态 | 默认分支 | 稳定候选分支 | 候选置信度 | 证据 | 备注 |
+|---|---|---|---|---|---|---|---|---|---|
+| `{args.scope}` | target | `待采集` | `待采集` | `待采集` | `待采集` | `unknown` | `unknown` | `待采集` | 初始化占位，提交前更新。 |
 
 ## 口径
 
-- 能采集则记录分支、commit hash 和工作区状态。
+- 能采集则记录审计分支、commit hash、工作区状态、默认分支和稳定候选分支。
+- 交互模式下，如果用户没有明确指定分支，先确认审计分支基准；自动模式不切分支，只记录假设。
 - 无法采集时写 `unknown`，并在备注说明原因。
-- 不猜测缺失的版本信息。
+- 不猜测缺失的版本信息，也不把版本号看起来最大的分支直接当成稳定分支。
 """
         candidates = """# 候选线索
 
@@ -279,15 +280,16 @@ Suggested verification commands must trace to repository files. If no reliable c
 """
         versions = f"""# {args.project} Repository Version Evidence
 
-| Repository | Role | Branch | Commit | Dirty | Notes |
-|---|---|---|---|---|---|
-| `{args.scope}` | target | `pending` | `pending` | `pending` | Starter placeholder; update before final audit output. |
+| Repository | Role | Audit Branch | Commit | Dirty | Default Branch | Stable Candidate | Candidate Confidence | Evidence | Notes |
+|---|---|---|---|---|---|---|---|---|---|
+| `{args.scope}` | target | `pending` | `pending` | `pending` | `pending` | `unknown` | `unknown` | `pending` | Starter placeholder; update before final audit output. |
 
 ## Scope
 
-- Record branch, commit hash, and dirty status when available.
+- Record audit branch, commit hash, dirty status, default branch, and stable branch candidate when available.
+- In interactive mode, confirm the audit branch baseline when the user did not specify branches. In automatic mode, do not switch branches; record the assumption.
 - Use `unknown` when evidence is unavailable, and explain why in Notes.
-- Do not guess missing version information.
+- Do not guess missing version information or treat the highest-looking version as stable without evidence.
 """
         candidates = """# Candidate Leads
 

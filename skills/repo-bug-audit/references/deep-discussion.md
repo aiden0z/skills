@@ -40,6 +40,7 @@ Do not ask about naming, cosmetic packaging, image style, or optional skill inst
 Useful questions:
 
 - “这次结果更偏提交给开发修复，还是先做内部风险摸底？”
+- “这次审计以当前检出分支为准，还是先确认并切到稳定候选分支？”
 - “低置信线索要放进候选区，还是这次只保留能提交的 Bug？”
 - “是否把存储、网络、恢复能力这类私有云稳定性风险排在普通功能问题前面？”
 - “最终是否需要 README、`audit-overview.png`、关系图谱和 zip 包，还是只需要 Bug 列表？”

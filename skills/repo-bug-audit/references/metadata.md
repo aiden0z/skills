@@ -33,10 +33,10 @@ Record repository version evidence in `quality/repository-versions.md` when avai
 Suggested columns:
 
 ```markdown
-| Repository | Role | Branch | Commit | Dirty | Notes |
-|---|---|---|---|---|---|
-| target-service | target | `main` | `abc1234` | `no` |  |
-| platform-ref | reference | `stable/zed` | `unknown` | `unknown` | not a Git checkout |
+| Repository | Role | Audit Branch | Commit | Dirty | Default Branch | Stable Candidate | Candidate Confidence | Evidence | Notes |
+|---|---|---|---|---|---|---|---|---|---|
+| target-service | target | `main` | `abc1234` | `no` | `main` | `release/2.4.0` | `medium` | release branch naming + version sort | user confirmed `main` for audit |
+| platform-ref | reference | `stable/zed` | `unknown` | `unknown` | `unknown` | `stable/zed` | `high` | user-provided branch | not a Git checkout |
 ```
 
 Rules:
@@ -44,16 +44,48 @@ Rules:
 - Use `git rev-parse --abbrev-ref HEAD` for branch when available.
 - Use `git rev-parse HEAD` for commit hash when available.
 - Use `git status --short` to mark dirty state when available.
+- Use existing local evidence first for default branch and stable candidates; do not fetch remote refs just for branch discovery unless the user approves or the task already requires fresh remote data.
+- Use `git symbolic-ref refs/remotes/origin/HEAD` or equivalent local refs for default branch when available.
+- Inspect local remote branches, tags, release notes, CI/CD config, deployment docs, and user-provided branch lists for stable candidates.
+- Treat `stable/*`, `release/*`, `lts/*`, `support/*`, SemVer-like branches, protected release branches, and documented deployment branches as stronger stable-candidate evidence than raw commit recency.
 - If a repo is not a Git checkout, record `unknown` and explain in Notes.
 - Do not guess missing branch or commit information.
+- Do not assume the highest-looking version is stable unless the naming, documentation, release metadata, or user input supports that meaning.
 - Dirty worktree does not block analysis; it changes how reproducible the package is.
 - For shallow clones, detached HEAD, or exported source trees, record the available evidence.
+
+## Audit Branch Confirmation
+
+Branch baseline changes the audit scope.
+
+- If the user provided explicit branches, use them and record `Candidate Confidence` as `high` with `user-provided branch` in Evidence.
+- If the user asks for the latest stable, release, production, or final handoff audit without naming branches, identify candidates and ask which baseline to use before scanning.
+- If current checkout differs from the strongest stable candidate, ask before switching or before treating the candidate as the audit baseline.
+- If the user asks for the current code, do not ask again; record current checkout as the audit baseline and stable candidate as reference evidence when available.
+- In automatic runs, do not switch branches. Audit the current checkout, record stable candidates and confidence, and write the branch assumption in `quality/submission-scope.md`.
+
+Use a compact question:
+
+```text
+当前检出分支是 `<current>`，稳定候选是 `<candidate>`（置信度：<level>）。这次审计以当前分支为准，还是切到稳定候选分支后再审计？
+```
+
+If there are multiple repositories, ask with a short table and offer one decision for the whole group when possible.
+
+## Stable Candidate Confidence
+
+| Confidence | Evidence |
+|---|---|
+| `high` | User-provided branch; release/deployment docs name the branch; hosting metadata identifies a protected release branch; CI/CD deploy config maps to the branch. |
+| `medium` | Branch name follows `stable/*`, `release/*`, `lts/*`, `support/*`, or SemVer-like naming and can be version-sorted from local refs. |
+| `low` | Candidate is inferred from default branch, latest tag, or recent activity without release/deployment confirmation. |
+| `unknown` | No reliable local or documented evidence. |
 
 ## Where Metadata Appears
 
 - `submit/README.md`: concise analysis info and scope.
 - `submit/quality/submission-scope.md`: assumptions, exclusions, confidence threshold, continuation notes.
-- `submit/quality/repository-versions.md`: branch, commit, dirty status, and notes.
+- `submit/quality/repository-versions.md`: audit branch, commit, dirty status, default branch, stable candidate, confidence, evidence, and notes.
 - `submit/knowledge/system-overview.md`: scope and reference repositories when relevant.
 - `submit/audit-overview.png`: compact footer or side rail with date, analyst when provided, source, scope, and version-evidence summary.
 

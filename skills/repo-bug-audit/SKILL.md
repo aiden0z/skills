@@ -23,6 +23,7 @@ This skill is review-first. Do not patch code unless the user explicitly asks fo
 - Treat related skills as optional accelerators, not hard dependencies; encourage installation only when they materially improve the current task.
 - If a recommended skill is missing, continue by default. Ask before installing anything, and never interrupt explicitly automatic analysis runs for installation.
 - Infer safe defaults first. Ask the user only when a missing answer changes safety, scope, or final package semantics.
+- Treat branch selection as audit scope. In interactive runs, always confirm the audit branch baseline unless the user already provided explicit branches; never switch branches without approval.
 - Do not infer analyst or author identity from OS username, Git config, directory owner, or model identity; use a provided value or mark it missing.
 - In automatic mode, record assumptions in `submit/quality/submission-scope.md` instead of asking.
 - Use Chinese for deliverables by default when the user is Chinese. Keep wording natural and developer-facing; avoid meta, self-referential, inflated, or AI-flavored language.
@@ -56,6 +57,7 @@ In this mode:
 
 - Start work with safe assumptions instead of asking formatting or naming questions.
 - Ask at most one question when the answer materially affects safety, target scope, destructive operations, or final package semantics.
+- Always ask before using a different branch than the current checkout, except when the user already specified that branch.
 - Never ask whether to continue after each phase unless the user requested checkpoints.
 - Keep progress updates to phase boundaries or major assumption changes; do not report every candidate Bug.
 - Keep optional skill installation suggestions short, one-time, and limited to the most relevant three skills.
@@ -68,6 +70,7 @@ In this mode:
 1. **Set scope ⚠️ REQUIRED**
    - Identify target repositories, reference repositories, branch context, output root, provided analyst, analysis date, and package audience.
    - Record audit metadata and repository version evidence when available; use `references/metadata.md`.
+   - Identify current branch, default branch, and stable-branch candidate when evidence is available. For interactive runs, confirm the audit branch baseline before scanning if the user did not provide explicit branches.
    - Decide overview image intent using `references/package-output.md`: requested, recommended, omitted, or unknown. For non-automatic runs, remind the user once when the audit looks like a final handoff package.
    - If the user gives no output root, create a descriptive lowercase workspace under the repo group, with `submit/` for final files and `work/` for temporary artifacts.
    - If the output root already exists or the user asks to continue/deepen/review, read `references/resume-audit.md` before changing findings.

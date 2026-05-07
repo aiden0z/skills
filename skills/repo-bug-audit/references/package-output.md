@@ -117,10 +117,15 @@ If creating `audit-overview.png`, read `audit-overview-image.md`.
 
 - Repository name.
 - Role: target or reference.
-- Branch when available.
+- Audit branch when available.
 - Commit hash when available.
 - Dirty status when available.
+- Default branch when available.
+- Stable branch candidate when evidence is available.
+- Stable candidate confidence: `high`, `medium`, `low`, or `unknown`.
+- Evidence used for the candidate: user input, release docs, local remote refs, tags, CI/CD, deployment config, or hosting metadata.
 - Notes for unknown, detached, shallow, exported, or non-Git sources.
+- Whether the branch baseline was user-provided, confirmed interactively, or assumed in automatic mode.
 
 ## Knowledge Quality
 
