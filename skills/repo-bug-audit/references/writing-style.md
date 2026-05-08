@@ -6,6 +6,8 @@ Use this before writing submitted Bug records, README files, knowledge docs, ind
 
 Write like a careful QA engineer or senior reviewer handing over concrete findings. The text should read as a project artifact, not as a chat transcript, tool output, or generated explanation.
 
+> **Authenticity First** (`authenticity.md`): natural wording is required, but **only on top of real evidence**. Smooth-sounding fabricated content is the worst possible failure of this skill — worse than awkward AI-flavored honest content.
+
 ## Required Style
 
 - Use direct conclusions backed by evidence.
@@ -25,6 +27,8 @@ Write like a careful QA engineer or senior reviewer handing over concrete findin
 - Generic praise or padding: “整体来看非常重要/值得关注/有较大帮助”.
 - Tool-flavored wording: “静态扫描显示大量/高置信缺陷/自动生成报告”.
 - Commanding architecture language: “必须引入/开发必须/应该立刻重构”.
+- Hollow fix-suggestion clichés (the most common AI padding): "建议添加 try/catch", "建议加强校验", "建议增加日志", "考虑使用 X", "可能需要重构", "建议关注", "建议进行压测", "应该优化".
+- Pseudo-precise speculation: "推测此处会…", "理论上可能…", "代码中应有 X 校验" (without proof of absence — use "已搜索 [grep pattern] 未发现 X 校验" instead), "该函数可能被多处调用" (without enumeration — write "未做调用方枚举" if you have not).
 
 ## AI-Flavored Patterns to Strip
 

@@ -15,6 +15,7 @@ This skill is review-first. Do not patch code unless the user explicitly asks fo
 
 ## Operating Rules
 
+- **Authenticity First (overrides every other rule)**: never fabricate code references, commands, metrics, status claims, or filler content to satisfy any thickness or completeness requirement. Lower priority, move to candidates, shorten the section, or write an explicit honest-uncertainty marker (`证据不足`, `静态分析无法判断`, `未确认：…`). This rule applies to **every output under `submit/`** — Bug records, README, knowledge docs, repo profiles, architecture review, audit-overview image, submission-scope. Read `references/authenticity.md` before writing anything submittable.
 - Treat findings as static-analysis results until runtime validation proves otherwise.
 - Prefer fewer real Bugs over hundreds of weak claims; keep weak leads in `work/candidates/`, not submitted findings.
 - Prioritize infra-stability risks: data integrity, recovery, availability, resource leakage, storage/network performance, control-plane safety, security boundaries, and cross-system consistency.
@@ -133,8 +134,8 @@ For mode-dependent behavior (companion skills, image kickoff, branch confirmatio
 
 8. **Generate indexes, validate, and evaluate ⛔ BLOCKING**
    - Run `scripts/generate_bug_index.py`.
-   - Run `scripts/validate_bug_package.py`.
-   - For final handoff packages in large or multi-repo audits, run `scripts/validate_bug_package.py --require-knowledge --require-image` when `audit-overview.png` is expected.
+   - Run `scripts/validate_bug_package.py`. Pass `--repo-root <path>` (repeatable) so the validator can verify every frontmatter `files[].path` exists in the audited repo(s) — this catches fabricated code references (see `references/authenticity.md`).
+   - For final handoff packages in large or multi-repo audits, run `scripts/validate_bug_package.py --require-knowledge --require-image --repo-root <path>` when `audit-overview.png` is expected.
    - Read `references/evaluation.md`.
    - Evaluate all P1/P2 Bugs; for large packages, also sample each issue family and risk domain.
    - **Failure handling** — if a P1/P2 Bug fails the Bug-Level Gate in `evaluation.md`: apply one of the four documented actions (lower confidence / move to candidates / merge / record uncertainty) per the gate, do NOT pause the run, and log every change in `quality/submission-scope.md`. If `validate_bug_package.py` returns errors, fix them before submitting; the script must exit 0 on the final package.
@@ -191,8 +192,9 @@ For mode-dependent behavior (companion skills, image kickoff, branch confirmatio
 
 - `scripts/init_bug_workspace.py` — create output directories and baseline docs.
 - `scripts/generate_bug_index.py` — build Markdown/JSON indexes from Bug records.
-- `scripts/validate_bug_package.py` — verify package structure, metadata, terminology, and image sizes.
+- `scripts/validate_bug_package.py` — verify package structure, metadata, terminology, image sizes; with `--repo-root` also enforces frontmatter path existence and cross-Bug literal-duplicate detection (Authenticity First).
 - `references/workflow.md` — full multi-pass workflow.
+- `references/authenticity.md` — **Authenticity First rule**, anti-fabrication categories, honest-uncertainty markers, per-output rules, and validator/evaluator enforcement levels.
 - `references/deep-discussion.md` — analysis charter and brainstorming prompts.
 - `references/resume-audit.md` — continue an existing audit, keep IDs stable, and record downgrade/removal reasons.
 - `references/evaluation.md` — Bug-level, package-level, depth, priority, and skill-regression evaluation gates.

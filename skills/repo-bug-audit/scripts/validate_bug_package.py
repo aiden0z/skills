@@ -153,7 +153,26 @@ DEFAULT_BANNED = [
     "充满活力",
     "全方位的",
     "系统性地",
+    # Hollow fix-suggestion clichés (anti-fabrication padding)
+    "建议添加 try/catch",
+    "建议加强校验",
+    "建议增加日志",
+    "考虑使用",
+    "可能需要重构",
+    "建议关注",
+    "建议进行压测",
+    # Pseudo-precise speculation (anti-fabrication, see authenticity.md)
+    "推测此处会",
+    "理论上可能",
+    "代码中应有",
 ]
+# Sections subject to cross-Bug literal-duplicate detection (authenticity.md → category 4).
+# Identical paragraphs across these sections are the strongest fabrication signal.
+DEDUPE_SECTIONS = {
+    "zh": ["静态复现路径", "修复建议", "代码证据"],
+    "en": ["Static Reproduction Path", "Fix Suggestion", "Code Evidence"],
+}
+DEDUPE_MIN_CHARS = 60
 PRIORITIES = {"P1", "P2", "P3", "P4"}
 CONFIDENCE = {"high", "medium", "low"}
 FIX_RISK = {"low", "medium", "high", "unknown"}
@@ -271,6 +290,15 @@ def main() -> int:
     parser.add_argument("--require-image", action="store_true", help="Require audit-overview.png for final handoff packages")
     parser.add_argument("--banned", action="append", default=[], help="Additional banned text")
     parser.add_argument(
+        "--repo-root",
+        action="append",
+        default=[],
+        help=(
+            "Path to a target repository checkout. Enables existence checks for "
+            "frontmatter `files[].path` references. May be repeated for multi-repo audits."
+        ),
+    )
+    parser.add_argument(
         "--allow-id-gaps",
         action="store_true",
         help="Allow non-contiguous BUG-xxxx IDs. Reserved for in-progress / resume runs only; final delivery must be contiguous BUG-0001..BUG-N",
@@ -312,6 +340,9 @@ def main() -> int:
     seen_ids = {}
     finding_count = 0
     repos = set()
+    # Authenticity: collect long paragraphs from high-risk sections for cross-Bug duplicate detection.
+    dedupe_index: dict[str, list[str]] = {}
+    repo_roots = [Path(p).expanduser().resolve() for p in args.repo_root] if args.repo_root else []
     for path in sorted((root / "findings").glob("P*/*.md")):
         finding_count += 1
         rel = path.relative_to(root)
@@ -364,6 +395,32 @@ def main() -> int:
                     errors.append(f"{rel} section is too thin: {section}")
                 if section in ("建议验证命令", "Suggested Verification Commands") and not has_verification_command_or_marker(body):
                     errors.append(f"{rel} suggested verification commands must include a confirmed command or an explicit unconfirmed marker")
+        # Authenticity: cross-Bug duplicate detection on high-risk sections.
+        for section in DEDUPE_SECTIONS[args.language]:
+            body = section_body(text, section) or ""
+            for paragraph in body.split("\n\n"):
+                normalized = re.sub(r"\s+", " ", paragraph).strip()
+                if len(normalized) >= DEDUPE_MIN_CHARS:
+                    dedupe_index.setdefault(normalized, []).append(f"{rel}::{section}")
+        # Authenticity: frontmatter file paths must exist in at least one provided repo root.
+        if repo_roots:
+            files_meta = meta.get("files")
+            file_entries = files_meta if isinstance(files_meta, list) else []
+            for entry in file_entries:
+                rel_path = None
+                if isinstance(entry, dict):
+                    rel_path = entry.get("path")
+                elif isinstance(entry, str):
+                    rel_path = entry
+                if not rel_path:
+                    continue
+                rel_path = str(rel_path).strip().lstrip("/")
+                if not rel_path:
+                    continue
+                if not any((rr / rel_path).exists() for rr in repo_roots):
+                    errors.append(
+                        f"{rel} references non-existent path in frontmatter files: {rel_path}"
+                    )
 
     # Bug ID continuity: final delivery must be a single contiguous BUG-0001..BUG-N range.
     # Gaps and segmented per-agent ranges (e.g. parallel sub-agent merges) must be
@@ -408,6 +465,17 @@ def main() -> int:
                     warnings.append(msg)
                 else:
                     errors.append(msg)
+
+    # Authenticity: report cross-Bug literal-duplicate paragraphs in high-risk sections.
+    for normalized, locations in dedupe_index.items():
+        unique_bugs = {loc.split("::")[0] for loc in locations}
+        if len(unique_bugs) >= 2:
+            preview = (normalized[:60] + "…") if len(normalized) > 60 else normalized
+            errors.append(
+                "Duplicate paragraph (template-padding signal) appears in: "
+                + ", ".join(sorted(locations))
+                + f" — content starts with: {preview!r}"
+            )
 
     index_json = root / "indexes/findings.generated.json"
     if index_json.is_file():

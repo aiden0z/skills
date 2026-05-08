@@ -25,6 +25,8 @@ Use this when creating `submit/audit-overview.png`.
 
 The image is a compact entry point for the audit package. It should help readers understand scope, Bug distribution, core risk families, architecture signals, file structure, and version evidence before opening the Markdown files.
 
+> **Authenticity First** (`authenticity.md`): every number, repo name, module name, category label, and version string in the image must trace to `indexes/findings.generated.json`, README, or `quality/repository-versions.md`. No estimates, no "looks about right". The Quality Gate Q5 below is a single-veto check.
+
 If your output looks materially less designed than a polished editorial dashboard, re-read this document — you are likely missing one of: hero card differentiation, mono numerics, hue-separated P1-P4 chips, or the ≥12px type scale.
 
 ## Canvas
@@ -271,6 +273,7 @@ Before packaging:
 - Confirm each numeric value and "top" ranking can be traced to the source snapshot or package files.
 - Confirm image text follows `writing-style.md`.
 - Confirm the metadata footer ends with `工具 aiden0z/skills/repo-bug-audit` (unless the user explicitly opted out and the choice is recorded in `quality/submission-scope.md`).
+- **Q5 (authenticity, single veto)**: every concrete noun in the image (repo name, module name, category label, count, percentage, version, branch, commit, file path) must be findable in the package or repo. One miss → regenerate, do not patch the noun in isolation.
 - Reject the image if it contains unsupported claims, invented percentages, old terminology, unresolved placeholder text, personal identifiers not supplied by the user, or process/audience explanation.
 - The only allowed missing-value placeholders are `待补充` or `not specified` for the analyst field; omit the analyst field if that reads cleaner.
 - Compress the PNG without damaging small text; avoid aggressive color quantization if it makes Chinese text edges muddy. Target `<500KB` by default and `<200KB` only when it remains readable.

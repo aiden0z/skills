@@ -49,6 +49,8 @@ Do not include `sla`, `owner`, or `due_date` unless the user asks for workflow t
 
 ## Required Sections
 
+> **Read `authenticity.md` first.** The thickness rules below are **conditional on real evidence** — never invent steps, code refs, or fix targets to satisfy them. Use the honest-uncertainty markers (`证据不足：…`, `静态分析无法判断`, `未确认：…`) when evidence runs out.
+
 Use Chinese headings by default:
 
 1. `# <priority> <short title>`
@@ -66,6 +68,32 @@ Use Chinese headings by default:
 13. `## 验证标准`
 
 For English deliverables, use equivalent headings: `Conclusion`, `Impact Scope`, `Preconditions`, `Static Reproduction Path`, `Actual Behavior`, `Expected Behavior`, `Code Evidence`, `False-positive Review`, `Fix Boundary`, `Fix Suggestion`, `Suggested Verification Commands`, and `Validation Standard`.
+
+## Section Substance Bar
+
+For the four sections below, the agent must hit a minimum substance level OR write an honest-uncertainty marker (see `authenticity.md`). Never invent content to clear the bar.
+
+### 静态复现路径
+
+- ≥3 ordered steps; each step has `path:line` or a named symbol; steps are connected with prose ("接着 / 然后 / 此时"), not a bare list.
+- If real evidence does not support 3 steps: write the steps you have + `证据不足：<具体未覆盖的下游路径>`. A 2-step path with an honest marker is acceptable; a 3-step path with a fabricated step is not.
+
+### 代码证据
+
+- ≥1 code reference block (`path:line` quote, reasonably scoped, do not paste whole files) + ≥1 invariant statement directly tied to the quote ("应保证 / 期望" sentence).
+- The invariant must be derivable from the quoted code. If you cannot derive it, quote less code, write a smaller invariant, or move the Bug to candidates.
+
+### 修复边界
+
+- ≥1 primary modification target (file / function / contract) and ≥1 explicit out-of-scope item (`X 不需要改：<具体理由>`).
+- The out-of-scope item is the key signal: it forces the writer to think about blast radius. If you cannot justify any out-of-scope item from real adjacent code, write `out-of-scope 暂未确认：<具体不足之处>` rather than enumerating speculative "safe" files.
+
+### 修复建议
+
+- Two paragraphs:
+  - **最小修复** — must contain (a) a modification verb (修改 / 调整 / 替换 / 引入 / 移除), (b) a concrete noun (function / field / module name, not "这个方法"), and (c) a risk note (兼容性 / 性能 / 跨服务影响).
+  - **长期加固** — one structural recommendation, or write `无` if nothing structural is warranted. Do not invent generic patterns the codebase does not use.
+- If you cannot name a real modification target, write `未确认：修复对象需 owner 评估` and stop. Do not pad with generic advice ("建议添加 try/catch / 加强校验").
 
 ## Fix-Ready Sections
 
@@ -110,6 +138,7 @@ Never fabricate test file names, package scripts, or CI jobs.
 
 ## Writing Rules
 
+- **Authenticity First** (`authenticity.md`) overrides every rule below. If a rule cannot be met with real evidence, use an honest-uncertainty marker rather than fabricating.
 - Use concrete repo/module names and exact entry points.
 - Explain static reproduction as a code path, not a runtime claim.
 - Keep fix suggestions actionable but not overly prescriptive.
