@@ -2,6 +2,16 @@
 
 Use this when setting scope, writing README, recording repository versions, or building `audit-overview.png`.
 
+## Contents
+
+- Required Audit Metadata
+- Analyst Field
+- Repository Version Evidence
+- Audit Branch Confirmation
+- Stable Candidate Confidence
+- Where Metadata Appears
+- Audit Overview Image Metadata
+
 ## Required Audit Metadata
 
 Record in README and `quality/submission-scope.md`:

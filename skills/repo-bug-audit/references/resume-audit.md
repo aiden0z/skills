@@ -2,6 +2,15 @@
 
 Use this when continuing, deepening, reviewing, downgrading, or repackaging an existing audit workspace.
 
+## Contents
+
+- Bug ID Strategy — When Each Rule Applies
+- Start State
+- Updating Findings
+- Candidate Promotion
+- Parallel Multi-Agent Consolidation
+- Finish State
+
 ## Bug ID Strategy — When Each Rule Applies
 
 Two rules look like they conflict. They don't — they apply to different scenarios. Use this decision tree before assigning or renumbering any ID:

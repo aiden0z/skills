@@ -33,6 +33,7 @@ Thumbs.db
 .claude/
 .kiro/
 .windsurf/
+.superpowers/
 
 # Skill installer lock
 skills-lock.json

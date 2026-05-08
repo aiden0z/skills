@@ -4,6 +4,16 @@ Use this file when writing architecture-risk knowledge or interpreting repeated 
 
 Architecture principles are not Bugs by themselves. Use them to find concrete failure paths, repeated issue families, and cross-system risk signals.
 
+## Contents
+
+- Term Choices
+- Discovery Perspective
+- Architecture Principles to Risk Signals
+- Architecture Styles to Risk Signals
+- Review Sections
+- Evidence Standard
+- Relationship to Lens System
+
 ## Term Choices
 
 Use mature Chinese translations first. Keep English when the term is commonly used as-is.

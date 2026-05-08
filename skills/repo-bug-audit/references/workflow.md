@@ -24,7 +24,9 @@
 
 ## Phase 1: Minimal Knowledge Map
 
-Collect enough facts before hunting Bugs; do not wait for complete documentation. **For every repo in scope, write one `submit/knowledge/repo-profiles/<repo>.md` per `references/repo-profile.md`** — this includes a Mermaid call graph (per `references/call-graph-conventions.md`) and the 5 boundary types (Outbound / Inbound / Shared Events / Shared Storage / Shared Config) plus Intent Inputs (README/ADR/design docs index). The profile is the input substrate for Tier 3 lens and META-1; without it, cross-repo exploration cannot run.
+Collect enough facts before hunting Bugs; do not wait for complete documentation. **For every repo in scope, write one `submit/knowledge/repo-profiles/<repo>.md` per `references/repo-profile.md`** — this includes the 5 boundary types (Outbound / Inbound / Shared Events / Shared Storage / Shared Config), Intent Inputs (README/ADR/design docs index), and a Mermaid call graph per `references/call-graph-conventions.md` unless the repo qualifies for the ≤10-file small-repo exemption. The profile is the input substrate for Tier 3 lens and META-1; without it, cross-repo exploration cannot run.
+
+**Blocking output before Phase 2**: every audited repo has a profile file, and each profile has either a Mermaid call graph or the exact small-repo exemption marker from `repo-profile.md`.
 
 - Repositories, branches, languages, frameworks, build systems.
 - Entry points: API views/controllers, service/provider layers, tasks, workers, CLIs, scripts.
@@ -65,15 +67,19 @@ Core loop per lens (4 steps):
 1. **Hypothesize** — write down the failure mode you are looking for, before grepping
 2. **Hunt** — apply the lens's "Where to look" patterns
 3. **Refute** — for each candidate, find a sibling site that handles the same scenario correctly; the diff is the bug or the false-positive guard
-4. **Promote or Park** — surviving candidates become Bugs; reputed-but-weak go to `work/candidates/`; refuted go into the lens application record's "排除原因"
+4. **Promote or Park** — surviving candidates become Bugs; reputed-but-weak go to `work/candidates/`; refuted candidates go into the lens application record's exclusion reasons
 
-**Coverage requirement**: Tier 2 (L8-L14) and Tier 3 (L15-L19, when audit covers ≥2 repos) lens must each have a 5-section application record in `submit/quality/lens-coverage.md`. Tier 1 (L1-L7) records optional. "已应用 lens 但未发现" is a legitimate, encouraged output. **Never invent findings to fill coverage** — see `authenticity.md`.
+**Coverage requirement**: single-repo default records Tier 1 (L1-L7), Tier 2 (L8-L14), and META. Multi-repo default records Tier 1 + Tier 2 + Tier 3 (L15-L19) + META. User-declared lightweight strategies may narrow the enabled subset, but every enabled lens must have a 5-section application record in `submit/quality/lens-coverage.md`. "Applied and found no Bug" is a legitimate, encouraged output. **Never invent findings to fill coverage** — see `authenticity.md`.
+
+**Blocking output before Phase 3**: `submit/quality/lens-coverage.md` contains an application record for the enabled lens subset, including lenses that produced zero candidates.
 
 **Pluggable strategy**: if the user specified a non-default strategy (in `submit/quality/submission-scope.md`), follow that strategy; coverage requirement applies to the declared lens subset.
 
 **Domain profile shapes lens priority** (`references/domain-profiles.md`); it does not exclude lens.
 
-**Knowledge feedback**: update the per-repo profile and call graph when a candidate reveals a new boundary, lifecycle, state owner, or cross-repo relationship.
+**Knowledge feedback**: update the per-repo profile and call graph when a candidate reveals a new boundary, lifecycle, state owner, verification source, candidate lead, or cross-repo relationship.
+
+**Exploration cognition**: while running lenses, write reusable facts to `work/drafts/knowledge-capture.md` per `knowledge-capture.md`. Treat it as a scratch ledger for facts learned from tracing, sibling diffs, false-positive guards, and uncovered paths.
 
 ## Phase 3: Deep Verification
 
@@ -97,8 +103,8 @@ Use `candidate-triage.md` for candidate notes and `deduplication.md` before deci
 - Filename must include priority, Bug id, and short description.
 - On continuation runs, use the next ID after the largest existing `BUG-xxxx`; do not renumber old records.
 - The final submitted package must contain a single contiguous `BUG-0001..BUG-N` sequence. Gaps and per-agent reserved ranges are rejected by `scripts/validate_bug_package.py`. For parallel multi-agent merges, see `resume-audit.md` → "Parallel Multi-Agent Consolidation".
-- Keep static-analysis status clear: do not say “已验证” unless runtime proof exists.
-- Add fix boundary, minimum safe fix, and suggested verification commands. Commands must be traceable to repository files; write `未确认` when no trustworthy command is visible.
+- Keep static-analysis status clear: do not claim runtime verification unless runtime proof exists.
+- Add fix boundary, minimum safe fix, and suggested verification commands. Commands must be traceable to repository files; write `unconfirmed` (or the deliverable-language equivalent) when no trustworthy command is visible.
 
 ## Phase 5: Architecture and Knowledge
 
@@ -111,27 +117,32 @@ Consolidate final knowledge files that help developers understand and continue t
 - `knowledge/repo-profiles/*.md` (already written in Phase 1; revise after lens findings expose new boundaries)
 - `work/candidates/` for low-confidence leads that should not enter submitted findings.
 
+First, promote evidence-backed atoms from `work/drafts/knowledge-capture.md` into the relevant submitted knowledge files. Leave speculative or refuted atoms in `work/`; do not paste raw exploration notes into final deliverables.
+
 **META-1 sweep (intent vs implementation drift)**: using each repo profile's `Intent Inputs` section, scan README / ADR / design docs / key commit messages and compare to actual code behavior. Findings are not new categories — they map back to L1-L19 (record the lens in `bug-schema.md` frontmatter `lens:`). META-1 may also surface as additional context in existing Bugs.
 
-**META-2 sweep (failure-path test coverage)**: spot-check `tests/` against modules touched by Tier 2/3 Bugs. If a Bug's affected code path has no failure-path tests, note "风险增强：缺测试" in the relevant lens application record (this may justify priority bump).
+**META-2 sweep (failure-path test coverage)**: spot-check `tests/` against modules touched by Tier 2/3 Bugs. If a Bug's affected code path has no failure-path tests, note this as risk amplification in the relevant lens application record (this may justify a priority bump).
 
 Use `knowledge-base.md` for the final completeness check.
+Before packaging, revise each repo profile's `Verification Sources`, `Risk Surfaces`, and `Findings and Candidates` sections so the profile reflects submitted Bugs rather than only the initial inventory.
 Architecture review should describe risk signals, not dictate principles.
 Skip or collapse optional knowledge files when they would be empty or repetitive.
 
 ## Phase 6: Review and Package
 
 - Generate indexes.
-- For large or multi-repo packages, validate with `--require-knowledge`; add `--require-image` when `audit-overview.png` is expected.
+- Validate default lens completeness with `scripts/validate_bug_package.py`; for declared lightweight/custom strategies, use `--lens-scope custom` instead of skipping lens coverage.
+- For large or multi-repo packages, validate with `--require-knowledge`; add `--require-image` when `audit-overview.png` is expected, and `--require-html-report` when `bug-audit-report.html` is expected.
 - Run `evaluation.md` after structural validation.
 - Evaluate all P1/P2 Bugs; for large packages, sample each issue family and risk domain.
 - Re-read high-severity Bugs for false positives.
 - Record downgrade, removal, merge, or candidate-promotion decisions in `quality/submission-scope.md`.
 - Record priority-calibration changes and weak/unreviewed high-risk areas in `quality/submission-scope.md`.
 - Check duplicate wording across modules.
-- Check all Markdown is Chinese and developer-facing.
+- Check all submitted Markdown matches the final deliverable language and is developer-facing.
 - Remove empty optional knowledge files from `submit/`.
 - Check final repo knowledge is reusable and reflects submitted Bug families.
+- If a browser delivery report is expected, read `interactive-html-report.md`, generate `bug-audit-report.html` from final package files with `scripts/generate_bug_report_html.py`, and verify it with `validate_bug_package.py --require-html-report`.
 - Compress images; keep zip packages reasonably small.
 - Zip only `submit/`; do not include `work/`.
 - Rebuild zip after every final change.

@@ -2,6 +2,8 @@
 
 Use this before writing submitted Bug records, README files, knowledge docs, indexes, summaries, emails, or infographic text.
 
+Language boundary: methodology and skill instructions are English. Submitted deliverables use the requested language; default to Chinese when the user is Chinese and does not specify otherwise. The banned phrases and examples below are Chinese-focused because most default deliverables are Chinese; for English packages, apply the same principles instead of translating the banned list mechanically.
+
 ## Goal
 
 Write like a careful QA engineer or senior reviewer handing over concrete findings. The text should read as a project artifact, not as a chat transcript, tool output, or generated explanation.

@@ -39,6 +39,25 @@ REQUIRED_KNOWLEDGE_FOR_HANDOFF = [
     "knowledge/repo-relationship-map.md",
     "knowledge/risk-paths.md",
 ]
+HTML_REPORT_FILE = "bug-audit-report.html"
+HTML_TOP_NAV_GRADIENT = (
+    "linear-gradient(90deg,rgba(16,68,59,.96) 0%,"
+    "rgba(15,118,110,.94) 58%,rgba(18,130,113,.92) 100%)"
+)
+HTML_TOTAL_METRIC_BACKGROUND = "linear-gradient(145deg,#FFFFFF 0%,#F8FAFC 62%,#EEF2F7 100%)"
+HTML_MAX_SHELL_BOTTOM_PADDING_PX = 40
+HTML_MAX_FOOTER_MARGIN_TOP_PX = 28
+REQUIRED_HTML_SECTIONS = [
+    "hero",
+    "metrics",
+    "quality",
+    "architecture",
+    "repositories",
+    "findings",
+    "knowledge",
+    "package-guide",
+    "provenance",
+]
 REQUIRED_META = [
     "id",
     "priority",
@@ -54,11 +73,53 @@ REQUIRED_META = [
 ]
 # Allowed values for optional `lens` frontmatter field (see references/exploration-lenses.md).
 VALID_LENS = {f"L{i}" for i in range(1, 20)} | {"META-1", "META-2"}
+MERMAID_ID_RE = re.compile(r"\b[A-Za-z_][A-Za-z0-9_]*\b")
+MERMAID_DECL_RE = re.compile(r"\b([A-Za-z_][A-Za-z0-9_]*)\s*[\[(\{]")
+MERMAID_KEYWORDS = {
+    "flowchart",
+    "graph",
+    "sequenceDiagram",
+    "classDiagram",
+    "stateDiagram",
+    "stateDiagram-v2",
+    "erDiagram",
+    "journey",
+    "gantt",
+    "pie",
+    "gitGraph",
+    "mindmap",
+    "timeline",
+    "subgraph",
+    "end",
+    "direction",
+    "TB",
+    "TD",
+    "BT",
+    "LR",
+    "RL",
+}
 # Lens coverage record sections (5-section hard format from exploration-lenses.md).
 LENS_COVERAGE_SECTIONS = {
     "zh": ["已扫描入口", "关注模式", "候选数", "排除原因", "未覆盖"],
     "en": ["Scanned Entry Points", "Patterns", "Candidates", "Exclusion Reasons", "Uncovered"],
 }
+SINGLE_REPO_DEFAULT_LENS = {f"L{i}" for i in range(1, 15)} | {"META-1", "META-2"}
+MULTI_REPO_DEFAULT_LENS = VALID_LENS
+PROFILE_REQUIRED_SECTION_ALIASES = [
+    ("Tech Stack", ["Tech Stack", "技术栈"]),
+    ("Entry Points", ["Entry Points", "入口点"]),
+    ("Outbound Calls", ["Outbound Calls", "出站调用"]),
+    ("Inbound Endpoints", ["Inbound Endpoints", "入站端点"]),
+    ("Shared Events", ["Shared Events", "共享事件"]),
+    ("Shared Storage", ["Shared Storage", "共享存储"]),
+    ("Shared Config", ["Shared Config", "共享配置"]),
+    ("Intent Inputs", ["Intent Inputs", "意图输入"]),
+    ("Verification Sources", ["Verification Sources", "验证来源", "验证命令来源"]),
+    ("Risk Surfaces", ["Risk Surfaces", "风险面", "风险面与状态"]),
+    ("Call Graph", ["Call Graph", "调用图"]),
+    ("Findings and Candidates", ["Findings and Candidates", "发现与候选", "Bug 与候选"]),
+    ("Known Uncovered Areas", ["Known Uncovered Areas", "已知未覆盖区域", "未覆盖区域"]),
+]
 REQUIRED_SECTIONS = {
     "zh": [
         "结论",
@@ -254,6 +315,14 @@ def as_list(value) -> list:
     return [value]
 
 
+def lens_sort_key(lens_id: str) -> tuple[int, int]:
+    if lens_id.startswith("L") and lens_id[1:].isdigit():
+        return (0, int(lens_id[1:]))
+    if lens_id.startswith("META-") and lens_id[-1:].isdigit():
+        return (1, int(lens_id[-1]))
+    return (2, 999)
+
+
 def body_len(path: Path) -> int:
     text = path.read_text(encoding="utf-8", errors="replace")
     body = "\n".join(line for line in text.splitlines() if not line.startswith("#")).strip()
@@ -278,6 +347,21 @@ def section_body(text: str, section: str) -> str | None:
     return "\n".join(body).strip()
 
 
+def has_heading_alias(text: str, aliases: list[str]) -> bool:
+    for alias in aliases:
+        if re.search(rf"^##\s+{re.escape(alias)}\s*$", text, flags=re.MULTILINE | re.IGNORECASE):
+            return True
+    return False
+
+
+def missing_profile_sections(text: str) -> list[str]:
+    missing = []
+    for canonical, aliases in PROFILE_REQUIRED_SECTION_ALIASES:
+        if not has_heading_alias(text, aliases):
+            missing.append(canonical)
+    return missing
+
+
 def has_verification_command_or_marker(body: str) -> bool:
     normalized = body.lower()
     return bool(
@@ -288,10 +372,15 @@ def has_verification_command_or_marker(body: str) -> bool:
     )
 
 
-def check_lens_coverage(text: str, language: str) -> tuple[list[str], list[str]]:
+def check_lens_coverage(
+    text: str,
+    language: str,
+    expected_lens: set[str] | None = None,
+) -> tuple[list[str], list[str]]:
     """Parse lens-coverage.md content. Return (errors, warnings).
 
-    Format: each lens is an H3 like '### Lens L9 ...' followed by 5 bullet sections.
+    Format: each lens is an H3 like '### Lens L9 ...' or '### L9 ...',
+    followed by 5 bullet sections.
     """
     errors: list[str] = []
     warnings: list[str] = []
@@ -314,8 +403,40 @@ def check_lens_coverage(text: str, language: str) -> tuple[list[str], list[str]]
         if "无未覆盖" in block or "no uncovered" in block.lower():
             warnings.append(f"lens-coverage.md: lens {lens_id} claims no uncovered area; honest-uncertainty markers preferred")
     if not declared_lens:
-        errors.append("lens-coverage.md present but contains no lens record (expected '### Lens L? ...' blocks)")
+        errors.append("lens-coverage.md present but contains no lens record (expected '### Lens L? ...' or '### L? ...' blocks)")
+    if expected_lens:
+        declared = set(declared_lens)
+        missing = sorted(expected_lens - declared, key=lens_sort_key)
+        if missing:
+            errors.append(
+                "lens-coverage.md missing enabled lens records: "
+                + ", ".join(missing)
+                + " (use --lens-scope custom only when submission-scope.md declares a narrowed strategy)"
+            )
     return errors, warnings
+
+
+def mermaid_node_ids(block: str) -> set[str]:
+    """Best-effort Mermaid node extraction for guardrail warnings.
+
+    Counts both shaped declarations (`A[Label]`) and edge-only nodes (`A --> B`).
+    This is intentionally lightweight; it warns on obvious oversize diagrams without
+    trying to be a full Mermaid parser.
+    """
+    node_ids: set[str] = set()
+    for raw_line in block.splitlines():
+        line = raw_line.split("%%", 1)[0].strip()
+        if not line:
+            continue
+        node_ids.update(MERMAID_DECL_RE.findall(line))
+        if "--" not in line and "-." not in line and "==" not in line:
+            continue
+        without_edge_labels = re.sub(r"\|[^|]*\|", " ", line)
+        without_shape_labels = re.sub(r"\[[^\]]*\]|\([^)]*\)|\{[^}]*\}", " ", without_edge_labels)
+        for token in MERMAID_ID_RE.findall(without_shape_labels):
+            if token not in MERMAID_KEYWORDS:
+                node_ids.add(token)
+    return node_ids
 
 
 def check_mermaid_guards(text: str, rel_path: str) -> list[str]:
@@ -323,14 +444,130 @@ def check_mermaid_guards(text: str, rel_path: str) -> list[str]:
     warnings: list[str] = []
     blocks = re.findall(r"```mermaid\n(.*?)```", text, re.DOTALL)
     for idx, block in enumerate(blocks, 1):
-        node_ids = set(re.findall(r"\b([A-Za-z_][A-Za-z0-9_]*)\s*[\[(\{]", block))
+        node_ids = mermaid_node_ids(block)
         if len(node_ids) > 30:
             warnings.append(f"{rel_path} mermaid block #{idx}: {len(node_ids)} nodes exceeds guardrail of 30; consider splitting")
         block_end = text.find("```", text.find(block) + len(block) - 10)
         tail = text[block_end : block_end + 600] if block_end >= 0 else ""
-        if not re.search(r"未覆盖|Uncovered", tail):
-            warnings.append(f"{rel_path} mermaid block #{idx}: missing '未覆盖' / 'Uncovered' paragraph within ~600 chars after the diagram (per call-graph-conventions.md)")
+        if not re.search(r"Uncovered|未覆盖", tail):
+            warnings.append(f"{rel_path} mermaid block #{idx}: missing 'Uncovered' / '未覆盖' paragraph within ~600 chars after the diagram (per call-graph-conventions.md)")
     return warnings
+
+
+def check_repo_profile_guards(text: str, rel_path: str) -> list[str]:
+    warnings = check_mermaid_guards(text, rel_path)
+    if "```mermaid" in text:
+        return warnings
+    if re.search(r"调用图豁免|Call Graph Exemption", text, re.IGNORECASE):
+        return warnings
+    warnings.append(
+        f"{rel_path}: missing mermaid call graph; use a documented small-repo call graph exemption when the repo has <=10 files"
+    )
+    return warnings
+
+
+def compact_css(text: str) -> str:
+    return re.sub(r"\s+", "", text)
+
+
+def css_block(text: str, selector: str) -> str:
+    match = re.search(rf"{re.escape(selector)}\s*\{{([^}}]+)\}}", text, flags=re.DOTALL)
+    return match.group(1) if match else ""
+
+
+def css_property(block: str, property_name: str) -> str:
+    match = re.search(rf"{re.escape(property_name)}\s*:\s*([^;]+)", block)
+    return match.group(1).strip() if match else ""
+
+
+def css_px_number(value: str) -> float | None:
+    match = re.match(r"(-?\d+(?:\.\d+)?)px$", value.strip())
+    return float(match.group(1)) if match else None
+
+
+def css_padding_bottom_px(value: str) -> float | None:
+    parts = value.split()
+    if not parts:
+        return None
+    bottom_index = 0 if len(parts) <= 2 else 2
+    return css_px_number(parts[bottom_index])
+
+
+def check_html_design_contract(text: str) -> list[str]:
+    errors: list[str] = []
+    compact = compact_css(text)
+    if compact_css(HTML_TOP_NAV_GRADIENT) not in compact:
+        errors.append(
+            f"{HTML_REPORT_FILE}: top navigation must keep the approved theme gradient: {HTML_TOP_NAV_GRADIENT}"
+        )
+    if compact_css(HTML_TOTAL_METRIC_BACKGROUND) not in compact:
+        errors.append(
+            f"{HTML_REPORT_FILE}: total Bug metric card must keep the approved neutral-light background: "
+            f"{HTML_TOTAL_METRIC_BACKGROUND}"
+        )
+
+    shell_padding = css_property(css_block(text, ".shell"), "padding")
+    shell_bottom = css_padding_bottom_px(shell_padding)
+    if shell_bottom is None:
+        errors.append(f"{HTML_REPORT_FILE}: cannot verify .shell bottom padding")
+    elif shell_bottom > HTML_MAX_SHELL_BOTTOM_PADDING_PX:
+        errors.append(
+            f"{HTML_REPORT_FILE}: .shell bottom padding too large: {shell_bottom:g}px "
+            f"(max {HTML_MAX_SHELL_BOTTOM_PADDING_PX}px)"
+        )
+
+    footer_margin = css_property(css_block(text, ".report-footer"), "margin-top")
+    footer_margin_top = css_px_number(footer_margin)
+    if footer_margin_top is None:
+        errors.append(f"{HTML_REPORT_FILE}: cannot verify footer top margin")
+    elif footer_margin_top > HTML_MAX_FOOTER_MARGIN_TOP_PX:
+        errors.append(
+            f"{HTML_REPORT_FILE}: footer top margin too large: {footer_margin_top:g}px "
+            f"(max {HTML_MAX_FOOTER_MARGIN_TOP_PX}px)"
+        )
+    return errors
+
+
+def check_html_report(text: str, index_payload: dict | None = None) -> tuple[list[str], list[str]]:
+    errors: list[str] = []
+    warnings: list[str] = []
+    for section_id in REQUIRED_HTML_SECTIONS:
+        if f'id="{section_id}"' not in text and f"id='{section_id}'" not in text:
+            errors.append(f"{HTML_REPORT_FILE}: missing required section anchor: {section_id}")
+    required_terms = ["repo-bug-audit", "github.com/aiden0z/skills", "source=static-analysis"]
+    for term in required_terms:
+        if term not in text:
+            errors.append(f"{HTML_REPORT_FILE}: missing provenance term: {term}")
+    if re.search(r"\b(TODO|TBD|xxx)\b", text, flags=re.IGNORECASE):
+        errors.append(f"{HTML_REPORT_FILE}: unresolved placeholder marker found")
+    external_asset = re.search(
+        r"<(?:script|link|img|source|iframe)\b[^>]*(?:src|href)=['\"]https?://",
+        text,
+        flags=re.IGNORECASE,
+    )
+    if external_asset or re.search(r"url\(['\"]?https?://", text, flags=re.IGNORECASE):
+        errors.append(f"{HTML_REPORT_FILE}: external asset reference found; report must be self-contained")
+    errors.extend(check_html_design_contract(text))
+    if index_payload:
+        total = int(index_payload.get("total", 0) or 0)
+        m = re.search(r'data-total-bugs=["\'](\d+)["\']', text)
+        if not m:
+            errors.append(f"{HTML_REPORT_FILE}: missing data-total-bugs attribute")
+        elif int(m.group(1)) != total:
+            errors.append(f"{HTML_REPORT_FILE}: total Bug count mismatch: html={m.group(1)}, index={total}")
+        priority = index_payload.get("priority", {}) if isinstance(index_payload.get("priority"), dict) else {}
+        for prio in ("p1", "p2", "p3", "p4"):
+            expected = int(priority.get(prio.upper(), 0) or 0)
+            m = re.search(rf'data-priority-{prio}=["\'](\d+)["\']', text)
+            if not m:
+                errors.append(f"{HTML_REPORT_FILE}: missing data-priority-{prio} attribute")
+            elif int(m.group(1)) != expected:
+                errors.append(
+                    f"{HTML_REPORT_FILE}: {prio.upper()} count mismatch: html={m.group(1)}, index={expected}"
+                )
+    if len(text.encode("utf-8")) > 2_000_000:
+        warnings.append(f"{HTML_REPORT_FILE}: file exceeds 2MB; consider reducing embedded detail")
+    return errors, warnings
 
 
 def main() -> int:
@@ -340,6 +577,7 @@ def main() -> int:
     parser.add_argument("--max-image-kb", type=int, default=500, help="Warn if PNG exceeds this size")
     parser.add_argument("--require-knowledge", action="store_true", help="Require reusable knowledge docs for final handoff packages")
     parser.add_argument("--require-image", action="store_true", help="Require audit-overview.png for final handoff packages")
+    parser.add_argument("--require-html-report", action="store_true", help="Require bug-audit-report.html for final handoff packages")
     parser.add_argument("--banned", action="append", default=[], help="Additional banned text")
     parser.add_argument(
         "--repo-root",
@@ -353,7 +591,25 @@ def main() -> int:
     parser.add_argument(
         "--require-lens-coverage",
         action="store_true",
-        help="Require submit/quality/lens-coverage.md to exist and contain valid 5-section records per enabled lens",
+        help=(
+            "Deprecated compatibility flag. Lens coverage is required by default; "
+            "use --skip-lens-coverage for in-progress / resume runs only."
+        ),
+    )
+    parser.add_argument(
+        "--skip-lens-coverage",
+        action="store_true",
+        help="Skip required submit/quality/lens-coverage.md check. Reserved for in-progress / resume runs only.",
+    )
+    parser.add_argument(
+        "--lens-scope",
+        choices=["auto", "single", "multi", "custom"],
+        default="auto",
+        help=(
+            "Expected lens set for lens-coverage.md. auto uses repo-profile count "
+            "(one profile = L1-L14 + META; multiple profiles = L1-L19 + META). "
+            "Use custom only when submission-scope.md declares a narrowed strategy."
+        ),
     )
     parser.add_argument(
         "--allow-id-gaps",
@@ -366,6 +622,9 @@ def main() -> int:
         root = root / "submit"
     errors = []
     warnings = []
+    index_payload_for_html = None
+    if args.require_lens_coverage and args.skip_lens_coverage:
+        errors.append("Cannot combine --require-lens-coverage with --skip-lens-coverage")
 
     for d in REQUIRED_DIRS:
         if not (root / d).is_dir():
@@ -393,6 +652,14 @@ def main() -> int:
     for temporary_dir in ("candidates", "eval", "infographic", "scanner-output", "drafts", "tmp"):
         if (root / temporary_dir).exists():
             errors.append(f"Temporary directory must not be in audit output: {temporary_dir}")
+    profiles_dir = root / "knowledge/repo-profiles"
+    profile_paths = []
+    if profiles_dir.is_dir():
+        profile_paths = [p for p in sorted(profiles_dir.glob("*.md")) if p.name != "README.md"]
+    if not profile_paths and not args.skip_lens_coverage:
+        errors.append(
+            "Missing repo profiles: knowledge/repo-profiles/*.md is required for final lens-based delivery"
+        )
 
     seen_ids = {}
     finding_count = 0
@@ -543,23 +810,44 @@ def main() -> int:
 
     # Lens coverage check (D2 lens system)
     lens_coverage_path = root / "quality/lens-coverage.md"
-    if lens_coverage_path.is_file():
+    if args.skip_lens_coverage:
+        pass
+    elif lens_coverage_path.is_file():
         lc_text = lens_coverage_path.read_text(encoding="utf-8", errors="replace")
-        lc_errors, lc_warnings = check_lens_coverage(lc_text, args.language)
+        expected_lens = None
+        if args.lens_scope != "custom":
+            if args.lens_scope == "single":
+                expected_lens = SINGLE_REPO_DEFAULT_LENS
+            elif args.lens_scope == "multi":
+                expected_lens = MULTI_REPO_DEFAULT_LENS
+            elif len(profile_paths) > 1:
+                expected_lens = MULTI_REPO_DEFAULT_LENS
+            else:
+                expected_lens = SINGLE_REPO_DEFAULT_LENS
+        lc_errors, lc_warnings = check_lens_coverage(lc_text, args.language, expected_lens)
         errors.extend(lc_errors)
         warnings.extend(lc_warnings)
-    elif args.require_lens_coverage:
-        errors.append("Missing quality/lens-coverage.md (required by --require-lens-coverage; see references/exploration-lenses.md)")
+    else:
+        errors.append(
+            "Missing quality/lens-coverage.md (required by default; use --skip-lens-coverage only for in-progress / resume runs; see references/exploration-lenses.md)"
+        )
 
     # Mermaid call-graph guardrail check on repo profiles (D3)
-    profiles_dir = root / "knowledge/repo-profiles"
-    if profiles_dir.is_dir():
-        for profile_path in sorted(profiles_dir.glob("*.md")):
-            if profile_path.name in ("README.md",):
-                continue
+    if profile_paths:
+        for profile_path in profile_paths:
             profile_rel = profile_path.relative_to(root).as_posix()
             profile_text = profile_path.read_text(encoding="utf-8", errors="replace")
-            warnings.extend(check_mermaid_guards(profile_text, profile_rel))
+            warnings.extend(check_repo_profile_guards(profile_text, profile_rel))
+            missing_sections = missing_profile_sections(profile_text)
+            if missing_sections:
+                message = (
+                    f"{profile_rel}: missing required profile sections: "
+                    + ", ".join(missing_sections)
+                )
+                if args.require_knowledge:
+                    errors.append(message)
+                else:
+                    warnings.append(message)
 
     index_json = root / "indexes/findings.generated.json"
     if index_json.is_file():
@@ -568,6 +856,7 @@ def main() -> int:
         except json.JSONDecodeError as exc:
             errors.append(f"indexes/findings.generated.json is not valid JSON: {exc}")
         else:
+            index_payload_for_html = index_payload
             if index_payload.get("total") != finding_count:
                 errors.append(
                     "indexes/findings.generated.json total is stale: "
@@ -665,6 +954,15 @@ def main() -> int:
                     errors.append(message)
                 else:
                     warnings.append(message)
+
+    html_report = root / HTML_REPORT_FILE
+    if args.require_html_report and not html_report.is_file():
+        errors.append(f"Missing required interactive HTML report: {HTML_REPORT_FILE}")
+    if html_report.is_file():
+        html_text = html_report.read_text(encoding="utf-8", errors="replace")
+        html_errors, html_warnings = check_html_report(html_text, index_payload_for_html)
+        errors.extend(html_errors)
+        warnings.extend(html_warnings)
 
     print(f"Validated package: {root}")
     print(f"Errors: {len(errors)}")

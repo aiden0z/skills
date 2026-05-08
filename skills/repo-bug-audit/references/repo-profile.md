@@ -1,16 +1,28 @@
 # Per-Repo Profile
 
-每个被审计的 repo 在 `submit/knowledge/repo-profiles/<repo-name>.md` 输出一份 profile。这是 D2 跨 repo lens（L15-L19）和 META-1（意图与实现漂移）的输入支点：没有 profile 就跑不动 Tier 3。
+Each audited repository gets one profile at `submit/knowledge/repo-profiles/<repo-name>.md`. The profile feeds Tier 3 lenses (L15-L19) and META-1. Without it, cross-repo exploration has no reliable boundary inventory.
 
-> 第一约束：见 `authenticity.md`。本文 profile 中每一项 path:line / 端点 / 函数名 / commit hash 必须真实存在，**优先空集 + 诚实标记，不要伪造完整性**。
+File naming: use the repository short name. If the scope is written as `org/repo`, use `org__repo.md`. Only lowercase letters, numbers, dots, underscores, and hyphens are allowed; convert other characters to `-`.
 
-## 何时写
+> First constraint: see `authenticity.md`. Every path, line number, endpoint, function, and commit hash in the profile must be real. Prefer an empty set plus an explicit uncertainty marker over fabricated completeness.
 
-Phase 1 知识收集结束时，**为每个 repo 写一份**。即使是单 repo 审计也要写——它是后续所有 lens 应用记录的引用基底。
+## Contents
 
-如果某 repo 完全无跨 repo 通信（纯内部库、纯 CLI 工具），仍要写 profile，但 5 类边界段中 4 类可能是空集，明确标 "本 repo 未发现该类边界"。
+- When to Write
+- Required Sections
+- Section Guidance
+- Writing Rules
+- Lens Mapping
 
-## 必含段（顺序固定）
+## When to Write
+
+Write one profile for each repo after Phase 1 minimal knowledge collection. Even single-repo audits need a profile because lens records use it as the entry-point substrate.
+
+If a repo has no cross-repo communication (for example, a small internal library or CLI tool), still write a profile. Boundary sections may be empty, but mark them explicitly as "No boundary of this type found in this repo."
+
+## Required Sections
+
+Use these canonical sections in English for skill-facing consistency. If the final package language is not English, translate section titles consistently while preserving the same order and meaning.
 
 ```markdown
 # <repo-name> Profile
@@ -23,184 +35,204 @@ Phase 1 知识收集结束时，**为每个 repo 写一份**。即使是单 repo
 ## Shared Storage
 ## Shared Config
 ## Intent Inputs
-## 调用图
-## 已知未覆盖
+## Verification Sources
+## Risk Surfaces
+## Call Graph
+## Findings and Candidates
+## Known Uncovered Areas
 ```
 
-下面逐段说明。
+## Section Guidance
 
 ### 1. Tech Stack
 
-简明列表。语言、框架、构建工具、关键中间件。每项一行。证据来自 `package.json` / `pom.xml` / `go.mod` / `requirements.txt` / `Dockerfile` 等可定位文件——不要凭文件名猜测。
+List language, framework, build tool, middleware, and test framework. Cite evidence from files such as `package.json`, `pom.xml`, `go.mod`, `requirements.txt`, `pyproject.toml`, or `Dockerfile`. Do not infer stack from filenames alone.
 
 ```markdown
-- 语言：Python 3.11（pyproject.toml）
-- Web 框架：FastAPI 0.104（requirements.txt:15）
-- ORM：SQLAlchemy 2.x（requirements.txt:22）
-- 队列：Celery + Redis（requirements.txt:30, docker-compose.yml:42）
-- 测试：pytest（pytest.ini）
+- Language: Python 3.11 (`pyproject.toml`)
+- Web framework: FastAPI 0.104 (`requirements.txt:15`)
+- ORM: SQLAlchemy 2.x (`requirements.txt:22`)
+- Queue: Celery + Redis (`requirements.txt:30`, `docker-compose.yml:42`)
+- Tests: pytest (`pytest.ini`)
 ```
 
 ### 2. Entry Points
 
-所有可触发本 repo 代码执行的外部入口。分类：
+List all external ways to execute repo code:
 
-- HTTP/gRPC 路由（path → handler 函数 + path:line）
-- 消息消费者（topic/queue → handler）
-- 定时任务（cron 表达式 → handler）
-- CLI 命令（命令名 → entry function）
-- WebSocket / 长连接
+- HTTP/gRPC routes: path → handler + `path:line`
+- Message consumers: topic/queue → handler
+- Scheduled jobs: cron expression → handler
+- CLI commands: command → entry function
+- WebSocket or long-lived connections
 
 ```markdown
 ### HTTP
-- POST /api/v1/snapshots → src/api/snapshots.py:42 create_snapshot
-- DELETE /api/v1/snapshots/{id} → src/api/snapshots.py:101 delete_snapshot
+- POST /api/v1/snapshots -> `src/api/snapshots.py:42` `create_snapshot`
+- DELETE /api/v1/snapshots/{id} -> `src/api/snapshots.py:101` `delete_snapshot`
 
 ### Worker
-- queue=cleanup → src/workers/cleanup.py:18 process_cleanup
+- queue=cleanup -> `src/workers/cleanup.py:18` `process_cleanup`
 ```
 
-### 3. Outbound Calls (跨 repo / 跨服务出站)
+### 3. Outbound Calls
 
-本 repo 主动调用其他服务/repo 的位置。这是 L15 (契约漂移) 的探测面。
+Calls this repo makes to another service or repo. This feeds L15.
 
 ```markdown
-| 目标服务 | 调用方式 | 调用位置 | Schema 来源 |
+| Target | Method | Call Site | Schema Source |
 |---|---|---|---|
-| user-service | HTTP GET /users/{id} | src/clients/user.py:23 | 无 schema 定义；字段从 src/clients/user.py:30 反推 |
-| billing-service | gRPC ChargeOrder | src/clients/billing.py:55 | proto 在 ../shared-protos/billing.proto:12（外部 repo） |
+| user-service | HTTP GET /users/{id} | `src/clients/user.py:23` | No schema; fields inferred from `src/clients/user.py:30` |
+| billing-service | gRPC ChargeOrder | `src/clients/billing.py:55` | `../shared-protos/billing.proto:12` |
 ```
 
-字段 `Schema 来源` 直接喂 L15。如果是 "无 schema 定义；字段从代码反推"，就是 L15 高风险信号。
+`No schema` is a high-risk signal for L15, not a finding by itself.
 
 ### 4. Inbound Endpoints
 
-被外部 repo 调用的本 repo 端点。即第 2 段 Entry Points 中的子集——**那些被其他 repo 已知会调用的**。如果不能确认是否被外部调用，标 `调用方未确认`。
+Endpoints in this repo that are known or likely to be called by another repo. If the caller cannot be confirmed, write `caller unconfirmed`.
 
 ```markdown
-| 端点 | 已知调用方 (repo) | 契约定义位置 |
+| Endpoint | Known Callers | Contract Location |
 |---|---|---|
-| POST /api/v1/snapshots | release-cli, web-frontend | OpenAPI 在 docs/openapi.yaml |
-| internal: validate_token | auth-gateway（调用方未确认） | 无契约文档 |
+| POST /api/v1/snapshots | release-cli, web-frontend | `docs/openapi.yaml` |
+| internal: validate_token | auth-gateway (caller unconfirmed) | No contract document found |
 ```
 
 ### 5. Shared Events
 
-本 repo 生产或消费的跨服务事件/消息。
+Events or messages produced or consumed across service boundaries.
 
 ```markdown
-### 生产
-- snapshot.created → Kafka topic `release.snapshot` (src/events/publisher.py:40)
-  - schema: src/events/schemas/snapshot_created.py:5
-  - 字段：id, version, files[], created_at
+### Produced
+- snapshot.created -> Kafka topic `release.snapshot` (`src/events/publisher.py:40`)
+  - schema: `src/events/schemas/snapshot_created.py:5`
+  - fields: id, version, files[], created_at
 
-### 消费
-- billing.charged ← Kafka topic `billing.events` (src/workers/billing_listener.py:12)
-  - schema 来源：未确认（消费方按字段名解析）
+### Consumed
+- billing.charged <- Kafka topic `billing.events` (`src/workers/billing_listener.py:12`)
+  - schema source: unconfirmed; consumer parses fields by name
 ```
-
-`schema 来源：未确认` 是 L15 必查信号。
 
 ### 6. Shared Storage
 
-被本 repo 直接读/写的、且**至少一个其他 repo 也访问的**存储位置。喂 L17（共享状态所有权）。
+Storage directly read or written by this repo where at least one other repo also has access. This feeds L17.
 
 ```markdown
-| 存储 | 表/Key | 本 repo 访问方式 | 已知共享方 |
+| Storage | Table / Key / Prefix | This Repo Access | Known Shared Parties |
 |---|---|---|---|
-| MySQL | release.snapshots | 读+写 | release-worker (写)、analytics (只读) |
-| Redis | snapshot:lock:* | 读+写+TTL | release-worker (写) |
-| S3 | s3://release-bucket/snapshots/ | 写 | analytics (读)、release-cli (读) |
+| MySQL | release.snapshots | read + write | release-worker (write), analytics (read-only) |
+| Redis | snapshot:lock:* | read + write + TTL | release-worker (write) |
+| S3 | s3://release-bucket/snapshots/ | write | analytics (read), release-cli (read) |
 ```
 
-如果不能确认共享方，标 `已知共享方：未确认`——这是 L17 候选。
+If shared parties cannot be confirmed, write `known shared parties: unconfirmed`.
 
 ### 7. Shared Config
 
-跨 repo 含义相同（或应该相同）的配置/feature flag/secret 名。喂 L17 + L12 (config 漂移)。
+Config, feature flags, and secret names that are shared across repos or should carry the same meaning.
 
 ```markdown
-- `RELEASE_LOCK_TIMEOUT` env：本 repo 默认 30s（config/settings.py:18）；release-worker 默认 60s（未确认是否预期不一致）
-- feature flag `enable_dual_write`：本 repo 在 src/release/snapshot.py:200 检查；release-worker 是否检查未确认
+- `RELEASE_LOCK_TIMEOUT`: this repo defaults to 30s (`config/settings.py:18`); release-worker default is unconfirmed.
+- feature flag `enable_dual_write`: checked in `src/release/snapshot.py:200`; release-worker usage unconfirmed.
 ```
 
 ### 8. Intent Inputs
 
-META-1（意图与实现漂移）的运作底料。列出本 repo 中**值得核对意图的文档来源**：
+Inputs for META-1 intent-vs-implementation drift. List only sources that actually exist:
 
 ```markdown
-- README.md（描述本 repo 用途、关键设计决策）
-- docs/architecture/snapshot-design.md（快照模块设计文档，2024 年初）
-- docs/adrs/0003-use-redis-for-locking.md（ADR）
-- 重要 commit message：
+- `README.md`: repo purpose and core behavior
+- `docs/architecture/snapshot-design.md`: snapshot design from early 2024
+- `docs/adrs/0003-use-redis-for-locking.md`: lock design ADR
+- Important commit messages:
   - abc1234 "fix: prevent snapshot drift" (2024-03)
   - def5678 "refactor: extract release service" (2024-06)
-- 关键 PR：#445 (snapshot lock redesign)
+- Key PR: #445 snapshot lock redesign
 ```
 
-**仅列实际找到的**。没有 ADR 就写 "未发现 ADR 目录"。**禁止**为了"完整性"虚构文档名。
+If README/docs/issues/commit messages are all absent, write `Intent Inputs: inferred`, cite the inference source (for example package metadata, entry names, CLI help, or test names), and mark confidence low. Never invent document names for completeness.
 
-META-1 跑的时候会拿这一段去对照代码，看注释/spec 与实现是否漂移。没有这一段就跑不了 META-1。
+### 9. Verification Sources
 
-### 9. 调用图
-
-按 `call-graph-conventions.md` 的 5 条护栏画 Mermaid 调用图。**每个 profile 至少 1 张图、最多视复杂度拆 N 张图**。
-
-每张图独立的 H3 段：
+List confirmed commands and the files that make them credible. This section feeds Bug records' `Suggested Verification Commands` and META-2.
 
 ```markdown
-### 调用图：HTTP 写入路径
-
-> 入口：POST /api/v1/snapshots；目的：展示快照创建从入口到落库的链路
-
-```mermaid
-flowchart LR
-    A[POST /snapshots] -->|api/snapshots.py:42| B[create_snapshot]
-    B -->|services/release.py:12| C[reserve_files]
-    C -.->|未直接确认: 通过 celery delay| D[CleanupTask]
+| Command / Source | Evidence | Coverage |
+|---|---|---|
+| `npm test` | `package.json:scripts.test` | broad unit suite |
+| `make test-storage` | `Makefile:test-storage` | storage module regression |
+| unconfirmed | no module-specific test command found for `src/snapshot/` | command gap for snapshot Bugs |
 ```
 
-**未覆盖区域**
-- auth 中间件（chains in src/middleware/auth.py）
-- 错误响应路径
-- 第三方 SDK 内部
-```
+Do not invent commands. If only a generic command is visible, say it is generic.
 
-### 10. 已知未覆盖
+### 10. Risk Surfaces
 
-profile 整体的诚实空集汇总。列出 agent 知道存在但**没有时间/能力深入**的区域：
+Summarize state owners, lifecycle transitions, and resource boundaries that lens passes should revisit.
 
 ```markdown
-- src/legacy/ 模块（500+ 行遗留代码，已知有自己的入口但未画入调用图）
-- 单元测试 fixtures 中的隐藏调用（tests/conftest.py 内 monkeypatch 较多）
-- C 扩展模块 src/native/_fast.so（无源码，仅 .so 文件）
+| Resource / State | Owner Module | Lifecycle / Failure Surface | Evidence |
+|---|---|---|---|
+| snapshot record | `src/snapshot/service.py` | create -> upload -> publish -> cleanup | `src/snapshot/service.py:42` |
+| distributed lock | `src/locks/redis_lock.py` | acquire / renew / release / expire | `src/locks/redis_lock.py:18` |
 ```
 
-这一段不是"我没干完活"，而是"我诚实告诉你哪里没看"。这是 META-1 / META-2 后续可以接力的地方。
+Keep this compact. It should help the next agent choose paths, not become a full design document.
 
-## 写作规范
+### 11. Call Graph
 
-- **所有 path:line 必须真实**：写之前 grep 确认；validator 的 `--repo-root` 检查会扫到错误
-- **禁止 "应该" / "可能" / "推测"**：详见 `authenticity.md` 与 `writing-style.md` 的禁用词
-- **未确认就用未确认**：`schema 来源：未确认`、`调用方：未确认`、`是否预期不一致：未确认` 都是合法且鼓励的表达
-- **简洁优先**：每段如果只有 1-2 项，不要硬凑。Tech Stack 的 5 行胜过 30 行装饰
-- **每个 profile 文件 < 800 行**：超过就该拆。多入口大型 repo 可以按子系统拆（profile + N 张图 vs 多个 profile 文件，二选一）
+Follow `call-graph-conventions.md`. Default expectation: at least one Mermaid graph. Complex repos may split graphs by use case or subsystem.
 
-## 与 lens 的衔接
+Small-repo exemption: if the repo has no more than 10 source/config files and a text description is clearer than a diagram, omit Mermaid and write `Call Graph Exemption: <=10-file small repo; text summary is clearer.` Then provide 3-8 lines covering entry points, core functions, and uncovered areas. The validator warns when a profile has neither Mermaid nor the exemption marker.
 
-| Profile 段 | 直接喂的 lens |
+### 12. Findings and Candidates
+
+After Bug records are written, link the repo profile back to submitted Bugs and important candidate leads.
+
+```markdown
+### Submitted Bugs
+- `BUG-0003`: snapshot cleanup loses retry state after partial upload failure.
+
+### Candidate Leads
+- `work/candidates/snapshot-cache-drift.md`: parked because caller ownership is unconfirmed.
+```
+
+Use Bug IDs, candidate filenames, and one-line failure modes. Do not duplicate full Bug records here.
+
+### 13. Known Uncovered Areas
+
+List areas the agent knows exist but did not inspect deeply:
+
+```markdown
+- `src/legacy/`: 500+ lines with separate entry points, not included in call graph.
+- `tests/conftest.py`: fixture monkeypatching may hide additional call paths.
+- `src/native/_fast.so`: compiled extension without source.
+```
+
+This is an honesty marker, not an apology.
+
+## Writing Rules
+
+- Verify every `path:line` before writing it.
+- Use `unconfirmed` for unknown schema sources, callers, ownership, or intent inputs.
+- Keep sections compact; 5 real tech-stack lines beat 30 decorative lines.
+- Keep each profile under 800 lines. Split by subsystem only when needed.
+- Do not force a meaningless Mermaid diagram for a <=10-file utility repo; use the exemption marker and a concise text summary.
+- Update `Verification Sources`, `Risk Surfaces`, and `Findings and Candidates` after Bug records are written; Phase 1 profiles are allowed to start thin, final profiles are not.
+
+## Lens Mapping
+
+| Profile Section | Feeds |
 |---|---|
-| Outbound Calls | L15 契约漂移 |
-| Shared Events | L15、L18（重试幂等）|
-| Shared Storage | L17 共享状态所有权 |
-| Shared Config | L12 配置环境漂移、L17 |
-| Inbound + Outbound 组合 | L16 saga 完整性、L19 迁移发布安全 |
-| Intent Inputs | META-1 意图漂移 |
-| 调用图 | 几乎所有 Tier 2 lens 的 entry-point 来源 |
-| 已知未覆盖 | META-2 测试覆盖盲区 + 后续 audit 接力 |
-
-## 与 validator 的衔接
-
-- `submit/knowledge/repo-profiles/<repo>.md` 至少存在一个文件 → ERROR if 缺失
-- 每个 profile 必须包含 10 个标题段（# 一级标题 + 9 个二级标题）→ WARN if 缺段
-- profile 中所有出现的 `path:line` 引用，受 `--repo-root` 路径存在性检查（与 frontmatter `files[]` 同规则）
+| Outbound Calls | L15 contract drift |
+| Shared Events | L15, L18 retry/idempotency |
+| Shared Storage | L17 shared-state ownership |
+| Shared Config | L12 config drift, L17 |
+| Inbound + Outbound | L16 saga completeness, L19 release safety |
+| Intent Inputs | META-1 intent drift |
+| Verification Sources | META-2 and Bug verification commands |
+| Risk Surfaces | L8-L14 path selection and fix handoff |
+| Call Graph | Tier 2 entry-point substrate |
+| Findings and Candidates | final handoff and resume audits |
+| Known Uncovered Areas | META-2 and future audit handoff |

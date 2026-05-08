@@ -2,6 +2,15 @@
 
 Use one Markdown file per Bug. Store structured metadata in the Markdown file itself.
 
+## Contents
+
+- Filename
+- Metadata Block
+- Required Sections
+- Section Substance Bar
+- Fix-Ready Sections
+- Writing Rules
+
 ## Filename
 
 `P<priority>-BUG-<id>-<short-kebab-description>.md`
@@ -41,22 +50,22 @@ lens:
 ---
 ```
 
-`lens` is an optional list (multi-valued) tagging which exploration lens(es) surfaced this Bug. Allowed values: `L1`-`L19`, `META-1`, `META-2` (see `exploration-lenses.md`). Validator enforces enum membership. Use the lens that best matches the Bug's primary phenomenon; if multiple apply, list them in priority order.
+`lens` is an optional list tagging which exploration lens surfaced the Bug. Allowed values are `L1`-`L19`, `META-1`, and `META-2`. Use the lens that best matches the primary phenomenon; if multiple apply, list them in priority order.
 
 Do not include `sla`, `owner`, or `due_date` unless the user asks for workflow tracking.
 
-`fix_risk` describes the expected risk of changing the affected code path, not the Bug impact:
+`fix_risk` describes the expected risk of changing the affected code path, not Bug impact:
 
-- `low`: localized change, clear owner, limited blast radius.
-- `medium`: affects shared code, async state, compatibility, or multiple call paths.
-- `high`: affects cross-repo contracts, data migration, storage/network/control-plane lifecycle, or security boundaries.
-- `unknown`: evidence is enough to submit the Bug, but fix impact cannot be assessed without runtime or ownership context.
+- `low`: localized change, clear owner, limited blast radius
+- `medium`: shared code, async state, compatibility, or multiple call paths
+- `high`: cross-repo contracts, data migration, storage/network/control-plane lifecycle, or security boundaries
+- `unknown`: evidence is enough to submit the Bug, but fix impact needs runtime or ownership context
 
 ## Required Sections
 
-> **Read `authenticity.md` first.** The thickness rules below are **conditional on real evidence** — never invent steps, code refs, or fix targets to satisfy them. Use the honest-uncertainty markers (`证据不足：…`, `静态分析无法判断`, `未确认：…`) when evidence runs out.
+Read `authenticity.md` first. Substance requirements are conditional on real evidence; never invent steps, code refs, or fix targets to satisfy them.
 
-Use Chinese headings by default:
+Chinese is the default final-deliverable language for Chinese users. Use these headings unless the user requests English:
 
 1. `# <priority> <short title>`
 2. `## 结论`
@@ -72,83 +81,103 @@ Use Chinese headings by default:
 12. `## 建议验证命令`
 13. `## 验证标准`
 
-For English deliverables, use equivalent headings: `Conclusion`, `Impact Scope`, `Preconditions`, `Static Reproduction Path`, `Actual Behavior`, `Expected Behavior`, `Code Evidence`, `False-positive Review`, `Fix Boundary`, `Fix Suggestion`, `Suggested Verification Commands`, and `Validation Standard`.
+For English deliverables, use:
+
+1. `# <priority> <short title>`
+2. `## Conclusion`
+3. `## Impact Scope`
+4. `## Preconditions`
+5. `## Static Reproduction Path`
+6. `## Actual Behavior`
+7. `## Expected Behavior`
+8. `## Code Evidence`
+9. `## False-positive Review`
+10. `## Fix Boundary`
+11. `## Fix Suggestion`
+12. `## Suggested Verification Commands`
+13. `## Validation Standard`
 
 ## Section Substance Bar
 
-For the four sections below, the agent must hit a minimum substance level OR write an honest-uncertainty marker (see `authenticity.md`). Never invent content to clear the bar.
+For the four sections below, hit the minimum substance level or write an honest-uncertainty marker from `authenticity.md`.
 
-### 静态复现路径
+### Static Reproduction Path
 
-- ≥3 ordered steps; each step has `path:line` or a named symbol; steps are connected with prose ("接着 / 然后 / 此时"), not a bare list.
-- If real evidence does not support 3 steps: write the steps you have + `证据不足：<具体未覆盖的下游路径>`. A 2-step path with an honest marker is acceptable; a 3-step path with a fabricated step is not.
+- At least three ordered steps when evidence supports them.
+- Each step has a real `path:line`, named symbol, route, job, command, or call site.
+- If evidence supports fewer steps, write the real steps and add a specific uncertainty marker. A thin true path is better than a padded false path.
 
-### 代码证据
+### Code Evidence
 
-- ≥1 code reference block (`path:line` quote, reasonably scoped, do not paste whole files) + ≥1 invariant statement directly tied to the quote ("应保证 / 期望" sentence).
-- The invariant must be derivable from the quoted code. If you cannot derive it, quote less code, write a smaller invariant, or move the Bug to candidates.
+- Include at least one scoped code reference block or quoted excerpt.
+- Add at least one invariant statement directly tied to the quote: what the code should preserve, release, validate, retry, order, or reject.
+- The invariant must be derivable from the quoted code. If not, narrow the claim or move the lead to candidates.
 
-### 修复边界
+### Fix Boundary
 
-- ≥1 primary modification target (file / function / contract) and ≥1 explicit out-of-scope item (`X 不需要改：<具体理由>`).
-- The out-of-scope item is the key signal: it forces the writer to think about blast radius. If you cannot justify any out-of-scope item from real adjacent code, write `out-of-scope 暂未确认：<具体不足之处>` rather than enumerating speculative "safe" files.
+- Name the primary modification target: file, function, module, schema, config, or contract.
+- Name at least one out-of-scope item when evidence supports it.
+- If no out-of-scope boundary can be proven, write a precise unconfirmed marker instead of inventing safe files.
 
-### 修复建议
+### Fix Suggestion
 
-- Two paragraphs:
-  - **最小修复** — must contain (a) a modification verb (修改 / 调整 / 替换 / 引入 / 移除), (b) a concrete noun (function / field / module name, not "这个方法"), and (c) a risk note (兼容性 / 性能 / 跨服务影响).
-  - **长期加固** — one structural recommendation, or write `无` if nothing structural is warranted. Do not invent generic patterns the codebase does not use.
-- If you cannot name a real modification target, write `未确认：修复对象需 owner 评估` and stop. Do not pad with generic advice ("建议添加 try/catch / 加强校验").
+Use two short paragraphs or bullets:
+
+- **Minimum safe fix**: modification verb + concrete target + risk note.
+- **Longer-term hardening**: optional structural improvement, or `none` / `无` if no structural hardening is warranted.
+
+If no real modification target can be named, write an unconfirmed marker and stop. Do not pad with generic advice.
 
 ## Fix-Ready Sections
 
-Use these sections to help a later Agent or developer repair the Bug without expanding scope.
+Use these sections to help a later agent or developer repair the Bug without expanding scope.
 
-### 修复边界
+### Fix Boundary
 
 State the safest change boundary:
 
-- Primary files, functions, services, or contracts likely involved.
-- Files or modules that should not be changed unless new evidence requires it.
-- Cross-repo or external contract impact, if any.
-- Data migration, compatibility, rollout, or recovery concerns, if visible from code.
+- Primary files, functions, services, or contracts likely involved
+- Files or modules that should not change unless new evidence requires it
+- Cross-repo or external contract impact, if visible
+- Data migration, compatibility, rollout, or recovery concerns, if visible
 
-Do not invent ownership, runtime behavior, or deployment constraints. If the boundary is not clear, say what is known and what remains unknown.
+Do not invent ownership, runtime behavior, or deployment constraints. If the boundary is unclear, say what is known and what remains unknown.
 
-### 修复建议
+### Fix Suggestion
 
 Separate:
 
-- Minimum safe fix: the smallest change that should remove the failure mode.
-- Longer-term hardening: optional structural cleanup, adapter isolation, reconciliation, idempotency, retry budget, or contract clarification.
+- Minimum safe fix: the smallest change that should remove the failure mode
+- Longer-term hardening: adapter isolation, reconciliation, idempotency, retry budget, contract clarification, or similar codebase-aligned follow-up
 
-Keep suggestions actionable but not overly prescriptive. Do not rewrite the full patch unless the user asks for fixes.
+Keep suggestions actionable but not overly prescriptive. Do not write the full patch unless the user asks for fixes.
 
-### 建议验证命令
+### Suggested Verification Commands
 
-List only commands that are traceable to repository files such as `package.json`, `pyproject.toml`, `tox.ini`, `pom.xml`, `build.gradle`, `go.mod`, `Cargo.toml`, `.csproj`, `Makefile`, CI config, test files, or existing scripts. Use `language-ecosystems.md` to identify credible command sources.
+List only commands traceable to repository files such as `package.json`, `pyproject.toml`, `tox.ini`, `pom.xml`, `build.gradle`, `go.mod`, `Cargo.toml`, `.csproj`, `Makefile`, CI config, test files, or existing scripts. Use `language-ecosystems.md` to identify credible command sources.
 
-If no trustworthy command is found, write:
+If no trustworthy command is found, write one of:
 
+- `unconfirmed: no repository command was found that directly covers this module`
 - `未确认：仓库中未找到可直接对应该模块的测试命令。`
 
-When a command is suggested, include why it is relevant:
+When a command is suggested, explain why it is relevant:
 
 ```markdown
-- `npm run test -- --run resource-delete.spec.ts`：`package.json` 中存在 `test` 脚本，覆盖资源删除失败后的状态展示。
-- `make test-storage`：`Makefile` 中存在该目标，可作为存储模块回归检查。
+- `npm run test -- --run resource-delete.spec.ts`: `package.json` defines `test`; the named spec covers state display after resource-delete failure.
+- `make test-storage`: `Makefile` defines this target; it is the closest storage-module regression command.
 ```
 
 Never fabricate test file names, package scripts, or CI jobs.
 
 ## Writing Rules
 
-- **Authenticity First** (`authenticity.md`) overrides every rule below. If a rule cannot be met with real evidence, use an honest-uncertainty marker rather than fabricating.
+- Authenticity First overrides every rule below.
 - Use concrete repo/module names and exact entry points.
 - Explain static reproduction as a code path, not a runtime claim.
 - Keep fix suggestions actionable but not overly prescriptive.
-- Make fix boundaries explicit enough for another Agent to avoid unrelated edits.
+- Make fix boundaries explicit enough for another agent to avoid unrelated edits.
 - Suggested verification commands must be evidence-backed; otherwise mark them unconfirmed.
-- Avoid duplicate generic paragraphs across many Bugs; each record must explain its own module and failure path.
-- Avoid “AI 分析”, “显然”, “可能存在大量问题” and other vague language.
+- Avoid duplicate generic paragraphs across Bugs; each record must explain its own module and failure path.
+- Avoid "AI analysis", "obvious", "many possible issues", and localized equivalents.
 - If a Bug is only pattern-level, reduce confidence or move it out of submitted findings.

@@ -6,6 +6,16 @@ Evaluation does not replace `validate_bug_package.py`. The script checks structu
 
 > **Authenticity First** (`references/authenticity.md`) is the rule that overrides every gate below. A Bug that fabricates content fails immediately, regardless of which other checks it would have passed.
 
+## Contents
+
+- 30-Minute-Fix Rubric (Bug-Level)
+- Bug-Level Gate
+- Q6 — Lens Coverage Gate (Package-Level)
+- Package-Level Gate
+- Depth Gate
+- Priority Calibration
+- Skill Regression Gate
+
 ## 30-Minute-Fix Rubric (Bug-Level)
 
 Read **only the Bug Markdown** (do not open the repo). Answer 5 questions:
@@ -57,14 +67,14 @@ Gate failure never pauses the workflow. The four actions above are the full acti
 
 Apply after Q1-Q5 pass on individual Bugs. Read `submit/quality/lens-coverage.md` and check:
 
-- For each lens enabled by the audit (default = Tier 2 + Tier 3 if multi-repo + Meta; user-specified strategy in `submission-scope.md` overrides), is there an entry?
-- Does each entry have all 5 sections (`已扫描入口` / `关注模式` / `候选数` / `排除原因` / `未覆盖`)?
-- Does `已扫描入口` list real paths? Does `排除原因` cite `path:line` anchors? Does `未覆盖` name a concrete uncovered area (not "无未覆盖")?
-- Q5 (authenticity) applies to lens-coverage.md content too — fabricated coverage claims (paths that don't exist, `with_lock` wrappers that don't exist, made-up "排除原因") fail the same way fabricated Bugs fail.
+- For each lens enabled by the audit (single-repo default = Tier 1 + Tier 2 + META; multi-repo default = Tier 1 + Tier 2 + Tier 3 + META; user-specified strategy in `submission-scope.md` overrides), is there an entry?
+- Does each entry have all 5 sections for the package language? English labels: `Scanned Entry Points` / `Patterns` / `Candidates` / `Exclusion Reasons` / `Uncovered`. Chinese labels: `已扫描入口` / `关注模式` / `候选数` / `排除原因` / `未覆盖`.
+- Do scanned entry points list real paths? Do exclusion reasons cite `path:line` anchors when candidates were excluded? Does uncovered area name a concrete gap rather than claiming perfect coverage?
+- Q5 (authenticity) applies to lens-coverage.md content too — fabricated coverage claims, non-existent wrappers, fake paths, or made-up exclusion reasons fail the same way fabricated Bugs fail.
 
 **Pass = every enabled lens has a complete, authentic 5-section record.** Missing lens or missing section → ERROR (also caught by validator). Sections present but content fabricated → Q5 veto applied to that lens's section; agent must strip fabrication and re-evaluate (same rule as Bug Q5 failure).
 
-"已应用 lens 但未发现" with concrete `已扫描入口` / `关注模式` / `候选数: 0` / `排除原因: 无候选` / `未覆盖: <真实未覆盖>` is a **passing** record, not a failure. Encourage this output over invented findings.
+"Applied and found no Bug" with concrete scanned entry points, search patterns, `Candidates: 0`, `Exclusion Reasons: N/A (no candidates)`, and a real uncovered area is a **passing** record, not a failure. Encourage this output over invented findings.
 
 ## Package-Level Gate
 
@@ -73,8 +83,9 @@ Check the package as a single artifact:
 - README counts match `indexes/findings.generated.json` exactly. No rounding, no estimates.
 - Knowledge claims in `system-overview.md`, `repo-relationship-map.md`, `risk-paths.md` each have ≥1 supporting code reference or Bug ID anchor (Q5 veto applies to knowledge files too).
 - `repo-profiles/<repo>.md` tech stack is read from real `package.json` / `pyproject.toml` / `pom.xml` / `Cargo.toml` / `go.mod`, not inferred from filenames.
+- `repo-profiles/<repo>.md` includes verification sources, risk surfaces, submitted Bug links, candidate links when present, and known uncovered areas. Missing profile sections are warnings by default and become validation errors under `--require-knowledge`.
 - `architecture-design-review.md` each risk bullet has ≥1 Bug ID or ≥1 code reference; pure abstract claims are removed.
-- `submission-scope.md` "downgraded / removed / merged" entries cite originating Bug ID and concrete failed gate; no `已确认无误 / 已复核全部` claims.
+- `submission-scope.md` "downgraded / removed / merged" entries cite originating Bug ID and concrete failed gate; no blanket "fully verified / fully reviewed" claims.
 - P1/P2 summaries align with actual Bug metadata and issue families.
 - P1/P2 summaries align with actual Bug metadata and issue families.
 - Repeated issue families are grouped in indexes or README without hiding concrete Bugs.

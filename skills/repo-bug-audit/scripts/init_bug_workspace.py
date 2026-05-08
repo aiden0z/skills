@@ -63,7 +63,9 @@ def zh_readme(args, domain_summary: str, analyst_line: str) -> str:
 - `indexes/`：自动生成的索引和结构化摘要。
 - `knowledge/`：系统概览、仓库关系、风险路径和架构风险分析。
 - `quality/submission-scope.md`：收录口径、排除边界和质量门禁。
+- `quality/lens-coverage.md`：已启用 lens、扫描入口、候选数、排除原因和未覆盖区域。
 - `standards/bug-report-standard.md`：Bug 描述规范。
+- `bug-audit-report.html`：可选的交互式交付报告，生成后用浏览器打开。
 
 临时评估记录可放在 `../work/eval/`，不进入审计交付物。
 """
@@ -99,7 +101,9 @@ Run `scripts/generate_bug_index.py` and update this section.
 - `indexes/`: generated indexes and structured summaries.
 - `knowledge/`: system overview, repository relationships, risk paths, and architecture risk review.
 - `quality/submission-scope.md`: inclusion rules, exclusion boundaries, and quality gates.
+- `quality/lens-coverage.md`: enabled lens, scanned entry points, candidate counts, exclusions, and uncovered areas.
 - `standards/bug-report-standard.md`: Bug report standard.
+- `bug-audit-report.html`: optional interactive delivery report, openable in a browser after generation.
 
 Temporary evaluation notes can live in `../work/eval/`; keep them out of the audit output.
 """
@@ -176,6 +180,16 @@ def main() -> int:
 - 问题族抽样、风险域覆盖和浅层模式占比：`待评估`
 - 重要降级、移除、合并或未覆盖高风险区域：`暂无`
 
+## Lens 覆盖
+
+- 默认策略：单仓 `Tier 1 + Tier 2 + META`；多仓 `Tier 1 + Tier 2 + Tier 3 + META`。
+- 覆盖记录：见 `quality/lens-coverage.md`。
+
+## 交互式报告
+
+- HTML 报告：`待决定`
+- 如果包含，生成文件为 `bug-audit-report.html`，并使用 `validate_bug_package.py --require-html-report` 验证。
+
 ## 当前状态
 
 `{args.status}`。
@@ -197,6 +211,20 @@ def main() -> int:
 - 无法采集时写 `unknown`，并在备注说明原因。
 - 不猜测缺失的版本信息，也不把版本号看起来最大的分支直接当成稳定分支。
 """
+        lens_coverage = """# Lens 覆盖记录
+
+按 `references/exploration-lenses.md` 填写。最终交付前，每个启用 lens 都必须有 5 段记录：
+
+```markdown
+### L? <名称> — 应用记录
+
+- 已扫描入口：<真实路径或入口列表>
+- 关注模式：<实际 grep / LSP / 调用图模式>
+- 候选数：0
+- 排除原因：N/A（无候选）
+- 未覆盖：<真实未覆盖区域>
+```
+"""
         candidates = """# 候选线索
 
 候选线索用于记录暂不进入审计交付物的问题。每条线索建议单独一个 Markdown 文件。
@@ -209,6 +237,22 @@ def main() -> int:
 - 未提交原因：<缺少的关键证据，或可能误报的地方>
 - 升级所需证据：<需要继续确认的入口、配置、调用链、测试、日志或运行条件>
 ```
+"""
+        knowledge_capture = """# 探索知识捕获
+
+按 `references/knowledge-capture.md` 记录探索中形成、之后可复用的仓库认知。这里是 scratch ledger，不直接进入最终交付物。
+
+```markdown
+### <repo> / <topic>
+
+- Type: entry-point | boundary | state-owner | lifecycle | invariant | false-positive-guard | verification-source | cross-repo-contract | risk-path | uncovered-area
+- Evidence: `path/to/file.ext:line` 或命令来源
+- Learned: <一个可复用事实>
+- Reuse Target: repo-profile | system-overview | repo-relationship-map | risk-paths | architecture-design-review | lens-coverage | candidate
+- Status: promote | parked | refuted
+```
+
+最终打包前，把有证据的 atom 提升到 `submit/knowledge/`，推测性内容留在 `work/`。
 """
         knowledge = f"""# {args.project} 知识入口
 
@@ -224,6 +268,30 @@ def main() -> int:
 
 知识库先形成最小底图，再随 Bug 证据持续补充。最终提交版本应能支持后续复核、继续分析和修复定位。
 记录主要语言生态、构建文件、测试命令来源和未确认的验证命令缺口。
+"""
+        profile_template = """# Repo Profile Template
+
+每个审计仓库创建一个独立 profile。`org/repo` 使用 `org__repo.md`。
+
+```markdown
+# <repo-name> Profile
+
+## Tech Stack
+## Entry Points
+## Outbound Calls
+## Inbound Endpoints
+## Shared Events
+## Shared Storage
+## Shared Config
+## Intent Inputs
+## Verification Sources
+## Risk Surfaces
+## Call Graph
+## Findings and Candidates
+## Known Uncovered Areas
+```
+
+要求见 skill 的 `references/repo-profile.md`。所有路径、命令、入口和 Bug ID 必须真实；不确定处写 `unconfirmed` / `未确认`。
 """
     else:
         status = "pending developer review" if args.status == "待开发复核" else args.status
@@ -270,6 +338,16 @@ Suggested verification commands must trace to repository files. If no reliable c
 - Issue-family sampling, risk-domain coverage, and shallow-pattern concentration: `pending`
 - Material downgrades, removals, merges, or unreviewed high-risk areas: `none`
 
+## Lens Coverage
+
+- Default strategy: single-repo `Tier 1 + Tier 2 + META`; multi-repo `Tier 1 + Tier 2 + Tier 3 + META`.
+- Coverage record: see `quality/lens-coverage.md`.
+
+## Interactive Report
+
+- HTML report: `pending`
+- If included, generate `bug-audit-report.html` and validate with `validate_bug_package.py --require-html-report`.
+
 ## Current Status
 
 `{args.status}`.
@@ -291,6 +369,20 @@ Suggested verification commands must trace to repository files. If no reliable c
 - Use `unknown` when evidence is unavailable, and explain why in Notes.
 - Do not guess missing version information or treat the highest-looking version as stable without evidence.
 """
+        lens_coverage = """# Lens Coverage
+
+Fill this per `references/exploration-lenses.md`. Before final handoff, every enabled lens must have a 5-section record:
+
+```markdown
+### L? <Name> — Application Record
+
+- Scanned Entry Points: <real paths or entry points>
+- Patterns: <actual grep / LSP / call-graph pattern>
+- Candidates: 0
+- Exclusion Reasons: N/A (no candidates)
+- Uncovered: <real uncovered area>
+```
+"""
         candidates = """# Candidate Leads
 
 Candidate leads are plausible issues that are not ready for the audit output. Prefer one Markdown file per lead.
@@ -303,6 +395,22 @@ Candidate leads are plausible issues that are not ready for the audit output. Pr
 - Not submitted because: <missing evidence or possible false-positive reason>
 - Evidence needed for promotion: <entry point, config, call chain, test, log, or runtime condition to verify>
 ```
+"""
+        knowledge_capture = """# Exploration Knowledge Capture
+
+Use this scratch ledger per `references/knowledge-capture.md` to record reusable repo cognition learned during exploration. Do not copy raw notes directly into final deliverables.
+
+```markdown
+### <repo> / <topic>
+
+- Type: entry-point | boundary | state-owner | lifecycle | invariant | false-positive-guard | verification-source | cross-repo-contract | risk-path | uncovered-area
+- Evidence: `path/to/file.ext:line` or command source
+- Learned: <one reusable fact>
+- Reuse Target: repo-profile | system-overview | repo-relationship-map | risk-paths | architecture-design-review | lens-coverage | candidate
+- Status: promote | parked | refuted
+```
+
+Before packaging, promote evidence-backed atoms into `submit/knowledge/`; leave speculative content in `work/`.
 """
         knowledge = f"""# {args.project} Knowledge Entry
 
@@ -319,13 +427,40 @@ Candidate leads are plausible issues that are not ready for the audit output. Pr
 Build a minimal map first, then enrich knowledge as Bug evidence accumulates. The final submitted knowledge should support later review, continued analysis, and fix planning.
 Record primary language ecosystems, build files, test command sources, and unconfirmed verification command gaps.
 """
+        profile_template = """# Repo Profile Template
+
+Create one profile per audited repository. Use `org__repo.md` for `org/repo`.
+
+```markdown
+# <repo-name> Profile
+
+## Tech Stack
+## Entry Points
+## Outbound Calls
+## Inbound Endpoints
+## Shared Events
+## Shared Storage
+## Shared Config
+## Intent Inputs
+## Verification Sources
+## Risk Surfaces
+## Call Graph
+## Findings and Candidates
+## Known Uncovered Areas
+```
+
+See `references/repo-profile.md` in the skill. Every path, command, entry point, and Bug ID must be real; mark unknowns as `unconfirmed`.
+"""
 
     write_if_missing(root / "submit/README.md", readme, args.force)
     write_if_missing(root / "submit/standards/bug-report-standard.md", standard, args.force)
     write_if_missing(root / "submit/quality/submission-scope.md", quality, args.force)
     write_if_missing(root / "submit/quality/repository-versions.md", versions, args.force)
+    write_if_missing(root / "submit/quality/lens-coverage.md", lens_coverage, args.force)
     write_if_missing(root / "submit/knowledge/README.md", knowledge, args.force)
+    write_if_missing(root / "submit/knowledge/repo-profiles/README.md", profile_template, args.force)
     write_if_missing(root / "work/candidates/README.md", candidates, args.force)
+    write_if_missing(root / "work/drafts/knowledge-capture.md", knowledge_capture, args.force)
 
     print(f"Initialized repository Bug audit workspace: {root}")
     print(f"Audit output root: {root / 'submit'}")

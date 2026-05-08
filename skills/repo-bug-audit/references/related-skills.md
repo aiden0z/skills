@@ -2,6 +2,14 @@
 
 Use this when choosing optional companion skills. Companion skills are accelerators, not dependencies.
 
+## Contents
+
+- Use Order
+- Companion Skill Hints
+- Commands
+- Rules
+- External Lenses
+
 ## Use Order
 
 1. Use any relevant skill already exposed by the current agent runtime.

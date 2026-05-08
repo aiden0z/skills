@@ -122,6 +122,7 @@ def collect(root: Path) -> list[dict]:
             "entry_points": as_json_list(meta.get("entry_points", [])),
             "files": as_json_list(meta.get("files", [])),
             "related_repos": as_json_list(meta.get("related_repos", [])),
+            "lens": as_list(meta.get("lens", [])),
             "title": first_heading(text),
             "path": str(path.relative_to(root)),
         }

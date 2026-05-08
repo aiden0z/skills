@@ -5,6 +5,7 @@ Use this when mapping repositories, updating `submit/knowledge/`, or checking th
 ## Contents
 
 - Operating Model
+- Exploration Knowledge Capture
 - Minimal Knowledge Map
 - Final Submitted Knowledge
 - Completeness Check
@@ -15,11 +16,27 @@ Knowledge and Bug discovery are iterative:
 
 1. Build a minimal knowledge map.
 2. Use it to choose risky paths.
-3. Promote evidence-backed candidates to Bugs.
-4. Feed Bug evidence back into repo knowledge.
-5. Repeat until the requested depth or package target is reached.
+3. Capture reusable exploration facts as knowledge atoms.
+4. Promote evidence-backed candidates to Bugs.
+5. Promote evidence-backed atoms into repo knowledge.
+6. Repeat until the requested depth or package target is reached.
 
 Do not wait for a complete knowledge base before hunting Bugs. Do not submit a package with only shallow inventory notes.
+
+## Exploration Knowledge Capture
+
+Read `knowledge-capture.md` during Phase 2. Use `work/drafts/knowledge-capture.md` as the scratch ledger for facts learned during search, refutation, and verification.
+
+Capture facts such as:
+
+- Entry points discovered while tracing candidates.
+- Boundary calls, event schemas, shared storage, shared config, and cross-repo contracts.
+- State owners, lifecycle transitions, locks, caches, queues, terminal states, and reconciliation paths.
+- Sibling implementations that explain false positives.
+- Verification command sources and command gaps.
+- Uncovered areas that constrain confidence.
+
+Before packaging, promote evidence-backed atoms into `submit/knowledge/` and leave speculative atoms in `work/`.
 
 ## Minimal Knowledge Map
 
@@ -94,20 +111,25 @@ Include:
 
 ### `repo-profiles/*.md`
 
-One file per important repo. Include:
+One file per audited repo. Include:
 
 - Repo responsibility and primary domain profile.
 - Key modules, entry points, background jobs, and external dependencies.
 - Language ecosystem, build metadata, and confirmed or missing test command sources.
 - Main resource lifecycles or user workflows.
+- Boundary inventories: outbound calls, inbound endpoints, shared events, shared storage, and shared config.
+- Intent inputs for META-1 and verification sources for META-2.
+- Risk surfaces: state owners, lifecycle transitions, and resource boundaries that future lens passes should revisit.
 - Submitted Bug families affecting the repo.
-- Important candidates or unknowns that should guide later passes.
+- Important candidates, uncovered areas, and unknowns that should guide later passes.
 
 ## Completeness Check
 
 Before packaging:
 
 - Knowledge reflects submitted Bugs, not only initial inventory.
+- Exploration knowledge atoms have been promoted, parked, or removed.
+- Every audited repo has a profile with boundary inventories, verification sources, risk surfaces, Bug links, and uncovered areas.
 - Repeated Bug families are summarized once and linked to concrete Bug IDs.
 - Cross-repo relationships explain the risk paths used in the findings.
 - Empty or repetitive optional files are removed.
