@@ -125,6 +125,34 @@ DEFAULT_BANNED = [
     "我将从",
     "我们发现",
     "值得关注",
+    # Inflated significance / "标志着" framing
+    "标志着",
+    "扮演关键角色",
+    "扮演了关键",
+    "扮演重要角色",
+    "扮演了重要",
+    "凸显了",
+    "凸显出",
+    "奠定了基础",
+    "奠定基础",
+    "代表着一次",
+    "反映了更广泛",
+    # Vacuous closers
+    "总而言之",
+    "综上所述",
+    "总的来说",
+    "在某种意义上",
+    # Future-looking filler in audit context
+    "展望未来",
+    "未来可期",
+    # Vague attribution
+    "业内普遍认为",
+    "相关研究表明",
+    "观察者指出",
+    # Promo-style adjectives applied to internal systems
+    "充满活力",
+    "全方位的",
+    "系统性地",
 ]
 PRIORITIES = {"P1", "P2", "P3", "P4"}
 CONFIDENCE = {"high", "medium", "low"}
@@ -242,6 +270,11 @@ def main() -> int:
     parser.add_argument("--require-knowledge", action="store_true", help="Require reusable knowledge docs for final handoff packages")
     parser.add_argument("--require-image", action="store_true", help="Require audit-overview.png for final handoff packages")
     parser.add_argument("--banned", action="append", default=[], help="Additional banned text")
+    parser.add_argument(
+        "--allow-id-gaps",
+        action="store_true",
+        help="Allow non-contiguous BUG-xxxx IDs. Reserved for in-progress / resume runs only; final delivery must be contiguous BUG-0001..BUG-N",
+    )
     args = parser.parse_args()
     root = Path(args.root).expanduser().resolve()
     if (root / "submit").is_dir() and not (root / "findings").is_dir():
@@ -331,6 +364,50 @@ def main() -> int:
                     errors.append(f"{rel} section is too thin: {section}")
                 if section in ("建议验证命令", "Suggested Verification Commands") and not has_verification_command_or_marker(body):
                     errors.append(f"{rel} suggested verification commands must include a confirmed command or an explicit unconfirmed marker")
+
+    # Bug ID continuity: final delivery must be a single contiguous BUG-0001..BUG-N range.
+    # Gaps and segmented per-agent ranges (e.g. parallel sub-agent merges) must be
+    # consolidated before submission. See references/resume-audit.md
+    # → "Parallel Multi-Agent Consolidation".
+    if seen_ids:
+        numeric_ids = []
+        for raw_id in seen_ids:
+            m = re.fullmatch(r"BUG-(\d{4})", str(raw_id))
+            if m:
+                numeric_ids.append(int(m.group(1)))
+        numeric_ids.sort()
+        if numeric_ids:
+            n = len(numeric_ids)
+            expected = list(range(1, n + 1))
+            min_id = numeric_ids[0]
+            max_id = numeric_ids[-1]
+            duplicates = sorted({x for x in numeric_ids if numeric_ids.count(x) > 1})
+            unique_sorted = sorted(set(numeric_ids))
+            missing = sorted(set(range(1, max_id + 1)) - set(unique_sorted))
+            is_contiguous_from_one = numeric_ids == expected and not duplicates
+            if not is_contiguous_from_one:
+                detail_parts = []
+                if min_id != 1:
+                    detail_parts.append(f"sequence does not start at BUG-0001 (min=BUG-{min_id:04d})")
+                if missing:
+                    preview = ", ".join(f"BUG-{x:04d}" for x in missing[:8])
+                    if len(missing) > 8:
+                        preview += f", … (+{len(missing) - 8} more)"
+                    detail_parts.append(f"missing IDs: {preview}")
+                if max_id != n or (min_id == 1 and missing):
+                    detail_parts.append(f"have {n} Bugs, max=BUG-{max_id:04d} (expected BUG-{n:04d})")
+                detail = "; ".join(detail_parts) or "non-contiguous sequence"
+                msg = (
+                    "Bug IDs must form a single contiguous range BUG-0001..BUG-"
+                    f"{n:04d} for final delivery. {detail}. "
+                    "If multiple agents ran in parallel, consolidate and renumber per "
+                    "references/resume-audit.md → \"Parallel Multi-Agent Consolidation\". "
+                    "Use --allow-id-gaps for in-progress / resume runs only."
+                )
+                if args.allow_id_gaps:
+                    warnings.append(msg)
+                else:
+                    errors.append(msg)
 
     index_json = root / "indexes/findings.generated.json"
     if index_json.is_file():

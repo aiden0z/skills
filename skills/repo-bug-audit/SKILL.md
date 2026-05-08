@@ -21,16 +21,32 @@ This skill is review-first. Do not patch code unless the user explicitly asks fo
 - Use Deep Discussion Mode when the user explicitly asks for `$brainstorming`, when scope/output/risk definitions are still unstable, or when evolving this skill itself.
 - Skip Deep Discussion Mode when the user asks for full automatic execution; apply the default workflow and keep progress moving.
 - Treat related skills as optional accelerators, not hard dependencies; encourage installation only when they materially improve the current task.
-- If a recommended skill is missing, continue by default. Ask before installing anything, and never interrupt explicitly automatic analysis runs for installation.
 - Infer safe defaults first. Ask the user only when a missing answer changes safety, scope, or final package semantics.
-- Treat branch selection as audit scope. In interactive runs, always confirm the audit branch baseline unless the user already provided explicit branches; never switch branches without approval.
+- Treat branch selection as audit scope. Branch handling per mode is defined in **Run Modes** and `references/metadata.md`; never switch branches without approval.
 - Do not infer analyst or author identity from OS username, Git config, directory owner, or model identity; use a provided value or mark it missing.
-- In automatic mode, record assumptions in `submit/quality/submission-scope.md` instead of asking.
 - Use Chinese for deliverables by default when the user is Chinese. Keep wording natural and developer-facing; avoid meta, self-referential, inflated, or AI-flavored language.
 - Keep the skill itself reusable and neutral; do not hardcode real project names, company names, personal names, or analyst identifiers in instructions or examples.
 - Do not include SLA fields in Bug records unless the user asks for process management data.
 - Use Markdown files with embedded metadata; do not create separate YAML files for individual Bugs.
 - Never delete or modify files outside the requested working/output directory unless explicitly asked.
+
+## Run Modes
+
+Every interaction rule in this skill and its references is anchored to one of these three modes. When you read "interactive mode" / "automatic mode" / "checkpointed mode" anywhere in this skill, use the definitions below.
+
+**Mode detection — automatic mode requires an EXPLICIT, UNAMBIGUOUS signal**, not a casual mention of the word "auto/自动":
+
+- ✅ Triggers automatic mode: standalone directives like "全自动执行", "无人值守", "不要打断我", "don't ask me anything", "run autonomously", "fully automatic"; or the agent runtime explicitly declared a non-interactive run.
+- ❌ Does NOT trigger automatic mode: casual usage like "帮我自动整理一下 README", "auto-format the output", "自动生成 Bug 列表" — here "自动/auto" describes the action, not the interaction style. Treat as **interactive**.
+- ⚠️ When in doubt, treat as **interactive**. A false-positive automatic detection silently destroys user trust; a false-positive interactive detection only costs one extra question.
+
+| Mode | Pause for clarification? | Pause for optional companion skills? | Pause for image / scope / analyst decisions? |
+|---|---|---|---|
+| **interactive** (default) | Yes — pause when the answer materially changes safety, scope, or final package semantics. | Yes — pause once per high-value skill at the phase named in `references/related-skills.md` → "When to Ask (Per-Phase Trigger Table)". | Yes — pause once at Phase 1 kickoff if the choice changes the final package shape. |
+| **automatic** (explicit signal only) | No — never pause. Infer safe defaults and record every assumption in `submit/quality/submission-scope.md`. | No — never prompt for installation. Record skipped recommendations under `跳过的推荐 skill` in `submission-scope.md`. | No — apply the documented automatic-mode default and record it in `submission-scope.md`. |
+| **checkpointed** (user said "checkpoints/逐步确认" or this is a resume) | Yes at declared checkpoints only — phase boundaries by default; otherwise behave like interactive within each chunk. | On resume: do NOT re-prompt for skills already declined in `submission-scope.md`. Otherwise behave like interactive. | Read `submission-scope.md` first; do not re-ask decisions already recorded there. |
+
+A decision is **user-affecting** (and therefore subject to the table above) when it changes any of: audit branch, package shape (image/no-image, knowledge file count), Bug priority on a P1/P2 finding, or analyst identity displayed in deliverables. Pure formatting, file-naming, or workspace-layout choices are NOT user-affecting — apply safe defaults silently.
 
 ## Deep Discussion Mode
 
@@ -55,15 +71,14 @@ In this mode:
 
 ## Interaction Policy
 
+For mode-dependent behavior (companion skills, image kickoff, branch confirmation, analyst, automatic-mode defaults), see **Run Modes** above and the per-domain references. The rules below cover only mode-independent interaction discipline:
+
 - Start work with safe assumptions instead of asking formatting or naming questions.
-- Ask at most one question when the answer materially affects safety, target scope, destructive operations, or final package semantics.
-- Always ask before using a different branch than the current checkout, except when the user already specified that branch.
+- Ask at most one question per turn; never batch multiple questions.
+- Phrase install/decision asks as a single yes/no with the public locator visible (e.g. `op7418/humanizer-zh@humanizer-zh`); do not enumerate every companion skill.
 - Never ask whether to continue after each phase unless the user requested checkpoints.
 - Keep progress updates to phase boundaries or major assumption changes; do not report every candidate Bug.
-- Keep optional skill installation suggestions short, one-time, and limited to the most relevant three skills.
 - Do not expose `work/` scratch content unless it affects a user decision or the user asks for candidates.
-- In interactive runs, mention once at kickoff that an `audit-overview.png` can be generated for final handoff packages; ask only if the answer changes the final package shape.
-- In automatic mode, do not pause for optional skills, package style choices, image choices, or candidate triage preferences.
 
 ## Workflow Checklist
 
@@ -71,9 +86,10 @@ In this mode:
    - Identify target repositories, reference repositories, branch context, output root, provided analyst, analysis date, and package audience.
    - Record audit metadata and repository version evidence when available; use `references/metadata.md`.
    - Identify current branch, default branch, and stable-branch candidate when evidence is available. For interactive runs, confirm the audit branch baseline before scanning if the user did not provide explicit branches.
-   - Decide overview image intent using `references/package-output.md`: requested, recommended, omitted, or unknown. For non-automatic runs, remind the user once when the audit looks like a final handoff package.
+   - Decide overview image intent using `references/package-output.md`: requested, recommended, omitted, or unknown. In interactive mode, ask once at this phase if the answer changes the final package shape; in automatic mode, apply the default in `package-output.md` and record it in `submission-scope.md`.
    - If the user gives no output root, create a descriptive lowercase workspace under the repo group, with `submit/` for final files and `work/` for temporary artifacts.
    - If the output root already exists or the user asks to continue/deepen/review, read `references/resume-audit.md` before changing findings.
+   - **End of phase**: report a one-line scope summary to the user (interactive/checkpointed) or write the same summary into `submit/quality/submission-scope.md` (automatic). Format: `范围：<repos> · 分支：<branch> · 输出：<path> · 图片：<included|omitted|pending>`. This is a report, not a confirmation prompt — do not ask "proceed?".
 
 2. **Initialize workspace ⛔ BLOCKING**
    - Run `scripts/init_bug_workspace.py` through Python explicitly to create the output skeleton.
@@ -84,7 +100,7 @@ In this mode:
    - Use `references/language-ecosystems.md` to identify build metadata, framework entry points, and evidence-backed verification command sources.
    - Build enough repo relationship and risk-path knowledge to choose high-risk paths; do not wait for a complete knowledge base before hunting Bugs.
    - Use `references/knowledge-base.md` to separate minimal discovery knowledge from final submitted knowledge.
-   - For detailed mapping, use `acquire-codebase-knowledge` if available.
+   - For detailed mapping, prefer `acquire-codebase-knowledge` if exposed by the runtime. If it is not installed and this is a multi-repo or unfamiliar large codebase, follow `references/related-skills.md` → "Use Order" (interactive: ask once with the locator visible; automatic: continue and record in `submission-scope.md`).
 
 4. **Hunt candidates by risk lens ⚠️ REQUIRED**
    - Use `references/risk-taxonomy.md` for categories, P1-P4 definitions, and confidence rules.
@@ -105,6 +121,7 @@ In this mode:
    - Include priority, confidence, category, issue family, infra domains, fix risk, evidence, static reproduction path, expected behavior, actual behavior, fix boundary, fix suggestion, suggested verification commands, and validation checks.
    - Sort and name files as `P1-BUG-0001-short-description.md`.
    - On continuation runs, keep existing IDs stable and continue from the current maximum `BUG-xxxx`.
+   - **Final-deliverable Bug IDs must be a single contiguous range `BUG-0001..BUG-N`** — no gaps, no segmentation, no per-agent reserved ranges. If multiple agents ran in parallel and produced segmented IDs (e.g. agent A: `0001-0010`, agent B: `0100-0108`), renumber to a single contiguous sequence before submission. See `references/resume-audit.md` → "Parallel Multi-Agent Consolidation".
 
 7. **Consolidate knowledge and architecture risk ⚠️ REQUIRED**
    - Update `submit/knowledge/` after each evidence-backed Bug batch; final repo knowledge should be complete enough for another Agent to continue without rescanning basics.
@@ -120,6 +137,7 @@ In this mode:
    - For final handoff packages in large or multi-repo audits, run `scripts/validate_bug_package.py --require-knowledge --require-image` when `audit-overview.png` is expected.
    - Read `references/evaluation.md`.
    - Evaluate all P1/P2 Bugs; for large packages, also sample each issue family and risk domain.
+   - **Failure handling** — if a P1/P2 Bug fails the Bug-Level Gate in `evaluation.md`: apply one of the four documented actions (lower confidence / move to candidates / merge / record uncertainty) per the gate, do NOT pause the run, and log every change in `quality/submission-scope.md`. If `validate_bug_package.py` returns errors, fix them before submitting; the script must exit 0 on the final package.
    - Record material downgrades, removals, merges, priority changes, or weak areas in `quality/submission-scope.md`.
    - Fix missing metadata, stale counts, oversize images, old terminology, duplicate content, weak evidence, or priority inflation.
 
@@ -128,6 +146,7 @@ In this mode:
    - If creating `audit-overview.png`, use `references/audit-overview-image.md` for content, layout, color, metadata, and wording constraints.
    - Prefer HTML/CSS screenshot for dense text and exact numbers; native image generation is allowed after visual and data consistency review.
    - For HTML/CSS overview images, verify both the exported PNG and a constrained browser preview; avoid long vertical canvases, stale browser tabs, scrolling screenshots, and fixed canvases that crop in common viewports.
+   - **Image verification failure**: if the PNG fails the Quality Gate in `audit-overview-image.md` (clipped content, stale layout, anti-pattern present, wrong counts), regenerate. Cap at 3 regeneration attempts in **all modes** (counting `audit-overview.png` overwrites under `submit/`, not draft iterations under `work/`). After the cap: in automatic mode, omit the image and record `omitted-after-failure` plus the last failure cause in `submission-scope.md`; in interactive/checkpointed mode, surface the last failure to the user and ask one yes/no — `图片重试 3 次仍不达标（最后一次问题：<原因>）。要换成 native 图像生成再试一次，还是这次不带图片？`
    - Apply `references/writing-style.md` to README, knowledge docs, Bug records, and image text.
    - Keep zip packages small; compress images and avoid unused large assets.
 

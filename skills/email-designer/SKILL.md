@@ -1,25 +1,18 @@
 ---
 name: email-designer
 description: >
-  Generate professional, Outlook-compatible email templates (EML + HTML) through
-  natural conversation. Creates pixel-perfect newsletter layouts, announcement emails,
-  weekly reports, event invitations, and any formatted email that needs to render
-  correctly in Outlook. Supports three modes: Design Mode (create from scratch),
-  Import Mode (import and replicate an existing .eml file), and Production Mode
-  (fill Excel data to repeatedly generate emails from a crystallized template).
-  MUST use this skill when the user wants to: create or design an email template,
-  generate an EML file, make a newsletter, format an email for Outlook, import or
-  replicate an existing email (导入/复刻邮件), design a 邮件模板, do 邮件排版 or
-  邮件设计, create HTML email with Outlook compatibility, build a professional-looking
-  email to send via Outlook, or produce any kind of formatted/styled email output.
-  Also trigger when the user mentions: weekly report email (周报邮件), product update
-  email, event invitation email (活动邀请邮件), announcement email (公告邮件),
-  company newsletter, importing an .eml file, replicating an email template, or
-  wants to make an email "look professional/beautiful" for sending. This skill
-  handles the visual design, EML generation, and EML import — not email sending,
-  SMTP setup, or email account management. Without this skill, Outlook emails will
-  have broken layouts because Outlook uses Word's rendering engine which ignores
-  modern CSS.
+  Generate Outlook-compatible email templates (EML + HTML) through conversation.
+  Three modes: Design (create from scratch), Import (replicate an existing .eml),
+  Production (fill Excel data into a crystallized template). Use when user wants to:
+  create or design an email template, generate an .eml file, make a newsletter,
+  format an email for Outlook, import/replicate an email (导入/复刻邮件), design a
+  邮件模板, do 邮件排版 or 邮件设计, build pixel-perfect HTML email with Outlook
+  compatibility. Triggers: weekly report email (周报邮件), product update email,
+  event invitation (活动邀请邮件), announcement (公告邮件), company newsletter,
+  .eml import, replicate email template, or make an email look professional/beautiful
+  for Outlook. Handles visual design, EML generation, and EML import — not SMTP,
+  sending, or account management. Without this skill, Outlook emails break because
+  Outlook uses Word rendering which ignores modern CSS.
 ---
 
 # Email Designer

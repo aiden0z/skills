@@ -91,6 +91,7 @@ Use `candidate-triage.md` for candidate notes and `deduplication.md` before deci
 - Put findings in `findings/P1`, `findings/P2`, `findings/P3`, `findings/P4`.
 - Filename must include priority, Bug id, and short description.
 - On continuation runs, use the next ID after the largest existing `BUG-xxxx`; do not renumber old records.
+- The final submitted package must contain a single contiguous `BUG-0001..BUG-N` sequence. Gaps and per-agent reserved ranges are rejected by `scripts/validate_bug_package.py`. For parallel multi-agent merges, see `resume-audit.md` → "Parallel Multi-Agent Consolidation".
 - Keep static-analysis status clear: do not say “已验证” unless runtime proof exists.
 - Add fix boundary, minimum safe fix, and suggested verification commands. Commands must be traceable to repository files; write `未确认` when no trustworthy command is visible.
 

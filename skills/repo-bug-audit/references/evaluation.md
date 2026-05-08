@@ -23,12 +23,14 @@ A Bug passes only when these are explicit:
 - Suggested verification commands: commands are traceable to repository files, or the record clearly says they are not confirmed.
 - Validation standard: clear checks for the developer or fixing Agent.
 
-If any item is weak:
+If any item is weak, take exactly one of the following actions and log the change in `quality/submission-scope.md`:
 
 - Lower confidence, or
 - Move the lead to `work/candidates/`, or
 - Merge it into a stronger Bug, or
 - Record the uncertainty in the Bug and `quality/submission-scope.md`.
+
+Gate failure never pauses the workflow. The four actions above are the full action space; do not invent ad-hoc fixes and do not ask the user mid-scan. If a P1/P2 Bug fails because it depends on unverified assumptions, prefer "move to candidates" over "lower confidence" — submitted findings should not carry low-confidence priority claims that look authoritative in README counts.
 
 ## Package-Level Gate
 

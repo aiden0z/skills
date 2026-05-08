@@ -26,6 +26,39 @@ Write like a careful QA engineer or senior reviewer handing over concrete findin
 - Tool-flavored wording: “静态扫描显示大量/高置信缺陷/自动生成报告”.
 - Commanding architecture language: “必须引入/开发必须/应该立刻重构”.
 
+## AI-Flavored Patterns to Strip
+
+These patterns survive the basic banned-word list because the individual words look harmless. Catch them in the final pass.
+
+- **Inflated significance / "标志着" framing**: “标志着……重要时刻/关键节点”、“反映了更广泛的趋势”、“代表着一次重要转变”、“凸显了……的重要性”、“为……奠定了基础”、“在……中扮演关键角色”。
+  - 处理方式：删掉评价语，只留事实。`X 模块负责发布快照` 而不是 `X 模块在系统中扮演关键角色，标志着发布流程的重要节点`。
+- **"-ing" 浅层补尾**：句尾接 `, 体现/反映/确保/促进/展示了……`，给一个本来已经说完的句子再贴一个空泛动词短语。
+  - 处理方式：删掉补尾从句。
+- **三段并列 / 二元对比的公式结构**：`既……又……更……`、`一方面……另一方面……`、`不仅是……更是……`。
+  - 处理方式：拆成短句直陈。
+- **宣传式形容词**：`充满活力的`、`丰富的`、`深刻的`、`显著的`、`重大的`、`深远的`、`核心的`（用作泛义而非限定）、`系统性的`、`全方位的`。
+  - 处理方式：用具体名词或数字替换。
+- **模糊归因**：`业内普遍认为`、`相关研究表明`、`观察者指出`、`多个来源`（实际无引用）。
+  - 处理方式：要么补具体出处，要么改成 `当前实现` / `从 src/x.py:42 可以看到`。
+- **"挑战与展望" 公式段**：`尽管面临……挑战，但……仍将继续……`、`展望未来……`。
+  - 处理方式：审计报告不需要展望。删除整段。
+- **空心收尾句**：`总体而言/综上所述/总的来说/在某种意义上`。
+  - 处理方式：删除，让最后一条事实自然收尾。
+- **节奏单一**：所有段落都是 2-3 句、句式相同长度相近。
+  - 处理方式：刻意混合长短句、允许单句段落。
+
+## Companion Skill: humanizer-zh
+
+When the deliverable is in Chinese (README、knowledge docs、image text、submission-scope), recommend the user install `op7418/humanizer-zh@humanizer-zh` and run it on text that fails the patterns above.
+
+Trigger an install prompt (interactive mode) when:
+
+- The README or any knowledge doc exceeds ~500 字 of generated narrative.
+- The audit-overview image text is being authored.
+- The final pass surfaces three or more AI-flavored patterns that the built-in banned list did not catch.
+
+Skip the prompt if the user has already declined humanizer-zh in this session, or if the deliverable is short structured Bug records (which are already constrained by `bug-schema.md`).
+
 ## Prefer
 
 | Weak wording | Better wording |

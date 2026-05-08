@@ -6,6 +6,11 @@ Use this when creating `submit/audit-overview.png`.
 
 - Purpose
 - Canvas
+- Visual Style
+- Typography
+- Color System
+- Spacing & Elevation
+- Iconography
 - Generation Mechanism
 - Source Data Contract
 - Content Structure
@@ -13,6 +18,7 @@ Use this when creating `submit/audit-overview.png`.
 - Charts
 - Metadata
 - Quality Gate
+- Visual Anti-Patterns
 
 ## Purpose
 
@@ -20,7 +26,7 @@ The image is a compact entry point for the audit package. It should help readers
 
 ## Canvas
 
-- White or near-white background only.
+- Light neutral background only: pure white `#FFFFFF` or warm/cool neutral such as `#FAFAFA`, `#F8F9FB`, `#F7F8FA`. No dot grids, line grids, gradients, or decorative backgrounds.
 - Default to a single fixed `16:10` artboard, preferably `1600x1000`, for repository audit packages.
 - Use `16:9` (`1600x900` or `1920x1080`) when the image is primarily for PPTX, slide decks, or widescreen presentation export.
 - Use `1920x1200` only as a high-resolution `16:10` source or when the target review surface needs it; keep larger source artboards under `work/tmp/` unless the user explicitly wants the high-resolution PNG as the submitted image.
@@ -29,9 +35,71 @@ The image is a compact entry point for the audit package. It should help readers
 - If content does not fit the chosen ratio, reduce or summarize content rather than changing the overview into a long poster.
 - Keep safe margins at least `64px`.
 - Use a clear grid. Avoid overlapping cards, clipped labels, dense legends, and decorative backgrounds.
-- Use dark neutral text, one primary accent, one warning accent, and muted dividers.
-- Avoid dark theme, neon gradients, heavy shadows, and crowded chart labels.
+- Avoid dark theme and neon gradients. Subtle shadows for elevation are encouraged; heavy/glowy shadows are not.
 - If the HTML page is also opened in a browser, wrap the artboard in a viewport-fit stage and scale the stage to the current viewport. A valid browser preview must show the whole artboard, not only the top-left part of a fixed canvas.
+
+## Visual Style
+
+The target aesthetic is **modern product dashboard**, in the family of Linear, Vercel, Stripe, shadcn/ui, Geist, Notion. The result must read as a 2024+ deliverable, not a 2014 Bootstrap admin panel.
+
+Reference anchors when in doubt:
+
+- ✅ Linear issue boards, Vercel project dashboards, Stripe overview pages, shadcn/ui card layouts, Notion data views.
+- ❌ Bootstrap 3/4 admin templates, AntD Pro default cards, Material Design v1 raised cards, dot-grid "engineering blueprint" backgrounds.
+
+Use elevation, type weight contrast, restrained color, and icons to create hierarchy — not bigger fonts, brighter colors, or more borders.
+
+## Typography
+
+- Font family: `Inter`, `Geist`, `IBM Plex Sans` for Latin; pair with `PingFang SC`, `Noto Sans CJK SC`, `Source Han Sans` for Chinese. Always include CJK fallbacks.
+- Type scale (px, choose from this set, do not invent intermediate sizes): `12, 13, 14, 16, 20, 24, 32, 40, 48, 64`.
+- Weight scale (use only these): `400` body, `500` label/metadata, `600` card title, `700` section title, `800` hero number.
+- Title-to-body weight contrast must be at least one full step (e.g. `600` vs `400`). Do not render an entire card in a single weight.
+- Use `tabular-nums` (`font-variant-numeric: tabular-nums;`) on every count and metric so numbers align vertically.
+- Line-height: `1.1`-`1.2` for hero numbers and titles, `1.4`-`1.5` for body and labels.
+- Letter-spacing: `-0.01em` to `-0.02em` on display sizes (≥32px); `0` on body; `0.04em` uppercase only on small `12px` eyebrows/labels.
+- Do not shrink fonts below `12px` to fit content. Remove content instead.
+
+## Color System
+
+Restrained, low-saturation, semantic. No raw high-saturation primaries.
+
+- **Neutrals (text & surface)** — choose one neutral ramp and use it consistently. Recommended: slate or zinc.
+  - Text primary: `#0F172A` / `#111827`
+  - Text secondary: `#475569` / `#4B5563`
+  - Text tertiary / label: `#64748B` / `#6B7280`
+  - Border / divider: `#E2E8F0` / `#E5E7EB`
+  - Surface raised: `#FFFFFF`
+  - Surface base: `#FAFAFA` / `#F8F9FB`
+- **Brand accent** — exactly one. Use sparingly for the hero number, primary CTA, and one chart fill. Recommended: `#2563EB` (blue-600), `#4F46E5` (indigo-600), or `#0EA5E9` (sky-600).
+- **Semantic chips** — use `bg-{color}-50 / text-{color}-700 / border-{color}-200` style (low-saturation tinted background + readable text), never raw solid `red-600` blocks of color.
+  - P1 / critical: bg `#FEF2F2`, text `#B91C1C`, border `#FECACA`
+  - P2 / high: bg `#FFF7ED`, text `#C2410C`, border `#FED7AA`
+  - P3 / medium: bg `#FEFCE8`, text `#A16207`, border `#FDE68A`
+  - P4 / low / info: bg `#F1F5F9`, text `#475569`, border `#E2E8F0`
+  - Success / resolved: bg `#F0FDF4`, text `#15803D`, border `#BBF7D0`
+- Use **at most 4 hues** in one image: 1 neutral ramp + 1 brand accent + up to 2 semantic chip colors visible at once.
+- Bar/chart fills use the brand accent at full strength for the focal series and a `#E2E8F0` neutral track behind. Secondary series may use a desaturated accent (`#93C5FD`) — never a different hue.
+
+## Spacing & Elevation
+
+- Spacing scale (px, do not invent intermediate values): `4, 8, 12, 16, 20, 24, 32, 40, 48, 64, 80`.
+- Card padding: `20px` to `24px` for normal cards, `28px` to `32px` for hero/metric cards. Inner gap between elements inside a card: `12px` or `16px`.
+- Card radius: `12px` for cards, `8px` for chips and small inputs, `6px` for tags. Use `rounded-2xl` aesthetic, not `rounded-sm` admin boxes.
+- Borders: prefer `1px solid` neutral border (`#E5E7EB`) **or** elevation, not both at once. Hero/important cards use elevation; supporting cards use border.
+- Elevation tokens (use these, do not invent custom shadows):
+  - `shadow-xs`: `0 1px 2px rgba(15, 23, 42, 0.04)`
+  - `shadow-sm`: `0 1px 3px rgba(15, 23, 42, 0.06), 0 1px 2px rgba(15, 23, 42, 0.04)`
+  - `shadow-md`: `0 4px 12px rgba(15, 23, 42, 0.06), 0 2px 4px rgba(15, 23, 42, 0.04)` (reserved for hero KPI card only)
+- Never stack heavy `0 10px 30px` drop shadows or apply shadows to every card uniformly — that flattens hierarchy.
+
+## Iconography
+
+- Every card title and every category/risk row should carry a `16-20px` icon next to it. Icons are mandatory for scannability — they are the fastest way readers locate data-integrity vs security vs recovery.
+- Use one icon set throughout the image. Recommended: Lucide, Phosphor (regular weight), Heroicons (outline). Never mix sets.
+- Icon stroke weight: `1.5px` to `2px`. Icon color: same as the section's accent color, or text-secondary for neutral labels.
+- For priority chips (P1/P2/...), pair the chip with an icon: `AlertOctagon` for P1, `AlertTriangle` for P2, `Info` for P3, `Circle` for P4.
+- Do not substitute emoji for icons in the submitted image.
 
 ## Generation Mechanism
 
@@ -155,3 +223,20 @@ Before packaging:
 - The only allowed missing-value placeholders are `待补充` or `not specified` for the analyst field; omit the analyst field if that reads cleaner.
 - Compress the PNG without damaging small text; avoid aggressive color quantization if it makes Chinese text edges muddy. Target `<500KB` by default and `<200KB` only when it remains readable.
 - Keep source prompts, drafts, and generation notes under `work/tmp/` or `work/drafts/`, not `submit/`.
+
+## Visual Anti-Patterns
+
+Reject the image and regenerate if any of these are present:
+
+- ❌ Dot-grid or line-grid background, "blueprint" texture, paper texture, gradient mesh.
+- ❌ All cards drawn with the same `1px solid` border and identical background — no elevation hierarchy.
+- ❌ Single font weight throughout the card (e.g. everything `600`, or everything `400`).
+- ❌ Raw high-saturation solid color blocks for priority chips (e.g. solid `#DC2626` red rectangle with white text).
+- ❌ Zero icons — every label is plain text.
+- ❌ Mixed icon sets (Lucide + Material + emoji in the same image).
+- ❌ Random border-radius values (`4px` here, `5px` there, `7px` elsewhere). Stick to the scale: `6 / 8 / 12`.
+- ❌ Heavy uniform drop shadows on every card (looks like 2014 Material elevation).
+- ❌ Bar charts without a track background — bare colored stripes on white.
+- ❌ More than 4 hues visible at once, or two competing brand accents.
+- ❌ Tiny `<12px` text used to "fit more content" instead of cutting content.
+- ❌ Decorative emoji in headings (🚀 ✅ ⚡) inside the submitted image.

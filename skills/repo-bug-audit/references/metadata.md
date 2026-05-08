@@ -22,8 +22,7 @@ Use the analyst field as package metadata, not as inferred identity.
 - Valid sources: explicit user input, existing audit package metadata, or the `--analyst` argument in `scripts/init_bug_workspace.py`.
 - Do not infer it from OS username, Git user/email, directory owner, hostname, model name, or tool account.
 - In skill instructions, templates, and examples, use neutral placeholders such as `<analyst>` instead of real personal identifiers.
-- In automatic runs, do not pause only for a missing analyst. Write `待补充` in Chinese packages or `not specified` in English packages.
-- In checkpointed final handoff, ask once only if the organization or user expects a named analyst on README or image.
+- **Never block any run on a missing analyst**: in interactive mode, ask only once at Phase 1 if the run already implies final handoff; in automatic mode, write `待补充` (Chinese) or `not specified` (English) and continue; in checkpointed/resume mode, reuse the value from `submit/quality/submission-scope.md` without re-asking.
 - Keep README, `quality/submission-scope.md`, and `audit-overview.png` consistent. If the value is missing, either show the placeholder or omit `分析人` from the image when space is tight.
 
 ## Repository Version Evidence
@@ -59,10 +58,10 @@ Rules:
 Branch baseline changes the audit scope.
 
 - If the user provided explicit branches, use them and record `Candidate Confidence` as `high` with `user-provided branch` in Evidence.
-- If the user asks for the latest stable, release, production, or final handoff audit without naming branches, identify candidates and ask which baseline to use before scanning.
-- If current checkout differs from the strongest stable candidate, ask before switching or before treating the candidate as the audit baseline.
+- If the user asks for the latest stable, release, production, or final handoff audit without naming branches, identify candidates and ask which baseline to use before scanning **(interactive/checkpointed only)**.
+- If current checkout differs from the strongest stable candidate, ask before switching or before treating the candidate as the audit baseline **(interactive/checkpointed only)**.
 - If the user asks for the current code, do not ask again; record current checkout as the audit baseline and stable candidate as reference evidence when available.
-- In automatic runs, do not switch branches. Audit the current checkout, record stable candidates and confidence, and write the branch assumption in `quality/submission-scope.md`.
+- **Automatic mode** never switches branches and never asks. When the user requested "latest stable" without naming a branch, audit the current checkout, treat the highest-confidence stable candidate as reference-only evidence, and record both the assumption and the unresolved baseline mismatch in `quality/submission-scope.md` under `分支基线偏离` so a human can re-run if needed.
 
 Use a compact question:
 
