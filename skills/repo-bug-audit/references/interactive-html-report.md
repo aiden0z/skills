@@ -22,15 +22,16 @@ First constraint: see `authenticity.md`. Every number, label, repo, module, Bug 
 
 ## When To Generate
 
-Recommend the HTML report for:
+Generate the HTML report by default for:
 
 - final handoff packages
 - multi-repo audits
 - large Bug sets
 - packages with architecture review, repo profiles, or promoted knowledge-capture material
 - any package likely to be opened in a browser
+- any result the user calls a report, dashboard, delivery package, handoff, `报告`, `报告台`, `交付`, or `打包`
 
-Skip by default for quick scans, candidate-only studies, or narrow single-Bug reviews unless the user asks for it.
+Do not ask the user whether to include it in normal interactive mode; it is the default delivery surface for final reports. Skip by default only for quick scans, candidate-only studies, narrow single-Bug reviews, or when the user explicitly asks for a lightweight/no-HTML package. Record the decision in `quality/submission-scope.md`.
 
 ## Output
 
