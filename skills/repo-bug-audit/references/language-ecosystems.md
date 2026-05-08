@@ -28,3 +28,24 @@ Use this after choosing the domain profile. This is an evidence checklist, not a
 ## Command Rule
 
 Use the most specific confirmed command: module test, package test, full CI/build test, lint/typecheck. A generic command such as `npm test`, `pytest`, `go test ./...`, `mvn test`, or `cargo test` is acceptable only when repository files make it credible; cite or name the evidence file in the Bug record.
+
+## Hazard Functions for L4 / L5 / L6
+
+When applying lens L4 (numeric/precision), L5 (time/clock), L6 (serialization semantics) per `exploration-lenses.md`, grep for these high-risk APIs. Hits are not bugs by themselves — they mark spots that need the lens's full hypothesis-evidence cycle.
+
+| Ecosystem | L4 Numeric / Precision | L5 Time / Clock | L6 Serialization Semantics |
+|---|---|---|---|
+| Python | `float()` for money, `int` accumulation w/o bound check, `/` integer-vs-float, `Decimal` missing | `datetime.now()` / `time.time()` for monotonic, naive datetime, `pytz` vs `zoneinfo` mix, cron parser | `json.loads` w/o schema, `pickle.loads`, `yaml.load` (vs `safe_load`), enum `auto()` reordering |
+| Node.js / TS | `Number` for int64, `parseInt` w/o radix, `+` string-vs-number coercion | `Date.now()` for elapsed, `setTimeout` drift, `moment` deprecated, timezone via env | `JSON.parse` reviver, `null` vs `undefined` (different in JSON), `BigInt` boundary |
+| Java / Kotlin | `double` for money (vs `BigDecimal`), int overflow on multiplication, `/` truncation | `java.util.Date` (deprecated), `System.currentTimeMillis()` for elapsed (vs `nanoTime`), `SimpleDateFormat` (not thread-safe) | Jackson `@JsonInclude` defaults, missing `@JsonProperty`, enum `Unknown` fallback |
+| Go | `float64` for money, `int` overflow on 32-bit arch, integer division truncation | `time.Now()` for elapsed (vs `time.Since`), `time.Tick` leaks, no built-in timezone DB on Alpine | `json.Unmarshal` zero-value (cannot distinguish absent vs zero), `gob` version skew |
+| Rust | `f64` for money (vs `rust_decimal`), `as` casting silent truncation, integer overflow in release mode | `SystemTime` (wall clock) for elapsed (vs `Instant`), `chrono` vs `time` crate mixing | `serde` default value behavior, `untagged` enum ambiguity, `Option<T>` vs absent field |
+| C / C++ | signed/unsigned mix, integer overflow undefined, `float` for money | `time(NULL)` for elapsed, no thread-safe localtime | byte order on cross-platform serialization, struct padding |
+| C# / .NET | `double` for money (vs `decimal`), `int` overflow checked vs unchecked | `DateTime.Now` (local) vs `DateTime.UtcNow`, `DateTime` vs `DateTimeOffset` | `Newtonsoft.Json` vs `System.Text.Json` defaults differ (null handling, casing) |
+| PHP / Ruby | `float` for money, `intval` silent overflow | `time()` no timezone, `DateTime` vs `Time` semantics | YAML.load (Ruby), `unserialize` (PHP) on user input |
+| Frontend | `Number` MAX_SAFE_INTEGER for IDs, currency formatting locale | `new Date(string)` parsing inconsistent across browsers, timezone of server vs client | localStorage stringification, BigInt over IPC |
+| Mobile | platform-specific numeric (Java vs Swift currency types) | iOS NSDate vs Android Date, foreground/background time gap | platform JSON library defaults differ between iOS/Android shared schema |
+
+Notes:
+- These lists are starting points for grep, not exhaustive. Add ecosystem-specific anti-patterns as they show up in audits.
+- L4/L5/L6 evidence patterns must always cite a specific call site (`path:line`) — see `authenticity.md`.

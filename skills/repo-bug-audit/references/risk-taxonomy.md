@@ -34,19 +34,19 @@ Use `domain-profiles.md` to tune search focus for infra, backend, frontend, SDK,
 
 ## Categories
 
-Use one primary category and optional secondary tags.
+Use one primary category and optional secondary tags. The "Primary lens" column points to the most likely exploration lens(es) in `exploration-lenses.md` — use this when tagging the Bug's `lens:` frontmatter.
 
-- `data-integrity`: local/remote state split, premature deletion, lost update, inconsistent source of truth.
-- `availability`: request hang, worker starvation, unavailable core operation, missing timeout.
-- `recovery`: no retry, no compensation, no manual handoff, unrecoverable partial success.
-- `resource-leak`: leaked volume connection, orphaned resource, file/socket/thread/process leak.
-- `security`: authz/authn, tenant boundary, injection, path traversal, unsafe deserialization, secrets, TLS disabled.
-- `consistency`: cross-service drift, stale cache/index, async status mismatch.
-- `storage-performance`: unbounded storage calls, sync hot path, inefficient volume/snapshot/backup operations.
-- `network-performance`: unbounded network calls, control-plane blocking network dependency, slow route/device sync.
-- `observability`: wrong status/log/action label, masked failure, missing audit trail.
-- `concurrency`: race, lock omission, check-then-act, duplicate job execution.
-- `config-safety`: insecure defaults, fail-open config, hardcoded environment assumptions.
+- `data-integrity` (Primary lens: L8 / L11 / L17): local/remote state split, premature deletion, lost update, inconsistent source of truth.
+- `availability` (L7 / L9 / L10): request hang, worker starvation, unavailable core operation, missing timeout.
+- `recovery` (L10 / L16): no retry, no compensation, no manual handoff, unrecoverable partial success.
+- `resource-leak` (L1): leaked volume connection, orphaned resource, file/socket/thread/process leak.
+- `security` (L2 / L17): authz/authn, tenant boundary, injection, path traversal, unsafe deserialization, secrets, TLS disabled.
+- `consistency` (L13 / L15 / L17): cross-service drift, stale cache/index, async status mismatch.
+- `storage-performance` (L7): unbounded storage calls, sync hot path, inefficient volume/snapshot/backup operations.
+- `network-performance` (L7 / L18): unbounded network calls, control-plane blocking network dependency, slow route/device sync.
+- `observability` (L14): wrong status/log/action label, masked failure, missing audit trail.
+- `concurrency` (L9): race, lock omission, check-then-act, duplicate job execution.
+- `config-safety` (L12): insecure defaults, fail-open config, hardcoded environment assumptions.
 
 ## Infra Domains
 

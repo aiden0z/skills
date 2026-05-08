@@ -16,6 +16,9 @@ This skill is review-first. Do not patch code unless the user explicitly asks fo
 ## Operating Rules
 
 - **Authenticity First (overrides every other rule)**: never fabricate code references, commands, metrics, status claims, or filler content to satisfy any thickness or completeness requirement. Lower priority, move to candidates, shorten the section, or write an explicit honest-uncertainty marker (`证据不足`, `静态分析无法判断`, `未确认：…`). This rule applies to **every output under `submit/`** — Bug records, README, knowledge docs, repo profiles, architecture review, audit-overview image, submission-scope. Read `references/authenticity.md` before writing anything submittable.
+- **Lens-based exploration**: Phase 2 is not a single grep pass; it follows the lens system in `references/exploration-lenses.md` (19 lens × 3 tier + 2 meta), with hypothesis-first / sibling-diff / refute-or-promote loop. Tier 2 / Tier 3 lens require an application record (5 sections) in `submit/quality/lens-coverage.md`; Tier 1 record is optional. "已应用 lens 但未发现" is a legitimate, encouraged output — never invent findings to fill coverage.
+- **Per-repo profile**: every audited repo must have one `submit/knowledge/repo-profiles/<repo>.md` per `references/repo-profile.md`, including a Mermaid call graph that follows `references/call-graph-conventions.md` guardrails. Profile is the input substrate for Tier 3 lens and META-1.
+- **Pluggable strategy**: default explores all built-in lens. When the user specifies a different strategy (e.g. OWASP ASVS, internal checklist, lens subset), record the choice as a free-form paragraph in `submit/quality/submission-scope.md` (no structured field needed); execute lens coverage according to the declared subset.
 - Treat findings as static-analysis results until runtime validation proves otherwise.
 - Prefer fewer real Bugs over hundreds of weak claims; keep weak leads in `work/candidates/`, not submitted findings.
 - Prioritize infra-stability risks: data integrity, recovery, availability, resource leakage, storage/network performance, control-plane safety, security boundaries, and cross-system consistency.
@@ -195,6 +198,9 @@ For mode-dependent behavior (companion skills, image kickoff, branch confirmatio
 - `scripts/validate_bug_package.py` — verify package structure, metadata, terminology, image sizes; with `--repo-root` also enforces frontmatter path existence and cross-Bug literal-duplicate detection (Authenticity First).
 - `references/workflow.md` — full multi-pass workflow.
 - `references/authenticity.md` — **Authenticity First rule**, anti-fabrication categories, honest-uncertainty markers, per-output rules, and validator/evaluator enforcement levels.
+- `references/exploration-lenses.md` — **lens-based exploration methodology** (19 lens × 3 tier + 2 meta), hypothesis-first / sibling-diff loop, 5-section application record format, pluggable strategy.
+- `references/repo-profile.md` — per-repo profile spec (5 boundary types, Intent Inputs for META-1, Mermaid call graph).
+- `references/call-graph-conventions.md` — Mermaid call graph guardrails (edge evidence, ≤30 nodes, ≤4 depth, dashed unconfirmed, uncovered area).
 - `references/deep-discussion.md` — analysis charter and brainstorming prompts.
 - `references/resume-audit.md` — continue an existing audit, keep IDs stable, and record downgrade/removal reasons.
 - `references/evaluation.md` — Bug-level, package-level, depth, priority, and skill-regression evaluation gates.

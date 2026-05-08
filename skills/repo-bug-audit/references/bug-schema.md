@@ -35,8 +35,13 @@ files:
     lines: "120-168"
 related_repos:
   - dependent-service
+lens:
+  - L8
+  - L17
 ---
 ```
+
+`lens` is an optional list (multi-valued) tagging which exploration lens(es) surfaced this Bug. Allowed values: `L1`-`L19`, `META-1`, `META-2` (see `exploration-lenses.md`). Validator enforces enum membership. Use the lens that best matches the Bug's primary phenomenon; if multiple apply, list them in priority order.
 
 Do not include `sla`, `owner`, or `due_date` unless the user asks for workflow tracking.
 

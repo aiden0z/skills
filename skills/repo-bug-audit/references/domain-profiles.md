@@ -1,6 +1,19 @@
 # Domain Profiles
 
-Choose one primary profile per audit and optional secondary profiles for mixed repositories. The profile changes search focus and sorting emphasis, not the evidence standard.
+Choose one primary profile per audit and optional secondary profiles for mixed repositories. The profile changes lens priority and sorting emphasis, **not** the lens set itself — agent still applies all enabled lens (per `exploration-lenses.md`) but spends more time on the profile-priority lens.
+
+## Lens Priority by Profile
+
+| Profile | High-priority lens (run deep) | Lower-priority lens (still required, but lighter) |
+|---|---|---|
+| `infra` | L1, L9, L10, L11, L13, L17, L19 | L2 surface gates, L4-L6 scattered |
+| `backend` | L2, L8, L9, L10, L15, L16, L18 | L13 (if no caching), L19 (if no migrations) |
+| `frontend` | L2 (display gating), L8 (UI state machine), L13 (browser/CDN cache), L14 (observability) | Tier 3 lens unless calling SSR/BFF |
+| `sdk` | L1, L9 (thread/async safety), L15 (API contract), L18 (retry) | L11/L12/L13 (depend on host app) |
+| `mobile` | L1 (lifecycle), L11 (offline data), L12 (env/permission), L14 (crash observability) | Tier 3 lens unless syncing with backend |
+| `generic` | All Tier 2 lens equal priority until profile is clear | Tier 3 lens triggered when profile resolves to multi-repo |
+
+This is sort priority, not exclusion. All Tier 2/3 lens still need application records in `lens-coverage.md`.
 
 ## Contents
 

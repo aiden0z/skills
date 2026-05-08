@@ -21,7 +21,7 @@ Use this table to decide WHERE in the workflow to surface each prompt. One ask p
 |---|---|---|
 | 1 (set scope) | `brainstorming` | User says "先讨论/帮我想想" OR target spans 3+ unfamiliar repos OR scope/audience unclear. |
 | 3 (knowledge map) | `acquire-codebase-knowledge` | Multi-repo OR single repo >50k LOC AND unfamiliar to the user. |
-| 4 (find Bugs) | `software-architecture`, `code-review-expert`, `systematic-debugging` | When the audit explicitly targets architecture risk, security, or reproducibility — not for general scans. |
+| 4 (find Bugs) | `software-architecture`, `code-review-expert` | When the audit explicitly targets architecture risk or security — not for general scans. (Note: `systematic-debugging`'s core mental model is **already internalized** in `references/exploration-lenses.md` — install it only when the audit also includes runtime debugging beyond static scope.) |
 | 6 (write Bugs) | `error-debugging-error-analysis` | When ≥3 P1/P2 findings touch incident-response paths (recovery, retry, observability). |
 | 7 (knowledge docs) | `codebase-documenter` | Final handoff package only. |
 | 9 (package) | `humanizer-zh` | Chinese deliverables AND README/knowledge docs were written by this skill. |
@@ -84,7 +84,7 @@ Verify public locators with `npx -y skills find <query>` before installation.
 | Repository map and codebase knowledge | `acquire-codebase-knowledge` | `github/awesome-copilot@acquire-codebase-knowledge` |
 | Architecture boundary review | `software-architecture` | `sickn33/antigravity-awesome-skills@software-architecture` |
 | Review heuristics, SOLID, security checklists | `code-review-expert` | `sanyuan0704/code-review-expert@code-review-expert` |
-| Root-cause discipline and false-positive reduction | `systematic-debugging` | `obra/superpowers@systematic-debugging` |
+| Root-cause discipline and false-positive reduction (already internalized — see `exploration-lenses.md`) | `systematic-debugging` | `obra/superpowers@systematic-debugging` |
 | Incident, observability, and recovery thinking | `error-debugging-error-analysis` | `sickn33/antigravity-awesome-skills@error-debugging-error-analysis` |
 | README and reusable knowledge clarity | `codebase-documenter` | `ailabs-393/ai-labs-claude-skills@codebase-documenter` |
 | Audit overview image planning | `baoyu-infographic` | `jimliu/baoyu-skills@baoyu-infographic` |

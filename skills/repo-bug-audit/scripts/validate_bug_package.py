@@ -52,6 +52,13 @@ REQUIRED_META = [
     "infra_domains",
     "fix_risk",
 ]
+# Allowed values for optional `lens` frontmatter field (see references/exploration-lenses.md).
+VALID_LENS = {f"L{i}" for i in range(1, 20)} | {"META-1", "META-2"}
+# Lens coverage record sections (5-section hard format from exploration-lenses.md).
+LENS_COVERAGE_SECTIONS = {
+    "zh": ["已扫描入口", "关注模式", "候选数", "排除原因", "未覆盖"],
+    "en": ["Scanned Entry Points", "Patterns", "Candidates", "Exclusion Reasons", "Uncovered"],
+}
 REQUIRED_SECTIONS = {
     "zh": [
         "结论",
@@ -281,6 +288,51 @@ def has_verification_command_or_marker(body: str) -> bool:
     )
 
 
+def check_lens_coverage(text: str, language: str) -> tuple[list[str], list[str]]:
+    """Parse lens-coverage.md content. Return (errors, warnings).
+
+    Format: each lens is an H3 like '### Lens L9 ...' followed by 5 bullet sections.
+    """
+    errors: list[str] = []
+    warnings: list[str] = []
+    sections = LENS_COVERAGE_SECTIONS[language]
+    blocks = re.split(r"^###\s+", text, flags=re.MULTILINE)
+    declared_lens: list[str] = []
+    for block in blocks[1:]:
+        header = block.split("\n", 1)[0]
+        m = re.search(r"\b(L\d{1,2}|META-[12])\b", header)
+        if not m:
+            continue
+        lens_id = m.group(1)
+        if lens_id not in VALID_LENS:
+            errors.append(f"lens-coverage.md: unknown lens identifier in heading: {header}")
+            continue
+        declared_lens.append(lens_id)
+        for sec in sections:
+            if sec not in block:
+                errors.append(f"lens-coverage.md: lens {lens_id} record missing section '{sec}'")
+        if "无未覆盖" in block or "no uncovered" in block.lower():
+            warnings.append(f"lens-coverage.md: lens {lens_id} claims no uncovered area; honest-uncertainty markers preferred")
+    if not declared_lens:
+        errors.append("lens-coverage.md present but contains no lens record (expected '### Lens L? ...' blocks)")
+    return errors, warnings
+
+
+def check_mermaid_guards(text: str, rel_path: str) -> list[str]:
+    """Light WARN-level checks on mermaid blocks (per call-graph-conventions.md)."""
+    warnings: list[str] = []
+    blocks = re.findall(r"```mermaid\n(.*?)```", text, re.DOTALL)
+    for idx, block in enumerate(blocks, 1):
+        node_ids = set(re.findall(r"\b([A-Za-z_][A-Za-z0-9_]*)\s*[\[(\{]", block))
+        if len(node_ids) > 30:
+            warnings.append(f"{rel_path} mermaid block #{idx}: {len(node_ids)} nodes exceeds guardrail of 30; consider splitting")
+        block_end = text.find("```", text.find(block) + len(block) - 10)
+        tail = text[block_end : block_end + 600] if block_end >= 0 else ""
+        if not re.search(r"未覆盖|Uncovered", tail):
+            warnings.append(f"{rel_path} mermaid block #{idx}: missing '未覆盖' / 'Uncovered' paragraph within ~600 chars after the diagram (per call-graph-conventions.md)")
+    return warnings
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description="Validate Bug audit package")
     parser.add_argument("root", help="Bug audit output root")
@@ -297,6 +349,11 @@ def main() -> int:
             "Path to a target repository checkout. Enables existence checks for "
             "frontmatter `files[].path` references. May be repeated for multi-repo audits."
         ),
+    )
+    parser.add_argument(
+        "--require-lens-coverage",
+        action="store_true",
+        help="Require submit/quality/lens-coverage.md to exist and contain valid 5-section records per enabled lens",
     )
     parser.add_argument(
         "--allow-id-gaps",
@@ -381,6 +438,13 @@ def main() -> int:
             errors.append(f"{rel} must not include SLA metadata")
         if "owner" in meta or "due_date" in meta:
             warnings.append(f"{rel} contains workflow-tracking metadata; include only if requested")
+        # Lens enum check (optional `lens:` frontmatter, single value or list)
+        lens_meta = meta.get("lens")
+        if lens_meta is not None:
+            lens_values = lens_meta if isinstance(lens_meta, list) else [lens_meta]
+            for lv in lens_values:
+                if str(lv).strip() not in VALID_LENS:
+                    errors.append(f"{rel} invalid lens value: {lv} (allowed: L1-L19, META-1, META-2)")
         domains = as_list(meta.get("infra_domains"))
         if not domains:
             errors.append(f"{rel} infra_domains must contain at least one value")
@@ -476,6 +540,26 @@ def main() -> int:
                 + ", ".join(sorted(locations))
                 + f" — content starts with: {preview!r}"
             )
+
+    # Lens coverage check (D2 lens system)
+    lens_coverage_path = root / "quality/lens-coverage.md"
+    if lens_coverage_path.is_file():
+        lc_text = lens_coverage_path.read_text(encoding="utf-8", errors="replace")
+        lc_errors, lc_warnings = check_lens_coverage(lc_text, args.language)
+        errors.extend(lc_errors)
+        warnings.extend(lc_warnings)
+    elif args.require_lens_coverage:
+        errors.append("Missing quality/lens-coverage.md (required by --require-lens-coverage; see references/exploration-lenses.md)")
+
+    # Mermaid call-graph guardrail check on repo profiles (D3)
+    profiles_dir = root / "knowledge/repo-profiles"
+    if profiles_dir.is_dir():
+        for profile_path in sorted(profiles_dir.glob("*.md")):
+            if profile_path.name in ("README.md",):
+                continue
+            profile_rel = profile_path.relative_to(root).as_posix()
+            profile_text = profile_path.read_text(encoding="utf-8", errors="replace")
+            warnings.extend(check_mermaid_guards(profile_text, profile_rel))
 
     index_json = root / "indexes/findings.generated.json"
     if index_json.is_file():

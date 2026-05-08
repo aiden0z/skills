@@ -24,7 +24,7 @@
 
 ## Phase 1: Minimal Knowledge Map
 
-Collect enough facts before hunting Bugs; do not wait for complete documentation:
+Collect enough facts before hunting Bugs; do not wait for complete documentation. **For every repo in scope, write one `submit/knowledge/repo-profiles/<repo>.md` per `references/repo-profile.md`** — this includes a Mermaid call graph (per `references/call-graph-conventions.md`) and the 5 boundary types (Outbound / Inbound / Shared Events / Shared Storage / Shared Config) plus Intent Inputs (README/ADR/design docs index). The profile is the input substrate for Tier 3 lens and META-1; without it, cross-repo exploration cannot run.
 
 - Repositories, branches, languages, frameworks, build systems.
 - Entry points: API views/controllers, service/provider layers, tasks, workers, CLIs, scripts.
@@ -59,16 +59,21 @@ Get-ChildItem -Recurse -File -Include *.py,*.js,*.ts,*.tsx,*.java,*.kt,*.go,*.rs
 
 ## Phase 2: Candidate Search
 
-Run multiple lenses, not one grep pass:
+**This phase is the lens system.** See `references/exploration-lenses.md` for the methodology.
 
-- **Domain profile**: apply `infra`, `backend`, `frontend`, `sdk`, `mobile`, or `generic` emphasis from `domain-profiles.md`.
-- **State mutation**: local DB + remote call in same path; remote success before local failure; local deletion before backend confirmation.
-- **Long tasks**: unbounded loops, missing timeout, missing terminal state, swallowed worker exception.
-- **External dependency**: HTTP without timeout, disabled TLS, retry without budget, missing error class.
-- **Storage/network**: volume/snapshot/backup/migration/route/device sync state drift, leaked attachment/session/connection.
-- **Security**: authz gaps, path traversal, command injection, unsafe deserialization, secrets, tenant boundary.
-- **Architecture**: overloaded provider/view/connector, duplicated adapters, source-of-truth ambiguity.
-- **Knowledge feedback**: update the knowledge map when a candidate reveals a new relationship, lifecycle, state owner, or repeated issue family.
+Core loop per lens (4 steps):
+1. **Hypothesize** — write down the failure mode you are looking for, before grepping
+2. **Hunt** — apply the lens's "Where to look" patterns
+3. **Refute** — for each candidate, find a sibling site that handles the same scenario correctly; the diff is the bug or the false-positive guard
+4. **Promote or Park** — surviving candidates become Bugs; reputed-but-weak go to `work/candidates/`; refuted go into the lens application record's "排除原因"
+
+**Coverage requirement**: Tier 2 (L8-L14) and Tier 3 (L15-L19, when audit covers ≥2 repos) lens must each have a 5-section application record in `submit/quality/lens-coverage.md`. Tier 1 (L1-L7) records optional. "已应用 lens 但未发现" is a legitimate, encouraged output. **Never invent findings to fill coverage** — see `authenticity.md`.
+
+**Pluggable strategy**: if the user specified a non-default strategy (in `submit/quality/submission-scope.md`), follow that strategy; coverage requirement applies to the declared lens subset.
+
+**Domain profile shapes lens priority** (`references/domain-profiles.md`); it does not exclude lens.
+
+**Knowledge feedback**: update the per-repo profile and call graph when a candidate reveals a new boundary, lifecycle, state owner, or cross-repo relationship.
 
 ## Phase 3: Deep Verification
 
@@ -103,8 +108,12 @@ Consolidate final knowledge files that help developers understand and continue t
 - `knowledge/repo-relationship-map.md`
 - `knowledge/risk-paths.md`
 - `knowledge/architecture-design-review.md`
-- `knowledge/repo-profiles/*.md`
+- `knowledge/repo-profiles/*.md` (already written in Phase 1; revise after lens findings expose new boundaries)
 - `work/candidates/` for low-confidence leads that should not enter submitted findings.
+
+**META-1 sweep (intent vs implementation drift)**: using each repo profile's `Intent Inputs` section, scan README / ADR / design docs / key commit messages and compare to actual code behavior. Findings are not new categories — they map back to L1-L19 (record the lens in `bug-schema.md` frontmatter `lens:`). META-1 may also surface as additional context in existing Bugs.
+
+**META-2 sweep (failure-path test coverage)**: spot-check `tests/` against modules touched by Tier 2/3 Bugs. If a Bug's affected code path has no failure-path tests, note "风险增强：缺测试" in the relevant lens application record (this may justify priority bump).
 
 Use `knowledge-base.md` for the final completeness check.
 Architecture review should describe risk signals, not dictate principles.

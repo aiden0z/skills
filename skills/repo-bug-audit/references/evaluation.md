@@ -53,6 +53,19 @@ For Q5 (authenticity) failures specifically: first **strip the fabricated claim*
 
 Gate failure never pauses the workflow. The four actions above are the full action space; do not invent ad-hoc fixes and do not ask the user mid-scan. If a P1/P2 Bug fails because it depends on unverified assumptions, prefer "move to candidates" over "lower confidence" — submitted findings should not carry low-confidence priority claims that look authoritative in README counts.
 
+## Q6 — Lens Coverage Gate (Package-Level)
+
+Apply after Q1-Q5 pass on individual Bugs. Read `submit/quality/lens-coverage.md` and check:
+
+- For each lens enabled by the audit (default = Tier 2 + Tier 3 if multi-repo + Meta; user-specified strategy in `submission-scope.md` overrides), is there an entry?
+- Does each entry have all 5 sections (`已扫描入口` / `关注模式` / `候选数` / `排除原因` / `未覆盖`)?
+- Does `已扫描入口` list real paths? Does `排除原因` cite `path:line` anchors? Does `未覆盖` name a concrete uncovered area (not "无未覆盖")?
+- Q5 (authenticity) applies to lens-coverage.md content too — fabricated coverage claims (paths that don't exist, `with_lock` wrappers that don't exist, made-up "排除原因") fail the same way fabricated Bugs fail.
+
+**Pass = every enabled lens has a complete, authentic 5-section record.** Missing lens or missing section → ERROR (also caught by validator). Sections present but content fabricated → Q5 veto applied to that lens's section; agent must strip fabrication and re-evaluate (same rule as Bug Q5 failure).
+
+"已应用 lens 但未发现" with concrete `已扫描入口` / `关注模式` / `候选数: 0` / `排除原因: 无候选` / `未覆盖: <真实未覆盖>` is a **passing** record, not a failure. Encourage this output over invented findings.
+
 ## Package-Level Gate
 
 Check the package as a single artifact:
