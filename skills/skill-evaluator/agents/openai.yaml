@@ -1,0 +1,4 @@
+interface:
+  display_name: "Skill Evaluator"
+  short_description: "Review, test, and harden Agent Skills against real failure modes"
+  default_prompt: "Use $skill-evaluator to review this skill for quality, correctness, and reliability under realistic agent behavior."

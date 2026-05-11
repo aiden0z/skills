@@ -1,0 +1,251 @@
+{
+  "skill_name": "skill-evaluator",
+  "evals": [
+    {
+      "id": "basic-skill-quality-review",
+      "type": "happy-path",
+      "scope": "agent-level",
+      "trigger_expectation": "explicit",
+      "tags": ["review", "mechanical", "verdict"],
+      "prompt": "Use $skill-evaluator at /path/to/skill-evaluator to review the quality of /path/to/a-simple-skill and tell me if it's ready to publish.",
+      "must_do": [
+        "Run scripts/check_skill_quality.py on the target skill",
+        "Include mechanical check results (status, error count, warning count) before the verdict",
+        "Read the target skill's SKILL.md frontmatter and body",
+        "Score the skill against at least trigger metadata, workflow control, and validation integrity dimensions",
+        "Return a verdict of ready, usable-with-gaps, or not-ready",
+        "Include specific evidence for each risk or recommendation"
+      ],
+      "must_not_do": [
+        "Return a verdict without including mechanical check output",
+        "Grade by output polish alone without checking process evidence",
+        "Claim readiness when the skill has missing frontmatter or broken scripts"
+      ],
+      "required_artifacts": [
+        "agent transcript or structured trace",
+        "final evaluation response"
+      ],
+      "success_evidence": [
+        "Output has a Mechanical Check Results section before the Verdict",
+        "Transcript shows check_skill_quality.py was run",
+        "Verdict is one of the three defined values",
+        "Each risk has evidence from the target skill files",
+        "Recommendations name specific files, rules, or scripts to change"
+      ],
+      "trace_assertions": [
+        {"type": "skill_invoked", "value": "skill-evaluator"},
+        {"type": "command_contains", "value": "check_skill_quality.py"}
+      ],
+      "artifact_assertions": [],
+      "grader": {"mode": "deterministic", "threshold": 1.0},
+      "failure_categories": ["mechanical-check-skipped", "verdict-without-evidence", "trigger-miss"]
+    },
+    {
+      "id": "flag-skill-with-missing-gates",
+      "type": "regression",
+      "scope": "agent-level",
+      "trigger_expectation": "explicit",
+      "tags": ["gates", "workflow", "anti-shortcut"],
+      "prompt": "Use $skill-evaluator at /path/to/skill-evaluator to review /path/to/a-skill-that-produces-final-artifacts-without-requiring-validation. The skill has a multi-step workflow but no blocking gates before its final packaging step.",
+      "must_do": [
+        "Run mechanical checks on the target skill first",
+        "Identify that the skill lacks blocking gates before quality-critical transitions",
+        "Flag the anti-pattern: final artifacts can mask weak process",
+        "Recommend adding a blocking validation gate or evidence ledger",
+        "Reference the specific workflow step that needs the gate"
+      ],
+      "must_not_do": [
+        "Give a passing verdict when a known gap allows unvalidated final output",
+        "Accept vague ensure-quality language as a substitute for a gate",
+        "Recommend only prose changes without a concrete gate or validator"
+      ],
+      "required_artifacts": [
+        "agent transcript or structured trace",
+        "final evaluation response"
+      ],
+      "success_evidence": [
+        "Evaluation calls out the missing gate explicitly",
+        "Recommendation includes a concrete change: script, validator, or blocking step",
+        "Verdict is usable-with-gaps or not-ready"
+      ],
+      "trace_assertions": [
+        {"type": "skill_invoked", "value": "skill-evaluator"},
+        {"type": "trace_contains", "value": "gate"}
+      ],
+      "artifact_assertions": [],
+      "grader": {"mode": "deterministic", "threshold": 1.0},
+      "failure_categories": ["missed-anti-pattern", "false-pass", "weak-recommendation"]
+    },
+    {
+      "id": "output-shape-matches-template",
+      "type": "happy-path",
+      "scope": "agent-level",
+      "trigger_expectation": "explicit",
+      "tags": ["output-shape", "verdict", "recommendations"],
+      "prompt": "Use $skill-evaluator at /path/to/skill-evaluator to review /path/to/a-skill and return a structured evaluation.",
+      "must_do": [
+        "Return a Mechanical Check Results section with check_skill_quality.py output",
+        "Return a verdict field with one of: ready, usable-with-gaps, not-ready",
+        "Include top risks ordered by impact",
+        "Include evidence from files or scripts inspected",
+        "Include recommended changes with target files named",
+        "Include at least one suggested eval case or smoke check"
+      ],
+      "must_not_do": [
+        "Return only freeform prose without a verdict",
+        "Omit mechanical check results from the output",
+        "Omit evidence when listing risks",
+        "Recommend changes without naming which file or rule should change"
+      ],
+      "required_artifacts": [
+        "agent transcript or structured trace",
+        "final evaluation response"
+      ],
+      "success_evidence": [
+        "Output contains a Mechanical Check Results section",
+        "Output contains a clear Verdict section",
+        "Output contains a Top Risks section with evidence",
+        "Output contains a Recommended Changes section with target files",
+        "Output follows the five-section template from SKILL.md"
+      ],
+      "trace_assertions": [
+        {"type": "skill_invoked", "value": "skill-evaluator"}
+      ],
+      "artifact_assertions": [],
+      "grader": {"mode": "deterministic", "threshold": 1.0},
+      "failure_categories": ["wrong-output-shape", "missing-verdict", "missing-mechanical-evidence", "recommendation-without-target"]
+    },
+    {
+      "id": "own-description-not-mini-workflow",
+      "type": "regression",
+      "scope": "artifact-review",
+      "trigger_expectation": "explicit",
+      "tags": ["self-test", "description", "trigger"],
+      "prompt": "Use $skill-evaluator at /path/to/skill-evaluator to review its own SKILL.md and check whether the description field contains a mini-workflow instead of user-facing trigger conditions.",
+      "must_do": [
+        "Run mechanical checks on skill-evaluator itself first",
+        "Read skill-evaluator's own SKILL.md description",
+        "Apply the best-practices rule: description should name user intents and artifact types, not summarize workflow steps",
+        "Flag if the description reads like a process summary rather than when-to-use guidance"
+      ],
+      "must_not_do": [
+        "Skip checking its own description against its own rubric",
+        "Accept evaluator-specific jargon like forward-testing or regression-testing as user-facing language"
+      ],
+      "required_artifacts": [
+        "agent transcript or structured trace",
+        "final evaluation response"
+      ],
+      "success_evidence": [
+        "Evaluation notes whether the description uses user-facing language",
+        "Verdict reflects whether the description passes its own trigger clarity standard"
+      ],
+      "trace_assertions": [
+        {"type": "skill_invoked", "value": "skill-evaluator"},
+        {"type": "trace_contains", "value": "description"}
+      ],
+      "artifact_assertions": [],
+      "grader": {"mode": "deterministic", "threshold": 1.0},
+      "failure_categories": ["self-contradiction", "trigger-clarity-fail"]
+    },
+    {
+      "id": "tiny-skill-edge-case",
+      "type": "edge-case",
+      "scope": "agent-level",
+      "trigger_expectation": "explicit",
+      "tags": ["edge-case", "tiny-skill", "minimal"],
+      "prompt": "Use $skill-evaluator at /path/to/skill-evaluator to review /path/to/a-minimal-skill that has only a 15-line SKILL.md with a single trigger and no scripts or references.",
+      "must_do": [
+        "Run mechanical checks and note the tiny scale in metrics",
+        "Recognize that a minimal skill does not need the full rubric — skip harness-level checks",
+        "Check that the description is clear and the trigger works for its narrow case",
+        "Return a verdict appropriate to the skill's scope — ready is valid for a minimal but correct skill"
+      ],
+      "must_not_do": [
+        "Flag missing references or scripts as errors when the skill does not need them",
+        "Apply the full multi-reference rubric to a single-purpose trigger skill",
+        "Recommend adding complexity just to satisfy rubric dimensions"
+      ],
+      "required_artifacts": [
+        "agent transcript or structured trace",
+        "final evaluation response"
+      ],
+      "success_evidence": [
+        "Verdict reflects the skill's minimal scope rather than penalizing it",
+        "Mechanical check output is included",
+        "Recommendations are proportional to the skill's complexity"
+      ],
+      "trace_assertions": [
+        {"type": "skill_invoked", "value": "skill-evaluator"},
+        {"type": "command_contains", "value": "check_skill_quality.py"}
+      ],
+      "artifact_assertions": [],
+      "grader": {"mode": "deterministic", "threshold": 1.0},
+      "failure_categories": ["over-scored-for-scale", "unnecessary-complexity-recommendation", "trigger-miss"]
+    },
+    {
+      "id": "ambiguous-vague-evaluation-request",
+      "type": "ambiguous-scope",
+      "scope": "agent-level",
+      "trigger_expectation": "implicit",
+      "tags": ["ambiguous-scope", "defaults", "interaction"],
+      "prompt": "Hey can you check if my skill is good? It's in the current directory. I'm not sure what to look for though.",
+      "must_do": [
+        "Treat the request as an implicit evaluation trigger",
+        "Run mechanical checks as the first concrete step",
+        "Derive scope from the skill itself rather than asking the user to define evaluation criteria",
+        "Report what was checked and what the skill does well or poorly"
+      ],
+      "must_not_do": [
+        "Ask more than one clarifying question before starting mechanical checks",
+        "Refuse to evaluate because the user did not specify evaluation dimensions",
+        "Produce an empty verdict because scope was unclear"
+      ],
+      "required_artifacts": [
+        "agent transcript or structured trace",
+        "final evaluation response"
+      ],
+      "success_evidence": [
+        "Mechanical checks are run without waiting for detailed user direction",
+        "Verdict is backed by evidence from the skill files",
+        "At most one clarifying question was asked"
+      ],
+      "trace_assertions": [
+        {"type": "skill_invoked", "value": "skill-evaluator"},
+        {"type": "command_contains", "value": "check_skill_quality.py"}
+      ],
+      "artifact_assertions": [],
+      "grader": {"mode": "deterministic", "threshold": 1.0},
+      "failure_categories": ["over-questioning", "refused-ambiguous", "verdict-without-evidence"]
+    },
+    {
+      "id": "should-not-trigger-for-code-review",
+      "type": "negative",
+      "scope": "agent-level",
+      "trigger_expectation": "negative",
+      "tags": ["negative", "code-review", "not-skill-eval"],
+      "prompt": "Review my pull request's code changes in /path/to/repo. I want to make sure there are no bugs or security issues before merging.",
+      "must_do": [
+        "Recognize this is a code review request, not a skill evaluation",
+        "Either decline or redirect to code review tools"
+      ],
+      "must_not_do": [
+        "Invoke skill-evaluator — there is no skill to evaluate",
+        "Run check_skill_quality.py against the repo directory",
+        "Treat the code review request as an implicit skill evaluation"
+      ],
+      "required_artifacts": [],
+      "success_evidence": [
+        "skill-evaluator is not invoked",
+        "No check_skill_quality.py is run",
+        "Response addresses code review, not skill evaluation"
+      ],
+      "trace_assertions": [
+        {"type": "skill_not_invoked", "value": "skill-evaluator"}
+      ],
+      "artifact_assertions": [],
+      "grader": {"mode": "deterministic", "threshold": 1.0},
+      "failure_categories": ["false-trigger", "wrong-domain"]
+    }
+  ]
+}

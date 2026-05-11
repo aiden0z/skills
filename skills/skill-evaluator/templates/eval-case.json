@@ -1,0 +1,44 @@
+{
+  "skill_name": "skill-name",
+  "evals": [
+    {
+      "id": "case-001",
+      "type": "regression",
+      "scope": "agent-level",
+      "trigger_expectation": "explicit",
+      "tags": ["workflow", "regression"],
+      "prompt": "Use $skill-name at /path/to/skill-name to handle a realistic user request.",
+      "must_do": [
+        "Required process or artifact"
+      ],
+      "must_not_do": [
+        "Forbidden shortcut or unsafe behavior"
+      ],
+      "required_artifacts": [
+        "path/to/required-artifact"
+      ],
+      "success_evidence": [
+        "Observable transcript, artifact, or validator evidence"
+      ],
+      "trace_assertions": [
+        {
+          "type": "skill_invoked",
+          "value": "skill-name"
+        }
+      ],
+      "artifact_assertions": [
+        {
+          "type": "exists",
+          "path": "path/to/required-artifact"
+        }
+      ],
+      "grader": {
+        "mode": "deterministic",
+        "threshold": 1.0
+      },
+      "failure_categories": [
+        "workflow-skip"
+      ]
+    }
+  ]
+}

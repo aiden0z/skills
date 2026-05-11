@@ -40,3 +40,6 @@ Thumbs.db
 # Skill installer lock
 skills-lock.json
 .archive/
+
+# Local docs are ignored by default; force-add specific files only when explicitly requested.
+docs/
