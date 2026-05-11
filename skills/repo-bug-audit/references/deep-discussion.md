@@ -26,7 +26,7 @@ Write a concise charter before scanning:
 - **语言和口吻**: usually Chinese, developer-facing, no meta wording.
 - **优先级规则**: P1-P4 definitions and whether infra-stability findings move earlier.
 - **置信度规则**: submit only high/medium confidence, or keep low confidence in `work/candidates/`.
-- **风险视角**: data integrity, recovery, availability, resource leak, storage/network performance, security, cross-system consistency, architecture risk.
+- **风险视角**: data integrity, cross-system consistency, recovery, availability, resource leak, storage/network performance, security, execution/serialization boundaries, observability, deployment/runtime, architecture risk.
 - **证据要求**: entry point, code path, failure mode, impact, static reproduction path, expected/actual behavior, fix suggestion, validation checks.
 - **交付物**: Bug Markdown files, indexes, knowledge docs, relationship maps, architecture review, README, audit overview image, zip package.
 - **交互策略**: automatic execution or checkpointed review.

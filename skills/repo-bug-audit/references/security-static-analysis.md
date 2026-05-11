@@ -4,15 +4,15 @@ Use this lens for security and control-plane safety. Scanner output is only a le
 
 ## Checks
 
-- AuthN/AuthZ: missing policy, tenant boundary bypass, role confusion.
-- Injection: SQL/NoSQL/command/template/expression injection.
-- Path/file: traversal, unsafe archive extraction, arbitrary read/write.
-- Deserialization: `pickle`, `yaml.load`, `jsonpickle`, unsafe object decoding.
-- TLS/crypto: `verify=False`, disabled cert checks, weak crypto, hardcoded secrets.
-- SSRF/network: user-controlled URL, internal metadata access, unbounded outbound call.
-- Secrets: tokens/passwords in repo, logs, config defaults, generated reports.
-- Shell/process: `shell=True`, string command construction, temp shell files, unconsumed pipes.
-- Resource abuse: unbounded payload, file read without size limit, QGA/QMP/libvirt unsafe operations.
+- Authentication and authorization enforcement across all entry points
+- Injection vectors where external input reaches interpreters
+- Path and file operations where user input constructs filesystem locations
+- Deserialization and data format parsing at trust boundaries
+- TLS configuration and certificate validation on all outbound connections
+- Secrets handling: storage, exposure in logs/configs, encryption key management
+- Network call construction where URLs or hosts come from external input
+- Process and command execution boundaries
+- Resource limits on uploads, payloads, and external data ingestion
 
 ## Tool Ideas
 

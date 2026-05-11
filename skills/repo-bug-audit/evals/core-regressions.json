@@ -1,0 +1,385 @@
+{
+  "skill_name": "repo-bug-audit",
+  "evals": [
+    {
+      "id": "multi-repo-parent-20-roster-shards",
+      "type": "regression",
+      "scope": "agent-level",
+      "trigger_expectation": "explicit",
+      "tags": ["multi-repo", "depth", "shards", "html"],
+      "prompt": "Use $repo-bug-audit at /path/to/repo-bug-audit to run a deep static Bug audit on a parent directory that contains 20 Git repositories, and produce one final handoff package.",
+      "must_do": [
+        "Treat the parent directory as a repo-group root even if the parent is not a Git checkout.",
+        "Run discover_repositories.py and freeze the roster before Bug hunting.",
+        "Generate LLM-targeted scan patterns after agent exploration, run run_high_recall_scan.py --patterns-file.",
+        "Triage representative search seeds into shard seed_triage before declaring candidate counts.",
+        "Create one repo shard per discovered repo, or record a concrete batching reason for tiny coupled repos.",
+        "Fill each non-trivial shard with a risk surface map and hypothesis loops before final packaging.",
+        "Run validate_bug_package.py with --validate-shards-only before final README, HTML, overview image, or final knowledge packaging.",
+        "Generate bug-audit-report.html for the final handoff package.",
+        "Use first-pass or focused unless deep-complete is supported by per-repo shard evidence."
+      ],
+      "must_not_do": [
+        "Analyze only the first few repositories and still present the package as complete.",
+        "Use cross-repo grep as a substitute for repo-local shard exploration.",
+        "Treat pattern searches as repo understanding without surface maps and hypothesis loops.",
+        "Claim deep-complete without filled shard summaries and call-chain evidence."
+      ],
+      "required_artifacts": [
+        "work/scanner-output/repo-inventory.json",
+        "work/scanner-output/repo-shards.md",
+        "work/scanner-output/repo-scan-roots.txt",
+        "work/scanner-output/high-recall-scan.json",
+        "work/scanner-output/high-recall-scan.md",
+        "work/scanner-output/shard-gate.passed.json",
+        "submit/quality/depth-coverage.md",
+        "submit/bug-audit-report.html"
+      ],
+      "success_evidence": [
+        "Transcript shows discover_repositories.py before validate_bug_package.py --validate-shards-only.",
+        "Transcript shows --validate-shards-only before generate_bug_report_html.py.",
+        "Final validation exits 0 with --require-knowledge --require-html-report and --repo-root.",
+        "Shard summaries contain surface_map and hypothesis_loops evidence for non-trivial repos.",
+        "Shard summaries with search seeds contain seed_triage entries with promoted, parked, refuted, or merged outcomes.",
+        "Depth coverage states first-pass, focused, or deep-complete with matching evidence."
+      ],
+      "trace_assertions": [
+        {"type": "skill_invoked", "value": "repo-bug-audit"},
+        {"type": "command_contains", "value": "discover_repositories.py"},
+        {"type": "command_contains", "value": "repo-scan-roots.txt"},
+        {"type": "command_contains", "value": "run_high_recall_scan.py"},
+        {"type": "command_contains", "value": "--patterns-file"},
+        {"type": "command_contains", "value": "--validate-shards-only"},
+        {"type": "trace_order", "before": "discover_repositories.py", "after": "run_high_recall_scan.py"},
+        {"type": "trace_order", "before": "run_high_recall_scan.py", "after": "--validate-shards-only"},
+        {"type": "trace_order", "before": "discover_repositories.py", "after": "--validate-shards-only"},
+        {"type": "trace_order", "before": "--validate-shards-only", "after": "generate_bug_report_html.py"},
+        {"type": "shard_gate_failure_blocks_report"},
+        {"type": "final_validation_requires_handoff_flags"},
+        {"type": "bulk_package_writer_absent"},
+        {"type": "final_artifact_touch_absent"},
+        {"type": "source_scan_excludes_historical_packages"},
+        {"type": "generic_candidate_inflation_absent"}
+      ],
+      "artifact_assertions": [
+        {"type": "exists", "path": "work/scanner-output/repo-inventory.json"},
+        {"type": "exists", "path": "work/scanner-output/repo-shards.md"},
+        {"type": "exists", "path": "work/scanner-output/repo-scan-roots.txt"},
+        {"type": "exists", "path": "work/scanner-output/high-recall-scan.json"},
+        {"type": "exists", "path": "work/scanner-output/high-recall-scan.md"},
+        {"type": "exists", "path": "work/scanner-output/shard-gate.passed.json"},
+        {"type": "exists", "path": "submit/quality/depth-coverage.md"},
+        {"type": "exists", "path": "submit/quality/issue-family-coverage.md"},
+        {"type": "exists", "path": "submit/bug-audit-report.html"},
+        {"type": "file_contains", "path": "submit/quality/depth-coverage.md", "value": "Coverage Classification"},
+        {"type": "issue_family_coverage_complete"},
+        {"type": "candidate_index_integrity"},
+        {"type": "generic_candidate_inflation_absent"}
+      ],
+      "grader": {"mode": "deterministic", "threshold": 1.0},
+      "failure_categories": ["workflow-skip", "missing-roster", "missing-shard-gate", "depth-overclaim"]
+    },
+    {
+      "id": "candidate-discovery-funnel-visible",
+      "type": "regression",
+      "scope": "agent-level",
+      "trigger_expectation": "explicit",
+      "tags": ["candidate-recall", "multi-repo", "high-recall", "validation"],
+      "prompt": "Use $repo-bug-audit at /path/to/repo-bug-audit to find as many static security/auth Bugs as possible across a parent directory containing many Git repositories, then produce a final handoff package.",
+      "must_do": [
+        "Treat candidate discovery as a first-class recall phase before final Bug promotion.",
+        "After initial repo-local exploration, generate LLM-targeted patterns and run run_high_recall_scan.py --patterns-file.",
+        "Convert reviewed supplemental search seeds into seed_triage outcomes before final candidate indexing.",
+        "Retain medium/low-confidence leads as candidates instead of silently dropping them.",
+        "Preserve credible P3/P4 leads as candidates or submitted Bugs instead of stopping at P1/P2.",
+        "Run a P1-P4 Priority Promotion Sweep before final handoff, using candidate priority, outcome, bug_gate, and missing_gate fields where available.",
+        "Promote every gate-complete candidate into findings/P1-P4, regardless of priority, unless the user explicitly requested critical-only scope.",
+        "Review every parked P1/P2 candidate before finalization and either promote it or document the missing Bug gate.",
+        "Create issue-family coverage from the fresh current-source scan before final promotion.",
+        "Set shard candidate_count to include leads later promoted to submitted Bugs.",
+        "Run generate_candidate_index.py before pre-package validation.",
+        "Include submit/indexes/candidates.generated.json and submit/quality/candidate-coverage.md in the final package."
+      ],
+      "must_not_do": [
+        "Report only the final submitted Bug count when the prompt asks for broad discovery.",
+        "Let a low confirmed Bug count hide a much larger candidate pool.",
+        "Claim deep-complete when a high-recall scan has many seeds but only a tiny retained candidate pool.",
+        "Leave likely P1/P2 leads parked only because stronger Bugs were already submitted.",
+        "Stop after producing only P1 findings when retained P2/P3/P4 candidates have complete code evidence, trigger path, realistic failure mode, affected resource, and impact.",
+        "Leave any candidate marked bug_gate=complete unsubmitted without a merge target.",
+        "Generate final HTML before the candidate funnel is current."
+      ],
+      "required_artifacts": [
+        "submit/indexes/candidates.generated.json",
+        "submit/indexes/candidates.generated.md",
+        "submit/quality/candidate-coverage.md",
+        "submit/quality/issue-family-coverage.md",
+        "work/scanner-output/high-recall-scan.json"
+      ],
+      "success_evidence": [
+        "Transcript shows generate_candidate_index.py before pre-package validate_bug_package.py.",
+        "candidate-coverage.md shows Candidate Funnel and Repository Candidate Coverage.",
+        "candidate-coverage.md shows Priority Promotion Sweep with P1-P4 candidate outcomes.",
+        "Shard summaries contain seed_triage entries for repos with high-recall search seeds.",
+        "candidates.generated.json total_candidates matches summed shard candidate_count.",
+        "Submitted findings do not exceed total candidate leads.",
+        "candidates.generated.json has zero gate_complete_unsubmitted_candidates, unless critical-only scope is explicitly recorded."
+      ],
+      "trace_assertions": [
+        {"type": "skill_invoked", "value": "repo-bug-audit"},
+        {"type": "command_contains", "value": "run_high_recall_scan.py"},
+        {"type": "command_contains", "value": "--patterns-file"},
+        {"type": "command_contains", "value": "generate_candidate_index.py"},
+        {"type": "trace_order", "before": "run_high_recall_scan.py", "after": "generate_candidate_index.py"},
+        {"type": "trace_order", "before": "generate_candidate_index.py", "after": "prepackage-validation.passed.json"},
+        {"type": "trace_order", "before": "generate_candidate_index.py", "after": "generate_bug_report_html.py"}
+      ],
+      "artifact_assertions": [
+        {"type": "exists", "path": "submit/indexes/candidates.generated.json"},
+        {"type": "exists", "path": "submit/indexes/candidates.generated.md"},
+        {"type": "exists", "path": "submit/quality/candidate-coverage.md"},
+        {"type": "exists", "path": "work/scanner-output/high-recall-scan.json"},
+        {"type": "file_contains", "path": "submit/quality/candidate-coverage.md", "value": "Candidate Funnel"},
+        {"type": "file_contains", "path": "submit/quality/candidate-coverage.md", "value": "Priority Promotion Sweep"},
+        {"type": "file_contains", "path": "submit/quality/candidate-coverage.md", "value": "Repository Candidate Coverage"},
+        {"type": "candidate_index_integrity"},
+        {"type": "issue_family_coverage_complete"},
+        {"type": "high_priority_parked_candidates_reviewed"}
+      ],
+      "grader": {"mode": "deterministic", "threshold": 1.0},
+      "failure_categories": ["candidate-recall-hidden", "workflow-skip", "premature-report"]
+    },
+    {
+      "id": "late-package-writer-forbidden",
+      "type": "regression",
+      "scope": "agent-level",
+      "trigger_expectation": "explicit",
+      "tags": ["anti-pattern", "authenticity", "workflow"],
+      "prompt": "Use $repo-bug-audit at /path/to/repo-bug-audit to audit a medium repository group and create the final package under the requested output directory.",
+      "must_do": [
+        "Write final findings and knowledge from repo-local shard evidence.",
+        "Use scripts only for deterministic rendering, indexing, validation, or report generation.",
+        "Let validate_bug_package.py flag any late mass-generation package writer."
+      ],
+      "must_not_do": [
+        "Create work/tmp/write_package.py or a similarly named script that writes final Bug records, repo profiles, depth coverage, lens coverage, and knowledge docs from memory.",
+        "Create work/scripts/build_evidence_docs.py or any audit-local script that writes multiple final Markdown deliverable families from embedded prose.",
+        "Synthesize final Markdown deliverables before shard evidence is filled."
+      ],
+      "required_artifacts": [
+        "work/scanner-output/shard-gate.passed.json"
+      ],
+      "success_evidence": [
+        "No work/tmp package writer is present.",
+        "Validation output does not report generated-looking final Markdown.",
+        "Final package files cite shard evidence, real paths, and candidate records."
+      ],
+      "trace_assertions": [
+        {"type": "skill_invoked", "value": "repo-bug-audit"},
+        {"type": "command_not_contains", "value": "work/tmp/write_package.py"},
+        {"type": "command_not_contains", "value": "work/tmp/package_writer.py"},
+        {"type": "command_not_contains", "value": "work/scripts/build_evidence_docs.py"},
+        {"type": "command_not_contains", "value": "write_package.py"},
+        {"type": "command_not_contains", "value": "package_writer.py"},
+        {"type": "command_not_contains", "value": "build_evidence_docs.py"},
+        {"type": "bulk_package_writer_absent"},
+        {"type": "final_artifact_touch_absent"},
+        {"type": "generic_candidate_inflation_absent"}
+      ],
+      "artifact_assertions": [
+        {"type": "not_exists", "path": "work/tmp/write_package.py"},
+        {"type": "not_exists", "path": "work/tmp/package_writer.py"},
+        {"type": "not_exists", "path": "work/scripts/build_evidence_docs.py"},
+        {"type": "no_bulk_writer_scripts"},
+        {"type": "exists", "path": "work/scanner-output/shard-gate.passed.json"}
+      ],
+      "grader": {"mode": "deterministic", "threshold": 1.0},
+      "failure_categories": ["forbidden-shortcut", "fabricated-package", "workflow-skip"]
+    },
+    {
+      "id": "fresh-first-run-high-recall-without-baseline",
+      "type": "regression",
+      "scope": "agent-level",
+      "trigger_expectation": "explicit",
+      "tags": ["fresh-run", "high-recall", "issue-family", "no-baseline"],
+      "prompt": "Use $repo-bug-audit at /path/to/repo-bug-audit to run a first-time deep high-recall static Bug audit on a parent directory containing many Git repositories. There is no previous audit package.",
+      "must_do": [
+        "Assume no historical package exists and do not ask for one.",
+        "Run discover_repositories.py, then after initial repo-local exploration run run_high_recall_scan.py --patterns-file against frozen repo-scan-roots.txt.",
+        "Build issue-family coverage from fresh current-source evidence before final promotion.",
+        "Cover auth, secrets, execution, deserialization/IPC, file/path, network/SSRF, TLS, frontend rendering, state integrity, async lifecycle, resource/concurrency, and deployment/supply-chain families.",
+        "Keep credible lower-confidence leads as candidates instead of silently dropping them.",
+        "Run generate_candidate_index.py and final validation before report assets."
+      ],
+      "must_not_do": [
+        "Depend on a previous audit package to know what families to search.",
+        "Say a low Bug count is complete without issue-family outcomes and a visible candidate funnel.",
+        "Generate final HTML before issue-family coverage and candidate index exist."
+      ],
+      "required_artifacts": [
+        "work/scanner-output/repo-inventory.json",
+        "work/scanner-output/high-recall-scan.json",
+        "submit/quality/issue-family-coverage.md",
+        "submit/indexes/candidates.generated.json",
+        "submit/bug-audit-report.html"
+      ],
+      "success_evidence": [
+        "Issue-family coverage states fresh/current-source scan provenance.",
+        "All required issue families have outcomes.",
+        "Candidate funnel, seed triage, and issue-family coverage explain promoted, parked, refuted, or not-applicable outcomes.",
+        "No historical baseline artifact is required for success."
+      ],
+      "trace_assertions": [
+        {"type": "skill_invoked", "value": "repo-bug-audit"},
+        {"type": "command_contains", "value": "discover_repositories.py"},
+        {"type": "command_contains", "value": "run_high_recall_scan.py"},
+        {"type": "command_contains", "value": "--patterns-file"},
+        {"type": "command_contains", "value": "generate_candidate_index.py"},
+        {"type": "trace_not_contains", "value": "need previous audit"},
+        {"type": "trace_order", "before": "run_high_recall_scan.py", "after": "generate_candidate_index.py"},
+        {"type": "trace_order", "before": "generate_candidate_index.py", "after": "generate_bug_report_html.py"},
+        {"type": "bulk_package_writer_absent"},
+        {"type": "final_artifact_touch_absent"},
+        {"type": "source_scan_excludes_historical_packages"},
+        {"type": "generic_candidate_inflation_absent"}
+      ],
+      "artifact_assertions": [
+        {"type": "exists", "path": "submit/quality/issue-family-coverage.md"},
+        {"type": "issue_family_coverage_complete"},
+        {"type": "exists", "path": "submit/indexes/candidates.generated.json"},
+        {"type": "exists", "path": "submit/quality/candidate-coverage.md"},
+        {"type": "candidate_index_integrity"},
+        {"type": "generic_candidate_inflation_absent"}
+      ],
+      "grader": {"mode": "deterministic", "threshold": 1.0},
+      "failure_categories": ["baseline-dependence", "candidate-recall-hidden", "premature-report"]
+    },
+    {
+      "id": "html-default-image-optional",
+      "type": "regression",
+      "scope": "agent-level",
+      "trigger_expectation": "explicit",
+      "tags": ["html", "overview-image", "handoff"],
+      "prompt": "Use $repo-bug-audit at /path/to/repo-bug-audit to produce a final handoff report for this repository group.",
+      "must_do": [
+        "Generate submit/bug-audit-report.html by default for the final handoff package.",
+        "Mention the optional audit-overview.png at kickoff without stopping the audit.",
+        "If audit-overview.png was not requested or declined, finish validation and the handoff summary first, then ask at most one yes/no follow-up question about adding it.",
+        "Record the audit-overview.png decision in submission-scope.md even when the image is omitted.",
+        "Keep repo-bug-audit, github.com/aiden0z/skills, and source=static-analysis provenance in the HTML."
+      ],
+      "must_not_do": [
+        "Ask the user whether to generate the default HTML report.",
+        "Block kickoff or final validation on an unanswered audit-overview.png question.",
+        "Silently omit audit-overview.png without recording included, omitted-by-user, omitted-as-lightweight-scan, omitted-after-failure, or deferred-post-handoff."
+      ],
+      "required_artifacts": [
+        "submit/bug-audit-report.html",
+        "submit/quality/submission-scope.md"
+      ],
+      "success_evidence": [
+        "HTML report exists and passes validate_bug_package.py --require-html-report.",
+        "Transcript contains no question asking whether HTML should be generated.",
+        "Overview image question count is zero or one, and any question appears after validation/handoff rather than before exploration."
+      ],
+      "trace_assertions": [
+        {"type": "skill_invoked", "value": "repo-bug-audit"},
+        {"type": "trace_not_contains", "value": "Do you want me to generate the HTML"},
+        {"type": "ask_count_at_most", "pattern": "audit-overview|overview image|overview png|audit-overview\\.png|总览图|概览图", "max": 1, "regex": true}
+      ],
+      "artifact_assertions": [
+        {"type": "exists", "path": "submit/bug-audit-report.html"},
+        {"type": "file_contains", "path": "submit/bug-audit-report.html", "value": "repo-bug-audit"},
+        {"type": "file_contains", "path": "submit/bug-audit-report.html", "value": "github.com/aiden0z/skills"},
+        {"type": "file_contains", "path": "submit/bug-audit-report.html", "value": "source=static-analysis"},
+        {"type": "file_contains", "path": "submit/quality/submission-scope.md", "value": "audit-overview"}
+      ],
+      "grader": {"mode": "deterministic", "threshold": 1.0},
+      "failure_categories": ["html-omitted", "unnecessary-question", "missing-provenance"]
+    },
+    {
+      "id": "single-repo-lightweight-scan",
+      "type": "edge-case",
+      "scope": "agent-level",
+      "trigger_expectation": "explicit",
+      "tags": ["single-repo", "lightweight", "lens"],
+      "prompt": "Use $repo-bug-audit at /path/to/repo-bug-audit to run a lightweight static Bug scan on one small Git repository and produce a concise handoff.",
+      "must_do": [
+        "Treat the checkout as a single repo, not a repo-group parent.",
+        "Avoid forcing multi-repo shard machinery when the target is a single repo.",
+        "Require lens coverage unless submission-scope.md declares a narrowed lightweight/custom strategy.",
+        "Use --lens-scope custom only when the narrowed lens strategy is recorded."
+      ],
+      "must_not_do": [
+        "Create a 20-repo style shard plan for a single small repository.",
+        "Skip lens coverage silently in a final handoff."
+      ],
+      "required_artifacts": [
+        "submit/quality/lens-coverage.md",
+        "submit/quality/submission-scope.md"
+      ],
+      "success_evidence": [
+        "Final validation passes without requiring multi-repo shard artifacts.",
+        "Lens coverage exists, or the custom lightweight lens strategy is explicit in submission-scope.md.",
+        "No repo-group depth-complete claim appears."
+      ],
+      "trace_assertions": [
+        {"type": "skill_invoked", "value": "repo-bug-audit"},
+        {"type": "trace_not_contains", "value": "20 repositories"},
+        {"type": "trace_not_contains", "value": "repo-group root"}
+      ],
+      "artifact_assertions": [
+        {"type": "exists", "path": "submit/quality/lens-coverage.md"},
+        {"type": "exists", "path": "submit/quality/submission-scope.md"},
+        {"type": "not_exists", "path": "work/scanner-output/repo-shards.md"}
+      ],
+      "grader": {"mode": "deterministic", "threshold": 1.0},
+      "failure_categories": ["over-scoped-workflow", "missing-lens-coverage", "wrong-depth-claim"]
+    },
+    {
+      "id": "historical-package-fresh-rescan",
+      "type": "regression",
+      "scope": "agent-level",
+      "trigger_expectation": "explicit",
+      "tags": ["resume", "fresh-rescan", "baseline"],
+      "prompt": "Use $repo-bug-audit at /path/to/repo-bug-audit to run a new deep audit on a target root that already contains an older bug-audit output package.",
+      "must_do": [
+        "Treat the older package as a historical baseline for comparison only.",
+        "Run an independent current-source scan before reviewing the historical package.",
+        "Record the historical package as reviewed or excluded in submission-scope.md and depth-coverage.md.",
+        "Create current findings, repo profiles, indexes, and reports from the fresh scan."
+      ],
+      "must_not_do": [
+        "Copy old Bug IDs, repo profiles, findings, indexes, report structure, or package counts into the new audit.",
+        "Use a prior package to justify skipping current repo exploration."
+      ],
+      "required_artifacts": [
+        "submit/quality/submission-scope.md",
+        "submit/quality/depth-coverage.md",
+        "work/scanner-output/repo-inventory.json"
+      ],
+      "success_evidence": [
+        "Depth coverage has a Historical Baselines section.",
+        "Historical baseline status is reviewed or excluded.",
+        "Validator exits 0 and does not flag imported, copied, or reused prior structure."
+      ],
+      "trace_assertions": [
+        {"type": "skill_invoked", "value": "repo-bug-audit"},
+        {"type": "command_contains", "value": "discover_repositories.py"},
+        {"type": "source_scan_excludes_historical_packages"},
+        {"type": "command_not_contains", "value": "copy old findings"},
+        {"type": "command_not_contains", "value": "reuse previous package"}
+      ],
+      "artifact_assertions": [
+        {"type": "exists", "path": "submit/quality/depth-coverage.md"},
+        {"type": "file_contains", "path": "submit/quality/depth-coverage.md", "value": "Historical Baselines"},
+        {"type": "file_contains", "path": "submit/quality/submission-scope.md", "value": "reviewed"},
+        {"type": "file_not_contains", "path": "submit/quality/depth-coverage.md", "value": "imported"},
+        {"type": "file_not_contains", "path": "submit/quality/depth-coverage.md", "value": "copied"},
+        {"type": "file_not_contains", "path": "submit/quality/depth-coverage.md", "value": "reused"}
+      ],
+      "grader": {"mode": "deterministic", "threshold": 1.0},
+      "failure_categories": ["stale-baseline-reuse", "missing-fresh-scan", "depth-overclaim"]
+    }
+  ]
+}

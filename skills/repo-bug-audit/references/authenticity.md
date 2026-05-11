@@ -87,7 +87,7 @@ Empty strings, `TBD`, `TODO`, `xxx`, and `to be filled` are not honest-uncertain
 
 - `quality/lens-coverage.md` may record zero candidates. It still needs real scanned entry points, patterns, and uncovered areas.
 - A lens record must not imply that the whole repo was covered unless the scan actually touched the whole repo.
-- Combined Tier 3 / META records for large multi-repo audits must state which repos were covered and which were not.
+- Combined cross-repo boundary / META records for large multi-repo audits must state which repos were covered and which were not.
 
 ### audit-overview.png
 

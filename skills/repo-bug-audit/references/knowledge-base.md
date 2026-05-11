@@ -59,6 +59,8 @@ This map can live in `work/drafts/` while incomplete. Move stable knowledge into
 
 The final `submit/knowledge/` should let another Agent continue analysis or start fixes without rescanning basics.
 
+For repo-group targets, completeness starts from the frozen roster in `work/scanner-output/repo-inventory.json`: every discovered repo should have a profile, even when it produced zero submitted Bugs.
+
 Required when relevant:
 
 - `knowledge/system-overview.md`
@@ -96,7 +98,7 @@ Include:
 Include:
 
 - High-risk lifecycle paths and failure propagation.
-- Stability, data integrity, recovery, security, storage/network performance, and resource-leak paths.
+- Stability, data integrity, cross-system consistency, recovery, security, storage/network performance, observability, deployment/runtime, and resource-leak paths.
 - P1/P2 issue families and the paths that produce them.
 - Candidate areas that remain outside submitted findings.
 
@@ -117,9 +119,9 @@ One file per audited repo. Include:
 - Key modules, entry points, background jobs, and external dependencies.
 - Language ecosystem, build metadata, and confirmed or missing test command sources.
 - Main resource lifecycles or user workflows.
-- Boundary inventories: outbound calls, inbound endpoints, shared events, shared storage, and shared config.
+- Boundary inventories: outbound calls, inbound endpoints, shared events, shared storage, shared config, execution boundaries, serialization/contracts, and deployment/runtime assumptions.
 - Intent inputs for META-1 and verification sources for META-2.
-- Risk surfaces: state owners, lifecycle transitions, and resource boundaries that future lens passes should revisit.
+- Risk surfaces: state owners, consistency boundaries, lifecycle transitions, execution/serialization boundaries, recovery surfaces, and resource boundaries that future lens passes should revisit.
 - Submitted Bug families affecting the repo.
 - Important candidates, uncovered areas, and unknowns that should guide later passes.
 

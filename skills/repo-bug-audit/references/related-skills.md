@@ -28,7 +28,7 @@ Use this table to decide WHERE in the workflow to surface each prompt. One ask p
 | Phase | Skill | Trigger condition |
 |---|---|---|
 | 1 (set scope) | `brainstorming` | User says "先讨论/帮我想想" OR target spans 3+ unfamiliar repos OR scope/audience unclear. |
-| 3 (knowledge map) | `acquire-codebase-knowledge` | Multi-repo OR single repo >50k LOC AND unfamiliar to the user. |
+| 3 (knowledge map) | `acquire-codebase-knowledge` | Multi-repo OR single repo >50k LOC AND unfamiliar to the user; ask before using its default `docs/codebase/` source-repo output. |
 | 4 (find Bugs) | `software-architecture`, `code-review-expert` | When the audit explicitly targets architecture risk or security — not for general scans. (Note: `systematic-debugging`'s core mental model is **already internalized** in `references/exploration-lenses.md` — install it only when the audit also includes runtime debugging beyond static scope.) |
 | 6 (write Bugs) | `error-debugging-error-analysis` | When ≥3 P1/P2 findings touch incident-response paths (recovery, retry, observability). |
 | 7 (knowledge docs) | `codebase-documenter` | Final handoff package only. |
@@ -50,7 +50,7 @@ README 和知识文档写完了，想再过一遍去掉一些 AI 腔。
 
 ```text
 这次要扫 4 个仓库，加起来差不多 12 万行，没有现成的仓库地图。
-要不要先装 `github/awesome-copilot@acquire-codebase-knowledge` 跑一遍生成关系图？不装就按这个 skill 自带的最小知识图谱推进。
+要不要先装 `github/awesome-copilot@acquire-codebase-knowledge` 辅助建图？如果它需要往源仓库写 `docs/codebase/`，我会先征得你同意；不装就按这个 skill 自带的 repo-understanding 合同推进。
 ```
 
 **At Phase 1 — brainstorming missing, scope unclear:**
@@ -129,6 +129,7 @@ npx -y skills add <owner/repo> --skill <skill-name> --global --yes
 - Do not hard-code local filesystem paths for companion skills.
 - Do not install every recommended skill; install only the one that materially improves the current task.
 - Check source reputation before installing unfamiliar public skills.
+- Do not let companion skills modify source repositories unless the user explicitly approved that output. For repo-bug-audit, prefer audit-local outputs under `work/` and `submit/knowledge/`.
 - Verify host-specific commands before using them; do not assume a command exists just because another agent supports it.
 - Mention external tools or companion skills in deliverables only if they were actually used.
 

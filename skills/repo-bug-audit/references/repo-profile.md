@@ -1,6 +1,6 @@
 # Per-Repo Profile
 
-Each audited repository gets one profile at `submit/knowledge/repo-profiles/<repo-name>.md`. The profile feeds Tier 3 lenses (L15-L19) and META-1. Without it, cross-repo exploration has no reliable boundary inventory.
+Each audited repository gets one profile at `submit/knowledge/repo-profiles/<repo-name>.md`. The profile feeds cross-repo boundary checks and META-1. Without it, cross-repo exploration has no reliable boundary inventory.
 
 File naming: use the repository short name. If the scope is written as `org/repo`, use `org__repo.md`. Only lowercase letters, numbers, dots, underscores, and hyphens are allowed; convert other characters to `-`.
 
@@ -169,13 +169,20 @@ Do not invent commands. If only a generic command is visible, say it is generic.
 
 ### 10. Risk Surfaces
 
-Summarize state owners, lifecycle transitions, and resource boundaries that lens passes should revisit.
+Summarize the repo understanding contract from `repo-understanding.md`: entry points, auth boundaries, state owners, consistency boundaries, external integrations, execution boundaries, serialization/contracts, async jobs, config/secrets, user input paths, file paths, resource lifecycle, observability/recovery, deployment/runtime, and dependency boundaries that lens passes should revisit.
 
 ```markdown
 | Resource / State | Owner Module | Lifecycle / Failure Surface | Evidence |
 |---|---|---|---|
 | snapshot record | `src/snapshot/service.py` | create -> upload -> publish -> cleanup | `src/snapshot/service.py:42` |
 | distributed lock | `src/locks/redis_lock.py` | acquire / renew / release / expire | `src/locks/redis_lock.py:18` |
+```
+
+For deep or final audits, include 1-3 concise hypothesis-loop notes in this section or under Findings and Candidates:
+
+```markdown
+- Refuted: duplicate snapshot creation via `POST /snapshots` is guarded by `Idempotency-Key` in `src/api/snapshots.py:42`.
+- Parked: worker retry timeout in `src/workers/export.py` needs runtime config confirmation.
 ```
 
 Keep this compact. It should help the next agent choose paths, not become a full design document.
@@ -228,11 +235,11 @@ This is an honesty marker, not an apology.
 | Outbound Calls | L15 contract drift |
 | Shared Events | L15, L18 retry/idempotency |
 | Shared Storage | L17 shared-state ownership |
-| Shared Config | L12 config drift, L17 |
-| Inbound + Outbound | L16 saga completeness, L19 release safety |
+| Shared Config | config / permission-propagation / cross-repo drift |
+| Inbound + Outbound | API contract, rollback, idempotency, and release safety |
 | Intent Inputs | META-1 intent drift |
 | Verification Sources | META-2 and Bug verification commands |
-| Risk Surfaces | L8-L14 path selection and fix handoff |
-| Call Graph | Tier 2 entry-point substrate |
+| Risk Surfaces | boundary path selection and fix handoff |
+| Call Graph | entry-point and side-effect substrate |
 | Findings and Candidates | final handoff and resume audits |
 | Known Uncovered Areas | META-2 and future audit handoff |

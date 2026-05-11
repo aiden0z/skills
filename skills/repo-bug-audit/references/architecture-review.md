@@ -107,10 +107,10 @@ Keep evidence concrete: file sizes, large functions, mixed concerns, repeated is
 
 ## Relationship to Lens System
 
-This document **consumes** Tier 3 lens output (L15-L19 in `references/exploration-lenses.md`); it does not reinvent them.
+This document consumes cross-repo boundary and META output from `references/exploration-lenses.md`; it does not reinvent them.
 
-When a single-Bug finding from L15 (contract drift), L16 (saga), L17 (shared state), L18 (cross-repo retry), or L19 (migration) reveals a **systemic pattern** spanning multiple call sites or repos, escalate the synthesis to `knowledge/architecture-design-review.md` here:
+When a single-Bug finding from API contracts, rollback/idempotency, shared state, permission propagation, or deployment/runtime boundaries reveals a **systemic pattern** spanning multiple call sites or repos, escalate the synthesis to `knowledge/architecture-design-review.md` here:
 
 - Each architecture risk bullet must cite ≥1 originating Bug ID **or** ≥1 `path:line` anchor (Q5 authenticity gate applies).
-- Tier 3 lens application records in `quality/lens-coverage.md` are this file's evidence base — quote them, do not contradict them.
+- Boundary application records in `quality/lens-coverage.md` are this file's evidence base — quote them, do not contradict them.
 - Architecture review **describes** the cross-cutting risk; the Bug records **prove** it. This file without Bug IDs becomes pure abstract claim and fails Q5.

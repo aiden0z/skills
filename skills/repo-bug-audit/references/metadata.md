@@ -39,6 +39,8 @@ Use the analyst field as package metadata, not as inferred identity.
 
 Record repository version evidence in `quality/repository-versions.md` when available.
 
+For repo-group targets, run `scripts/discover_repositories.py` first and copy the full discovered roster into this file. The target root may be a plain parent directory containing many repo checkouts; record one row per discovered repo, not one row for the parent directory.
+
 Suggested columns:
 
 ```markdown

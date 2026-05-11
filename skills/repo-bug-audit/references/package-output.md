@@ -7,6 +7,7 @@
 - Overview Image Decision
 - Image Guidance
 - Interactive HTML Report
+- Final Handoff Summary
 - Quality Scope
 - Knowledge Quality
 
@@ -25,7 +26,9 @@
 │   │   └── P4/
 │   ├── indexes/
 │   │   ├── findings.generated.md
-│   │   └── findings.generated.json
+│   │   ├── findings.generated.json
+│   │   ├── candidates.generated.md        # repo-group/deep/high-recall packages
+│   │   └── candidates.generated.json      # repo-group/deep/high-recall packages
 │   ├── knowledge/
 │   │   ├── README.md
 │   │   ├── system-overview.md
@@ -36,14 +39,26 @@
 │   ├── quality/
 │   │   ├── submission-scope.md
 │   │   ├── repository-versions.md
-│   │   └── lens-coverage.md
+│   │   ├── lens-coverage.md
+│   │   ├── depth-coverage.md              # required for multi-repo/deep final handoff
+│   │   └── candidate-coverage.md          # repo-group/deep/high-recall packages
 │   └── standards/
 │       └── bug-report-standard.md
 └── work/
     ├── candidates/
     ├── eval/
     ├── scanner-output/
+    │   ├── repo-inventory.json
+    │   ├── repo-scan-roots.txt
+    │   ├── llm-patterns.json              # generated after repo-local exploration
+    │   ├── high-recall-scan.json          # repo-group/deep/high-recall packages
+    │   └── high-recall-scan.md            # repo-group/deep/high-recall packages
     ├── drafts/
+    ├── shards/
+    │   └── <repo>/
+    │       ├── search-seeds.md            # generated search seeds, not final claims
+    │       ├── candidates.md
+    │       └── shard-summary.json
     └── tmp/
 ```
 
@@ -66,6 +81,7 @@ Include:
 - Main findings and architecture risk signals.
 - File guide and reading order.
 - Candidate handling and confidence threshold when applicable.
+- Candidate funnel for repo-group/deep/high-recall runs: total leads, submitted findings, promoted links, parked/unpromoted leads, and repo coverage.
 - Continuation notes when findings were downgraded, removed, merged, or promoted from candidates.
 - Knowledge coverage: system overview, repo relationships, risk paths, architecture signals, and important repo profiles.
 - Natural developer-facing wording without process narration, self-reference, or AI-flavored phrases.
@@ -103,10 +119,11 @@ Constraints:
 
 - Recommend generating it for multi-repo audits, large Bug sets, README-plus-zip handoff, architecture-risk summaries, or any result likely to be forwarded outside the immediate chat.
 - Skip it by default for quick scans, narrow single-Bug reviews, internal candidate triage, or when the user only asks for a Bug list.
-- **Interactive mode**: at Phase 1 kickoff, mention the option once with a single yes/no question in the user's language. Do not re-ask in later phases.
+- **Interactive mode**: at Phase 1 kickoff, mention the option once when it is likely useful, but do not stop for a yes/no question. Continue the audit unless the user explicitly requests or declines the image.
+- **Backstop**: if a final handoff, multi-repo, deep, or shareable report reaches packaging and the image decision is still unknown, record `deferred-post-handoff`, finish validation and the handoff summary, then ask one short yes/no question about adding the image as a follow-up artifact.
 - **Automatic mode**: do not pause. Generate when the request implies final handoff (key signals include "package", "zip", "handoff", "report", "打包", "交付", "出报告"); otherwise omit. Record the choice and trigger phrase in `quality/submission-scope.md`.
 - **Checkpointed/resume mode**: read `quality/submission-scope.md` first; do not re-ask if the decision is already recorded.
-- Always record the final decision in `quality/submission-scope.md`: `included | omitted-by-user | omitted-as-lightweight-scan | omitted-after-failure`.
+- Always record the final decision or deferral in `quality/submission-scope.md`: `included | omitted-by-user | omitted-as-lightweight-scan | omitted-after-failure | deferred-post-handoff`.
 
 ## Image Guidance
 
@@ -139,6 +156,9 @@ If creating `audit-overview.png`, read `audit-overview-image.md`.
 - Do not ask the user whether to include it in normal interactive mode; treat it as the default delivery surface.
 - Skip it by default only for quick scans, candidate-only studies, narrow single-Bug reviews, or when the user explicitly asks for a lightweight/no-HTML package.
 - In automatic mode, generate it whenever the request implies final handoff (`package`, `zip`, `handoff`, `report`, `dashboard`, `打包`, `交付`, `出报告`, `报告台`).
+- `quality/submission-scope.md` must record the requested audit depth intent before final HTML is generated.
+- Final HTML is not a progress marker. If the user requested deep/full/per-repo-deep intent and `quality/depth-coverage.md` still says first-pass/focused/in-progress, continue exploration or record that the user accepted the downgrade before generating `submit/bug-audit-report.html`. Do not change the requested intent to `first-pass` to bypass this gate; keep delivered coverage classification separate.
+- `work/scanner-output/prepackage-validation.passed.json` must exist before final HTML is generated; it is written by a successful pre-package `validate_bug_package.py <submit-root> --repo-root <target-root>` run before report assets exist.
 - Generate after indexes and submitted knowledge are current:
 
 ```bash
@@ -147,17 +167,33 @@ python3 scripts/generate_bug_report_html.py <submit-root> --language zh
 
 Use `--language en` for English packages.
 
+The generator refuses final HTML output until pre-package validation has passed and `work/scanner-output/prepackage-validation.passed.json` exists. For repo-group audits, it also refuses final output until the shard evidence gate has passed and `work/scanner-output/shard-gate.passed.json` exists. It also refuses final output when deep/full intent conflicts with first-pass/focused coverage without user-accepted downgrade. Do not bypass this in final handoff; the ungated draft flag is only for a clearly labeled non-final preview.
+
 - Validate expected reports with:
 
 ```bash
-python3 scripts/validate_bug_package.py <submit-root> --require-html-report
+python3 scripts/validate_bug_package.py <submit-root> --require-knowledge --require-html-report --repo-root <target-root>
 ```
 
 - Keep the report self-contained: no external CSS, JavaScript, fonts, images, analytics, or CDN links.
 - Build content only from final package files under `submit/`; do not read `work/` for the report.
 - Show complete provenance: `repo-bug-audit`, `github.com/aiden0z/skills`, `source=static-analysis`, package source files, version-evidence status, and the no-runtime-verification note.
 - Use the same design bar as `audit-overview.png`: modern neutral background, desktop-first dark report top bar without logo-like decorative marks, full-width hero title, unified Metrics console, compact audit metadata, skill/source provenance in the footer, no absolute local paths in visible scope labels, priority color chips, mono numeric counts, modern product-report hierarchy, and readable expanded details. Keep Quality Core MECE by separating evidence gates, exploration coverage, known boundaries, and confidence; keep Architecture Insights focused on invariants and risk paths, including paragraph-based knowledge files. Do not put lens/exploration-tag distribution charts in the reusable knowledge section; treat exploration views as quality evidence, not end-user delivery insight.
-- Record `included | omitted-by-user | omitted-as-lightweight-scan | omitted-after-failure` in `quality/submission-scope.md`; for final handoff/report packages, omission must be explicit or justified as lightweight.
+- Record `included | omitted-by-user | omitted-as-lightweight-scan | omitted-after-failure | deferred-post-handoff` in `quality/submission-scope.md`; for final handoff/report packages, omission or deferral should be explicit.
+
+## Final Handoff Summary
+
+After the final package validates, respond with a short handoff summary. Include:
+
+- Output root.
+- Link to `submit/bug-audit-report.html` when generated.
+- `audit-overview.png` state: `included`, `omitted-by-user`, `omitted-as-lightweight-scan`, `omitted-after-failure`, or `deferred-post-handoff`.
+- Bug totals and P1-P4 distribution from `indexes/findings.generated.json`.
+- Repo/profile/depth coverage status for multi-repo or deep runs.
+- Coverage classification: `first-pass`, `focused`, or `deep-complete`; never imply deep completion when only pattern scans and sample reads were performed.
+- Validation result, including error/warning counts.
+
+If the overview image decision was not recorded, record `deferred-post-handoff`, send the completion summary, then ask whether to add the overview image. Do not block a validated handoff on this optional artifact.
 
 ## Quality Scope
 
@@ -198,5 +234,12 @@ Before packaging, check `knowledge-base.md`.
 - Empty, stale, or repetitive optional knowledge files should be removed.
 - Run `evaluation.md` before final packaging; keep temporary eval notes in `work/eval/` unless they affect submission scope.
 - For large or multi-repo packages, run `validate_bug_package.py --require-knowledge`.
+- For repo-group, deep/full, or high-recall packages, run `generate_candidate_index.py <submit-root>` before pre-package validation. The final package should include `indexes/candidates.generated.*` and `quality/candidate-coverage.md` so reviewers can see the discovery funnel from candidate leads to submitted Bugs.
+- For repo-group/deep/high-recall packages, generate `work/scanner-output/llm-patterns.json` after initial repo-local exploration, then run `run_high_recall_scan.py --patterns-file <.../llm-patterns.json>` and keep `work/scanner-output/high-recall-scan.*` plus `work/shards/<repo>/search-seeds.md` until final validation passes. These files are supplemental seed evidence, not final Bug claims.
+- For repo-group packages, keep `work/scanner-output/repo-inventory.json`, `work/scanner-output/repo-shards.md`, `work/shards/<repo>/shard-summary.json`, and `work/shards/<repo>/candidates.md` until final validation passes. These work artifacts are not shipped in `submit/`, but the validator uses them to reject shallow generated packages.
+- Before generating README, HTML, or overview assets, run the shard evidence gate: `validate_bug_package.py <submit-root> --validate-shards-only --repo-root <path>`. A passing run writes `work/scanner-output/shard-gate.passed.json`; final validation rejects report assets older than this receipt.
+- Before generating HTML or overview assets, run pre-package validation: `validate_bug_package.py <submit-root> --repo-root <path>`. A passing run without existing report assets writes `work/scanner-output/prepackage-validation.passed.json`; final validation rejects report assets older than this receipt.
+- Final handoff validation should include `--repo-root <path>` so roster and file-path authenticity checks run. Use `--allow-missing-repo-root` only for non-local source snapshots and record the reason in `quality/submission-scope.md`.
 - When `audit-overview.png` is expected, run `validate_bug_package.py --require-image` too.
 - For final handoff/report packages, run `validate_bug_package.py --require-html-report`.
+- For final handoff/report packages, `quality/submission-scope.md` should record the `audit-overview.png` decision or `deferred-post-handoff`. Missing optional-image state is a warning unless the image is required or included.

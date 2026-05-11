@@ -58,6 +58,7 @@ The generator reads submitted package files only:
 - `quality/submission-scope.md`
 - `quality/repository-versions.md`
 - `quality/lens-coverage.md`
+- `quality/depth-coverage.md`
 - `knowledge/system-overview.md`
 - `knowledge/repo-relationship-map.md`
 - `knowledge/risk-paths.md`
@@ -66,6 +67,7 @@ The generator reads submitted package files only:
 - submitted Bug Markdown files under `findings/P*/`
 
 Do not read `work/` for final report content. Promote reusable exploration facts into `submit/knowledge/` first.
+For repo-group packages, surface the coverage classification from `quality/depth-coverage.md` (`first-pass`, `focused`, or `deep-complete`) near the repository section so the HTML report does not imply deeper coverage than the package supports.
 
 ## Page Structure
 

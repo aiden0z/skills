@@ -4,16 +4,16 @@ Choose one primary profile per audit and optional secondary profiles for mixed r
 
 ## Lens Priority by Profile
 
-| Profile | High-priority lens (run deep) | Lower-priority / conditional lens |
+| Profile | High-priority boundaries (examine first) | Lower-priority (sample if time) |
 |---|---|---|
-| `infra` | L1, L9, L10, L11, L13, L17, L19 | L2 surface gates, L4-L6 scattered |
-| `backend` | L2, L8, L9, L10, L15, L16, L18 | L13 (if no caching), L19 (if no migrations) |
-| `frontend` | L2 (display gating), L8 (UI state machine), L13 (browser/CDN cache), L14 (observability) | Tier 3 lens unless calling SSR/BFF |
-| `sdk` | L1, L9 (thread/async safety), L15 (API contract), L18 (retry) | L11/L12/L13 (depend on host app) |
-| `mobile` | L1 (lifecycle), L11 (offline data), L12 (env/permission), L14 (crash observability) | Tier 3 lens unless syncing with backend |
-| `generic` | All Tier 2 lens equal priority until profile is clear | Tier 3 lens triggered when profile resolves to multi-repo |
+| `infra` | Lifecycle, Concurrency, Failure Mode, Third-Party, Config | API Contract, Pagination |
+| `backend` | API Contract, Message, Idempotency, Third-Party, Cache, Failure Mode | Rollback, Clock |
+| `frontend` | API Contract, Cache, Pagination, Failure Mode | Permission Propagation, Clock |
+| `sdk` | Lifecycle, Concurrency, API Contract, Idempotency | Cache, Config, Clock |
+| `mobile` | Lifecycle, Cache, API Contract, Failure Mode, Config | Permission Propagation, Idempotency |
+| `generic` | All 13 boundaries equal priority until profile is clear | Narrow after first-pass results |
 
-This is sort priority, not exclusion. Application records follow the enabled lens set in `exploration-lenses.md`: single-repo default = Tier 1 + Tier 2 + META; multi-repo default = Tier 1 + Tier 2 + Tier 3 + META; user-declared lightweight strategies may narrow the set.
+This is sort priority, not exclusion. Apply all applicable boundaries from `exploration-lenses.md`; this table just determines which to examine first and most deeply.
 
 ## Contents
 

@@ -15,6 +15,7 @@ Evaluation does not replace `validate_bug_package.py`. The script checks structu
 - Depth Gate
 - Priority Calibration
 - Skill Regression Gate
+- Portable Eval Suite
 
 ## 30-Minute-Fix Rubric (Bug-Level)
 
@@ -67,7 +68,7 @@ Gate failure never pauses the workflow. The four actions above are the full acti
 
 Apply after Q1-Q5 pass on individual Bugs. Read `submit/quality/lens-coverage.md` and check:
 
-- For each lens enabled by the audit (single-repo default = Tier 1 + Tier 2 + META; multi-repo default = Tier 1 + Tier 2 + Tier 3 + META; user-specified strategy in `submission-scope.md` overrides), is there an entry?
+- For each lens enabled by the audit (see `exploration-lenses.md` for the current boundary set; user-specified strategy in `submission-scope.md` overrides), is there an entry?
 - Does each entry have all 5 sections for the package language? English labels: `Scanned Entry Points` / `Patterns` / `Candidates` / `Exclusion Reasons` / `Uncovered`. Chinese labels: `已扫描入口` / `关注模式` / `候选数` / `排除原因` / `未覆盖`.
 - Do scanned entry points list real paths? Do exclusion reasons cite `path:line` anchors when candidates were excluded? Does uncovered area name a concrete gap rather than claiming perfect coverage?
 - Q5 (authenticity) applies to lens-coverage.md content too — fabricated coverage claims, non-existent wrappers, fake paths, or made-up exclusion reasons fail the same way fabricated Bugs fail.
@@ -87,7 +88,6 @@ Check the package as a single artifact:
 - `architecture-design-review.md` each risk bullet has ≥1 Bug ID or ≥1 code reference; pure abstract claims are removed.
 - `submission-scope.md` "downgraded / removed / merged" entries cite originating Bug ID and concrete failed gate; no blanket "fully verified / fully reviewed" claims.
 - P1/P2 summaries align with actual Bug metadata and issue families.
-- P1/P2 summaries align with actual Bug metadata and issue families.
 - Repeated issue families are grouped in indexes or README without hiding concrete Bugs.
 - Stability risks are ordered ahead of cosmetic or narrow issues when priorities tie.
 - Knowledge files explain the relationships used by submitted findings.
@@ -101,11 +101,24 @@ Check the package as a single artifact:
 
 Use this to avoid shallow-but-large submissions:
 
+- For multi-repo/deep runs, read `quality/depth-coverage.md` before accepting the package-level conclusion.
+- For repo-group roots, compare the frozen roster in `work/scanner-output/repo-inventory.json` against `quality/repository-versions.md`, `knowledge/repo-profiles/`, and `quality/depth-coverage.md`. Missing roster entries are a depth failure even when the package validates other structure.
+- For repo-group roots, inspect `work/shards/<repo>/shard-summary.json` and `work/shards/<repo>/candidates.md` for each repo before accepting final packaging. The summary must contain execution mode, serial reason when applicable, real evidence paths, scan commands/searches, candidate count, profile update evidence, and either submitted Bug IDs or a concrete zero-finding rationale. The candidates file must not still be the pending template.
+- Confirm repo understanding evidence exists before accepting shard exploration: `surface_map` names concrete repo-local risk surfaces, `hypothesis_loops` trace at least one concrete failure hypothesis for non-trivial repos, and zero-finding non-trivial repos include a strongest refuted lead or refuted loop.
+- Reject packages whose final Markdown, profiles, shard summaries, candidates, depth coverage, or lens coverage were created by a late package-writer script, loop, or inline heredoc batch. This remains a failure even when the script embeds real-looking evidence, because the workflow no longer proves repo-by-repo cognition. A single-file shell fallback for one named artifact is acceptable; a multi-artifact batch is not. Scripts may render indexes, HTML, images, or tables from already-filled shard summaries; they should not contain the final prose claims themselves.
+- Confirm broad source scans used `work/scanner-output/repo-scan-roots.txt`. If `rg`/`grep` output includes previous `*bug-audit*/work` or `*bug-audit*/submit` content during source scanning, the fresh-rescan gate fails.
+- Reject packages that generate final Bug records, README, HTML, overview image, or final knowledge before the shard evidence gate has passed. `work/scanner-output/shard-gate.passed.json` is the receipt; report assets are render layers over final evidence, not proof of exploration.
+- Confirm every audited repo profile is represented in `depth-coverage.md`, not only repos with submitted Bugs.
+- Confirm the package states its coverage classification: `first-pass`, `focused`, or `deep-complete`. A package based on pattern scans and sample reads across many repos is first-pass/focused unless each high-risk repo has real call-chain tracing from entry point to state owner, integration, execution boundary, or lifecycle transition.
+- Confirm historical audit packages discovered under the target root were reviewed for contrast or explicitly excluded. A previous large package plus a new tiny package is a depth failure unless the scope says it is intentionally narrow and the baseline comparison explains the difference.
+- Confirm fresh audits did not reuse prior package structure: new findings, IDs, profiles, indexes, and reports must come from the current source scan, not copied historical artifacts.
+- Confirm zero-finding repos have a concrete rationale: scanned surfaces, parked candidates if any, and remaining gaps.
 - Compare submitted issue families against the domain profile in `domain-profiles.md`.
 - If one easy pattern dominates, sample the top records and confirm they affect distinct entry points, resources, or lifecycle phases.
-- For infra repositories, check that data integrity, recovery, availability, resource leak, storage/network performance, and security boundaries were all considered.
+- For infra repositories, check that data integrity, cross-system consistency, recovery, availability, resource leak, storage/network performance, deployment/runtime assumptions, observability, and security boundaries were all considered.
 - For non-infra repositories, check that the product's core workflow, data safety, security boundary, recovery cost, and customer impact were considered.
 - If a high-risk area has no findings, note whether it was reviewed, excluded, or left as unknown.
+- Do not accept "deep analysis complete" wording unless `validate_bug_package.py` exits 0 with `--require-knowledge --require-html-report` and, for single-repo deep runs, `--require-depth-coverage`.
 
 ## Priority Calibration
 
@@ -120,6 +133,18 @@ Before packaging, re-read all P1/P2 records:
 
 Use when editing this skill itself:
 
+- Validate the portable eval suite:
+
+```bash
+python3 /Users/aiden/.agents/skills/skill-evaluator/scripts/check_eval_cases.py evals/core-regressions.json --strict-portable
+```
+
+- When a fresh-agent run is available, grade its transcript and audit workspace:
+
+```bash
+python3 scripts/grade_eval_trace.py evals/core-regressions.json --trace <fresh-agent-transcript.txt> --artifact-root <audit-workspace>
+```
+
 - Weak pattern lead should stay in `work/candidates/`.
 - Duplicate same-entry/same-failure/same-impact records should merge.
 - Resume run should keep existing IDs stable and record downgrade/removal reasons.
@@ -127,3 +152,19 @@ Use when editing this skill itself:
 - Package handoff should include aligned README, indexes, knowledge, quality notes, and optional image.
 
 Keep regression notes outside submitted audit outputs unless the user asks for them.
+
+## Portable Eval Suite
+
+The minimal suite lives at `evals/core-regressions.json`.
+
+- `multi-repo-parent-20-roster-shards`: catches shallow parent-directory audits that skip repo roster/shard/depth gates.
+- `late-package-writer-forbidden`: catches one-shot scripts that synthesize final Markdown instead of exploration evidence.
+- `multi-repo-parent-20-roster-shards` also catches inline bulk writers and source scans that accidentally include historical audit output.
+- `multi-repo-parent-20-roster-shards` fails when a fresh-agent trace shows `generate_bug_report_html.py` or overview generation after a failing `--validate-shards-only` run.
+- `multi-repo-parent-20-roster-shards` also requires final handoff validation to use `--require-knowledge --require-html-report --repo-root`; a weaker validator invocation is not final-validation evidence.
+- If the deterministic package validator passes but `grade_eval_trace.py` fails on `bulk_package_writer_absent`, the Skill eval fails. A polished package is not enough evidence that the workflow was followed.
+- `html-default-image-optional`: catches missing default HTML, repeated image questions, or missing provenance.
+- `single-repo-lightweight-scan`: catches over-scoping single-repo work into repo-group machinery and silent lens omission.
+- `historical-package-fresh-rescan`: catches reuse of old audit packages when the user asked for a fresh scan.
+
+These cases are not a replacement for `validate_bug_package.py`; they are forward-test and trace-replay checks for fresh-agent behavior. Add new cases only when they represent a real failure mode or a high-risk workflow branch.

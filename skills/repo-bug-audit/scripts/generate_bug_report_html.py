@@ -16,74 +16,95 @@ SKILL_SOURCE = "github.com/aiden0z/skills"
 SKILL_SOURCE_URL = "https://github.com/aiden0z/skills"
 
 PRIORITY_ORDER = ["P1", "P2", "P3", "P4"]
+SHARD_GATE_RECEIPT = "work/scanner-output/shard-gate.passed.json"
+PREPACKAGE_RECEIPT = "work/scanner-output/prepackage-validation.passed.json"
+REPO_INVENTORY = "work/scanner-output/repo-inventory.json"
+DEPTH_COVERAGE = "quality/depth-coverage.md"
+SUBMISSION_SCOPE = "quality/submission-scope.md"
+CANDIDATE_COVERAGE = "quality/candidate-coverage.md"
+
+DEPTH_INTENT_RE = re.compile(
+    r"(audit depth intent|analysis depth|requested depth|审计深度意图|分析深度|请求深度)\s*[:：]\s*`?([^\n`]+)",
+    re.IGNORECASE,
+)
+DEEP_INTENT_RE = re.compile(
+    r"\b(deep|full|complete|exhaustive|max(?:imum)?|per[- ]repo)\b|"
+    r"深度|完整|全面|尽可能|每个\s*repo|每仓|逐仓|全部仓库",
+    re.IGNORECASE,
+)
+REQUESTED_DEEP_RE = re.compile(
+    r"((user|original|initial)\s+(request|requested|asked|intent)|用户.*(要求|请求|希望)|原始.*(要求|请求))"
+    r".{0,100}"
+    r"(\b(deep|full|complete|exhaustive|max(?:imum)?|per[- ]repo)\b|深度|完整|全面|尽可能|每个\s*repo|每仓|逐仓|全部仓库)",
+    re.IGNORECASE,
+)
+PARTIAL_COVERAGE_RE = re.compile(
+    r"\b(first[- ]pass|focused|in[- ]progress)\b|首轮|第一阶段|聚焦|进行中",
+    re.IGNORECASE,
+)
+DEEP_COMPLETE_RE = re.compile(r"\bdeep[- ]complete\b|深度完成", re.IGNORECASE)
+DOWNGRADE_ACCEPTED_RE = re.compile(
+    r"(depth downgrade accepted|user accepted downgrade|accepted first[- ]pass|"
+    r"用户.*(接受|确认|同意).*(降级|首轮|第一阶段|first[- ]pass)|"
+    r"(降级|首轮|第一阶段|first[- ]pass).*(用户.*(接受|确认|同意)))",
+    re.IGNORECASE,
+)
 
 LENS_NAMES = {
     "en": {
-        "L1": "Resource lifecycle",
-        "L2": "Boundary input validation",
-        "L3": "Silent failure",
-        "L4": "Numeric bounds",
-        "L5": "Time and ordering",
-        "L6": "Serialization/schema semantics",
-        "L7": "Resource amplification",
-        "L8": "State machine consistency",
-        "L9": "Concurrency and ordering",
-        "L10": "Failure recovery",
-        "L11": "Data lifecycle",
-        "L12": "Configuration safety",
-        "L13": "Cache consistency",
-        "L14": "Critical-path observability",
-        "L15": "Contract drift",
-        "L16": "Distributed transaction/saga",
-        "L17": "Shared-state ownership",
-        "L18": "Cross-repo retry/idempotency",
-        "L19": "Migration and release safety",
-        "META-1": "Intent drift",
+        "api-contract": "API contract",
+        "cache": "Cache",
+        "message": "Message",
+        "rollback": "Rollback",
+        "third-party": "Third-party",
+        "lifecycle": "Lifecycle",
+        "concurrency": "Concurrency",
+        "config": "Config",
+        "failure-mode": "Failure mode",
+        "clock": "Clock",
+        "permission-propagation": "Permission propagation",
+        "pagination": "Pagination",
+        "idempotency": "Idempotency",
+        "META-1": "Intent vs implementation",
         "META-2": "Failure-path test coverage",
     },
     "zh": {
-        "L1": "资源生命周期",
-        "L2": "边界输入验证",
-        "L3": "错误吞没与静默失败",
-        "L4": "数值边界",
-        "L5": "时间与顺序",
-        "L6": "序列化与 schema 漂移",
-        "L7": "资源放大与无界输入",
-        "L8": "状态机与会话状态",
-        "L9": "并发与竞态",
-        "L10": "恢复与中断",
-        "L11": "数据生命周期与持久化",
-        "L12": "配置安全",
-        "L13": "缓存一致性",
-        "L14": "可观测性与审计线索",
-        "L15": "契约漂移",
-        "L16": "分布式事务 / Saga 完整性",
-        "L17": "共享状态归属",
-        "L18": "跨仓重试与幂等",
-        "L19": "迁移与发布安全",
+        "api-contract": "API 契约",
+        "cache": "缓存",
+        "message": "消息",
+        "rollback": "回滚",
+        "third-party": "第三方依赖",
+        "lifecycle": "生命周期",
+        "concurrency": "并发",
+        "config": "配置",
+        "failure-mode": "失败模式",
+        "clock": "时钟",
+        "permission-propagation": "权限传递",
+        "pagination": "分页",
+        "idempotency": "幂等性",
         "META-1": "意图与实现漂移",
         "META-2": "失败路径测试覆盖",
     },
 }
 
 TIER_GROUPS = [
-    ("tier1", "Tier 1", ["L1", "L2", "L3", "L4", "L5", "L6", "L7"]),
-    ("tier2", "Tier 2", ["L8", "L9", "L10", "L11", "L12", "L13", "L14"]),
-    ("tier3", "Tier 3", ["L15", "L16", "L17", "L18", "L19"]),
+    ("local", "Service-Local", ["config", "concurrency", "lifecycle", "clock", "cache", "failure-mode"]),
+    ("cross-service", "Cross-Service", ["api-contract", "message", "third-party", "rollback", "pagination", "idempotency"]),
+    ("cross-repo", "Cross-Repo", ["permission-propagation"]),
 ]
 
 TIER_NAMES = {
     "en": {
-        "tier1": "surface checks",
-        "tier2": "cross-module checks",
-        "tier3": "cross-repo / architecture checks",
-        "meta": "contrast scans",
+        "local": "service-local boundaries",
+        "cross-service": "cross-service boundaries",
+        "cross-repo": "cross-repo amplification",
+        "meta": "candidate amplification checks",
     },
     "zh": {
-        "tier1": "表层检查",
-        "tier2": "跨模块检查",
-        "tier3": "跨仓 / 架构检查",
-        "meta": "对照扫描",
+        "local": "服务内边界",
+        "cross-service": "跨服务边界",
+        "cross-repo": "跨仓库放大",
+        "meta": "META 透镜",
     },
 }
 
@@ -117,6 +138,7 @@ LABELS = {
         "risk": "Risk Composition",
         "architecture": "Architecture Insights",
         "repo_situation": "Repository Situation",
+        "coverage_classification": "Coverage Classification",
         "findings": "Findings Preview",
         "knowledge": "Reusable Knowledge",
         "guide": "Delivery Package Guide",
@@ -183,6 +205,7 @@ LABELS = {
         "architecture_reading": "03 Architecture insights",
         "knowledge_gates": "04 Knowledge and handoff",
         "lens_fallback": "Coverage details are available in quality/lens-coverage.md.",
+        "depth_fallback": "Depth coverage details are available in quality/depth-coverage.md.",
         "architecture_fallback": "No architecture-design-review.md content was found.",
         "risk_fallback": "No risk-path or repo-relationship summary was found.",
     },
@@ -215,6 +238,7 @@ LABELS = {
         "risk": "风险组成",
         "architecture": "架构洞察",
         "repo_situation": "仓库情况",
+        "coverage_classification": "覆盖分类",
         "findings": "Bug 预览",
         "knowledge": "可复用知识",
         "guide": "交付物指引",
@@ -281,6 +305,7 @@ LABELS = {
         "architecture_reading": "03 架构洞察",
         "knowledge_gates": "04 知识与交付",
         "lens_fallback": "覆盖细节见 quality/lens-coverage.md。",
+        "depth_fallback": "深度覆盖细节见 quality/depth-coverage.md。",
         "architecture_fallback": "未找到 architecture-design-review.md 内容。",
         "risk_fallback": "未找到 risk-path 或 repo-relationship 摘要。",
     },
@@ -295,6 +320,116 @@ def read_text(path: Path) -> str:
     if not path.is_file():
         return ""
     return path.read_text(encoding="utf-8", errors="replace")
+
+
+def audit_workspace_root(root: Path) -> Path:
+    return root.parent if root.name == "submit" else root
+
+
+def is_repo_group_workspace(root: Path) -> bool:
+    workspace_root = audit_workspace_root(root)
+    inventory_path = workspace_root / REPO_INVENTORY
+    if inventory_path.is_file():
+        try:
+            payload = json.loads(inventory_path.read_text(encoding="utf-8"))
+        except (OSError, json.JSONDecodeError):
+            return True
+        repos = payload.get("repos")
+        if isinstance(repos, list):
+            return len(repos) > 1
+        return True
+    shards_root = workspace_root / "work/shards"
+    if shards_root.is_dir():
+        return sum(1 for path in shards_root.iterdir() if path.is_dir()) > 1
+    return False
+
+
+def ensure_report_gate(root: Path, allow_ungated_draft: bool) -> None:
+    if allow_ungated_draft:
+        return
+    workspace_root = audit_workspace_root(root)
+    prepackage_receipt = workspace_root / PREPACKAGE_RECEIPT
+    if not prepackage_receipt.is_file():
+        raise SystemExit(
+            "Refusing to generate final HTML report before pre-package validation passes.\n"
+            f"Missing: {prepackage_receipt}\n"
+            "Run: python3 scripts/validate_bug_package.py <submit-root> --repo-root <target-root>\n"
+            "Use --allow-ungated-draft only for an explicitly labeled non-final draft."
+        )
+    enforce_depth_intent_report_gate(root)
+    if not is_repo_group_workspace(root):
+        return
+    receipt_path = workspace_root / SHARD_GATE_RECEIPT
+    if not receipt_path.is_file():
+        raise SystemExit(
+            "Refusing to generate final HTML report for a repo-group audit before the shard evidence gate passes.\n"
+            f"Missing: {receipt_path}\n"
+            "Run: python3 scripts/validate_bug_package.py <submit-root> --validate-shards-only --repo-root <target-root>\n"
+            "Use --allow-ungated-draft only for an explicitly labeled non-final draft."
+        )
+
+
+def extract_depth_intent(scope_text: str) -> str:
+    match = DEPTH_INTENT_RE.search(scope_text)
+    if match:
+        return match.group(2).strip()
+    return ""
+
+
+def scope_records_requested_deep(scope_text: str) -> bool:
+    return bool(REQUESTED_DEEP_RE.search(scope_text))
+
+
+def enforce_depth_intent_report_gate(root: Path) -> None:
+    scope_path = root / SUBMISSION_SCOPE
+    depth_path = root / DEPTH_COVERAGE
+    scope_text = scope_path.read_text(encoding="utf-8", errors="replace") if scope_path.is_file() else ""
+    depth_text = depth_path.read_text(encoding="utf-8", errors="replace") if depth_path.is_file() else ""
+    intent = extract_depth_intent(scope_text)
+    if not intent:
+        raise SystemExit(
+            "Refusing to generate final HTML report before audit depth intent is recorded.\n"
+            f"Add a line to {SUBMISSION_SCOPE}: 'Audit depth intent: deep | first-pass | focused | lightweight | custom'."
+        )
+    if intent.lower() in {"pending", "unknown", "todo", "tbd", "待确认", "未知"}:
+        raise SystemExit(f"Refusing to generate final HTML report while audit depth intent is unresolved: {intent}")
+    scope_requested_deep = scope_records_requested_deep(scope_text)
+    deep_requested = bool(DEEP_INTENT_RE.search(intent) or scope_requested_deep)
+    partial_coverage = depth_coverage_is_partial(depth_text)
+    downgrade_accepted = bool(DOWNGRADE_ACCEPTED_RE.search(scope_text) or DOWNGRADE_ACCEPTED_RE.search(depth_text))
+    if scope_requested_deep and not DEEP_INTENT_RE.search(intent):
+        raise SystemExit(
+            "Refusing to generate final HTML report: submission-scope.md says the user requested deep/full analysis, "
+            "but audit depth intent was rewritten to a non-deep value. Keep requested depth intent separate from "
+            "delivered coverage classification, or record user-accepted downgrade before creating final report assets."
+        )
+    if deep_requested and not depth_text.strip():
+        raise SystemExit(
+            "Refusing to generate final HTML report: requested depth is deep/full, "
+            f"but {DEPTH_COVERAGE} is missing or empty."
+        )
+    if deep_requested and partial_coverage and not downgrade_accepted:
+        raise SystemExit(
+            "Refusing to generate final HTML report: requested depth is deep/full, "
+            "but depth coverage is first-pass/focused/in-progress.\n"
+            "Continue repo-local exploration, or record that the user accepted a depth downgrade before creating final report assets."
+        )
+
+
+def depth_coverage_is_partial(depth_text: str) -> bool:
+    classification_lines = [
+        line
+        for line in depth_text.splitlines()
+        if re.search(r"coverage classification|覆盖分类|scope claim|范围结论|深度结论", line, re.IGNORECASE)
+    ]
+    for line in classification_lines:
+        if DEEP_COMPLETE_RE.search(line) and not PARTIAL_COVERAGE_RE.search(line):
+            return False
+        if PARTIAL_COVERAGE_RE.search(line):
+            return True
+    if DEEP_COMPLETE_RE.search(depth_text) and not PARTIAL_COVERAGE_RE.search(depth_text):
+        return False
+    return bool(PARTIAL_COVERAGE_RE.search(depth_text))
 
 
 def parse_value(raw: str):
@@ -492,7 +627,12 @@ def parse_lens_ids(text: str) -> set[str]:
         if start <= end:
             ids.update(f"L{i}" for i in range(start, end + 1))
     ids.update(re.findall(r"\bL(?:[1-9]|1[0-9])\b", text))
-    ids.update(re.findall(r"\bMETA-[12]\b", text))
+    ids.update(item.upper() for item in re.findall(r"\bMETA-[12]\b", text, flags=re.IGNORECASE))
+    for boundary_id in LENS_NAMES["en"]:
+        if boundary_id.startswith("META-"):
+            continue
+        if re.search(rf"\b{re.escape(boundary_id)}\b", text, flags=re.IGNORECASE):
+            ids.add(boundary_id)
     if re.search(r"\bMETA\b", text) and not any(item.startswith("META-") for item in ids):
         ids.update(["META-1", "META-2"])
     return ids
@@ -501,9 +641,16 @@ def parse_lens_ids(text: str) -> set[str]:
 def parse_lens_record_ids(text: str) -> set[str]:
     ids: set[str] = set()
     for line in text.splitlines():
-        match = re.match(r"###\s+((?:L(?:[1-9]|1[0-9])|META-[12]))\b", line)
-        if match:
-            ids.add(match.group(1))
+        meta = re.match(r"###\s+(META-[12])\b", line, flags=re.IGNORECASE)
+        if meta:
+            ids.add(meta.group(1).upper())
+            continue
+        boundary = re.match(r"###\s+(?:Boundary:\s*)?(.+)", line, flags=re.IGNORECASE)
+        if not boundary:
+            continue
+        name = re.sub(r"[^a-z0-9]+", "-", boundary.group(1).strip().lower()).strip("-")
+        if name in LENS_NAMES["en"] or name in LENS_NAMES["zh"]:
+            ids.add(name)
     return ids
 
 
@@ -548,23 +695,61 @@ def coverage_strategy_bullets(scope_doc: str, lens_coverage: str, language: str,
         else:
             bullets.append(f"Enabled META {TIER_NAMES[language]['meta']}: {lens_list(meta_ids, language)}.")
 
-    disabled_scope = " ".join(scope_bullets)
-    tier3_ids = TIER_GROUPS[2][2]
-    if not any(lens_id in enabled for lens_id in tier3_ids) and re.search(r"L15\s*-\s*L?19|Tier\s*3", disabled_scope):
-        if language == "zh":
-            bullets.append(
-                f"未启用 Tier 3 {TIER_NAMES[language]['tier3']}（L15-L19）：{lens_list(tier3_ids, language)}；本次缺少跨仓 counterpart 证据。"
-            )
-        else:
-            bullets.append(
-                f"Tier 3 {TIER_NAMES[language]['tier3']} was not enabled (L15-L19): {lens_list(tier3_ids, language)}; no cross-repo counterpart evidence was in scope."
-            )
-
     if language == "zh":
         bullets.append("覆盖明细：quality/lens-coverage.md。")
     else:
         bullets.append("Coverage details: quality/lens-coverage.md.")
     return unique_items(bullets, limit)
+
+
+def depth_coverage_bullets(depth_coverage: str, language: str, limit: int = 5) -> list[str]:
+    if not depth_coverage:
+        return []
+    roster_gate = section_body(depth_coverage, ["Repository Roster Gate", "仓库名册门禁"])
+    conclusion = section_body(depth_coverage, ["Depth Conclusion", "深度结论"])
+    raw_bullets = extract_bullets(roster_gate, limit) + extract_bullets(conclusion, 2)
+    focused = []
+    for item in raw_bullets:
+        if re.search(
+            r"coverage classification|覆盖分类|discovered repos|profiles completed|missing roster|scope claim|known weak|已发现仓库|画像|缺失|范围|弱区",
+            item,
+            flags=re.IGNORECASE,
+        ):
+            focused.append(item)
+    if not focused:
+        match = re.search(
+            r"(first[- ]pass|focused|deep[- ]complete|首轮|聚焦|深度完成)",
+            depth_coverage,
+            flags=re.IGNORECASE,
+        )
+        if match:
+            prefix = "覆盖分类" if language == "zh" else "Coverage classification"
+            focused.append(f"{prefix}: {match.group(1)}")
+    if focused:
+        focused.append(
+            "深度覆盖明细：quality/depth-coverage.md。"
+            if language == "zh"
+            else "Depth coverage details: quality/depth-coverage.md."
+        )
+    return unique_items(focused, limit)
+
+
+def candidate_funnel_bullets(candidate_coverage: str, language: str, limit: int = 3) -> list[str]:
+    if not candidate_coverage:
+        return []
+    funnel = section_body(candidate_coverage, ["Candidate Funnel", "候选发现漏斗"])
+    bullets = extract_bullets(funnel, limit + 2)
+    focused = []
+    for item in bullets:
+        if re.search(r"candidate leads|submitted findings|parked|unpromoted|候选|提交|搁置|未升级", item, re.IGNORECASE):
+            focused.append(item)
+    if focused:
+        focused.append(
+            "候选漏斗明细：quality/candidate-coverage.md。"
+            if language == "zh"
+            else "Candidate funnel details: quality/candidate-coverage.md."
+        )
+    return unique_items(focused, limit)
 
 
 def lens_summary_bullets(text: str, language: str, limit: int = 4) -> list[str]:
@@ -963,6 +1148,8 @@ def render_html(root: Path, language: str, output_name: str) -> str:
     versions = read_text(root / "quality/repository-versions.md")
     scope_doc = read_text(root / "quality/submission-scope.md")
     lens_coverage = read_text(root / "quality/lens-coverage.md")
+    depth_coverage = read_text(root / "quality/depth-coverage.md")
+    candidate_coverage = read_text(root / CANDIDATE_COVERAGE)
     arch = read_text(root / "knowledge/architecture-design-review.md")
     risk_paths = read_text(root / "knowledge/risk-paths.md")
     relationship = read_text(root / "knowledge/repo-relationship-map.md")
@@ -985,10 +1172,12 @@ def render_html(root: Path, language: str, output_name: str) -> str:
 
     quality_gate_bullets = unique_items(
         extract_bullets(section_body(scope_doc, ["收录", "Included"]), 4)
-        + extract_bullets(section_body(scope_doc, ["质量评估", "Quality Evaluation"]), 4),
+        + extract_bullets(section_body(scope_doc, ["质量评估", "Quality Evaluation"]), 4)
+        + candidate_funnel_bullets(candidate_coverage, language, 3),
         5,
     )
     coverage_bullets = coverage_strategy_bullets(scope_doc, lens_coverage, language, 6)
+    depth_bullets = depth_coverage_bullets(depth_coverage, language, 5)
     boundary_bullets = unique_items(
         extract_bullets(section_body(scope_doc, ["排除", "Exclusions"]), 4)
         + extract_bullets(section_body(scope_doc, ["当前状态", "Current Status"]), 2),
@@ -1114,6 +1303,7 @@ def render_html(root: Path, language: str, output_name: str) -> str:
     .tone-architecture .insight-item h3::before {{ background:var(--slate); }}
     .insight-item p {{ margin:0; color:var(--muted); font-size:13px; line-height:1.55; }}
     .repo-grid {{ display:grid; grid-template-columns:repeat(auto-fit,minmax(220px,1fr)); gap:12px; }}
+    .repo-depth-panel {{ margin-bottom:12px; }}
     .repo-card {{ border:1px solid var(--line); border-radius:8px; padding:14px; background:#FFF; box-shadow:0 10px 28px -22px rgba(10,10,10,.18); }}
     .repo-card h3 {{ margin:0 0 8px; font-size:16px; }}
     .repo-card .mini {{ color:var(--muted); font-size:12px; line-height:1.45; }}
@@ -1267,6 +1457,7 @@ def render_html(root: Path, language: str, output_name: str) -> str:
 
     <section id="repositories" class="section-card">
       <div class="section-heading"><div><p>{esc(label["repo_eyebrow"])}</p><h2>{esc(label["repo_situation"])}</h2></div></div>
+      {f'<div class="repo-depth-panel">{bullet_panel(label["coverage_classification"], depth_bullets, label["depth_fallback"])}</div>' if depth_bullets else ''}
       <div class="repo-grid">
         {render_repo_cards(findings, repo_counter, label)}
       </div>
@@ -1422,11 +1613,17 @@ def main() -> int:
     parser.add_argument("root", help="Bug audit output root")
     parser.add_argument("--language", choices=["zh", "en"], default="zh", help="Report language")
     parser.add_argument("--output", default="bug-audit-report.html", help="Output filename under submit root")
+    parser.add_argument(
+        "--allow-ungated-draft",
+        action="store_true",
+        help="Allow HTML generation before shard-gate receipt. Reserved for explicitly labeled non-final drafts.",
+    )
     args = parser.parse_args()
 
     root = Path(args.root).expanduser().resolve()
     if (root / "submit").is_dir() and not (root / "findings").is_dir():
         root = root / "submit"
+    ensure_report_gate(root, args.allow_ungated_draft)
     index_path = root / "indexes/findings.generated.json"
     if not index_path.is_file():
         raise SystemExit(f"Missing generated index: {index_path}")

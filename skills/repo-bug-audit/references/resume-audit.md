@@ -85,6 +85,8 @@ Anti-patterns to reject:
 
 ### Sub-Agent Coordination (during analysis)
 
+For repo-group audits, prefer repo shards: one repo per worker by default, recorded in `work/scanner-output/repo-shards.md`. Each worker writes only its repo-local profile and `work/shards/<repo>/...`; the coordinator writes global findings, indexes, quality docs, HTML, and overview image after merging.
+
 To avoid ID conflicts during parallel work, do one of:
 
 1. **Sharded ranges + final renumber (recommended for true parallelism)** — give each agent a temporary range (e.g. agent A `BUG-1001..`, agent B `BUG-2001..`, agent C `BUG-3001..`). These are temporary IDs only. At consolidation, renumber the entire merged set to `BUG-0001..BUG-N`.

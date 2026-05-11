@@ -6,6 +6,7 @@ import argparse
 import json
 import re
 import struct
+from datetime import datetime, timezone
 from pathlib import Path
 
 REQUIRED_DIRS = [
@@ -40,6 +41,19 @@ REQUIRED_KNOWLEDGE_FOR_HANDOFF = [
     "knowledge/risk-paths.md",
 ]
 HTML_REPORT_FILE = "bug-audit-report.html"
+DEPTH_COVERAGE_FILE = "quality/depth-coverage.md"
+CANDIDATE_INDEX_FILE = "indexes/candidates.generated.json"
+CANDIDATE_COVERAGE_FILE = "quality/candidate-coverage.md"
+ISSUE_FAMILY_COVERAGE_FILE = "quality/issue-family-coverage.md"
+SHARD_SUMMARY_FILE = "shard-summary.json"
+SHARD_GATE_RECEIPT_FILE = "work/scanner-output/shard-gate.passed.json"
+PREPACKAGE_RECEIPT_FILE = "work/scanner-output/prepackage-validation.passed.json"
+SCAN_ROOTS_FILE = "work/scanner-output/repo-scan-roots.txt"
+HIGH_RECALL_SCAN_JSON = "work/scanner-output/high-recall-scan.json"
+HIGH_RECALL_SCAN_MD = "work/scanner-output/high-recall-scan.md"
+VALIDATOR_VERSION = "repo-bug-audit-validator-2026-05-11-promotion-overview"
+CANDIDATE_INDEX_GENERATOR = "generate_candidate_index.py"
+CANDIDATE_INDEX_SCHEMA_VERSION = 3
 HTML_TOP_NAV_GRADIENT = (
     "linear-gradient(90deg,rgba(16,68,59,.96) 0%,"
     "rgba(15,118,110,.94) 58%,rgba(18,130,113,.92) 100%)"
@@ -47,6 +61,43 @@ HTML_TOP_NAV_GRADIENT = (
 HTML_TOTAL_METRIC_BACKGROUND = "linear-gradient(145deg,#FFFFFF 0%,#F8FAFC 62%,#EEF2F7 100%)"
 HTML_MAX_SHELL_BOTTOM_PADDING_PX = 40
 HTML_MAX_FOOTER_MARGIN_TOP_PX = 28
+DEPTH_INTENT_RE = re.compile(
+    r"(audit depth intent|analysis depth|requested depth|审计深度意图|分析深度|请求深度)\s*[:：]\s*`?([^\n`]+)",
+    re.IGNORECASE,
+)
+DEEP_INTENT_RE = re.compile(
+    r"\b(deep|full|complete|exhaustive|max(?:imum)?|per[- ]repo)\b|"
+    r"深度|完整|全面|尽可能|每个\s*repo|每仓|逐仓|全部仓库",
+    re.IGNORECASE,
+)
+REQUESTED_DEEP_RE = re.compile(
+    r"((user|original|initial)\s+(request|requested|asked|intent)|用户.*(要求|请求|希望)|原始.*(要求|请求))"
+    r".{0,100}"
+    r"(\b(deep|full|complete|exhaustive|max(?:imum)?|per[- ]repo)\b|深度|完整|全面|尽可能|每个\s*repo|每仓|逐仓|全部仓库)",
+    re.IGNORECASE,
+)
+PARTIAL_COVERAGE_RE = re.compile(
+    r"\b(first[- ]pass|focused|in[- ]progress)\b|首轮|第一阶段|聚焦|进行中",
+    re.IGNORECASE,
+)
+DEEP_COMPLETE_RE = re.compile(r"\bdeep[- ]complete\b|深度完成", re.IGNORECASE)
+DOWNGRADE_ACCEPTED_RE = re.compile(
+    r"(depth downgrade accepted by user|user accepted (?:a )?downgrade|user accepted first[- ]pass|"
+    r"用户.*(接受|确认|同意).*(降级|首轮|第一阶段|first[- ]pass)|"
+    r"(降级|首轮|第一阶段|first[- ]pass).*(用户.*(接受|确认|同意)))",
+    re.IGNORECASE,
+)
+OVERVIEW_DECISION_VALUES = {
+    "included",
+    "omitted-by-user",
+    "omitted-as-lightweight-scan",
+    "omitted-after-failure",
+    "deferred-post-handoff",
+}
+CRITICAL_ONLY_SCOPE_RE = re.compile(
+    r"\b(P1[- ]only|critical[- ]only|critical findings only)\b|只提交\s*P1|仅\s*P1|只看高危|仅高危",
+    re.IGNORECASE,
+)
 REQUIRED_HTML_SECTIONS = [
     "hero",
     "metrics",
@@ -71,8 +122,26 @@ REQUIRED_META = [
     "infra_domains",
     "fix_risk",
 ]
-# Allowed values for optional `lens` frontmatter field (see references/exploration-lenses.md).
-VALID_LENS = {f"L{i}" for i in range(1, 20)} | {"META-1", "META-2"}
+VALID_BOUNDARIES = {
+    "api-contract", "cache", "message", "rollback", "third-party",
+    "lifecycle", "concurrency", "config", "failure-mode", "clock",
+    "permission-propagation", "pagination", "idempotency",
+}
+VALID_META_LENS = {"META-1", "META-2"}
+LEGACY_LENS = {f"L{i}" for i in range(1, 20)}
+VALID_LENS = VALID_BOUNDARIES | VALID_META_LENS
+BOUNDARY_ORDER = [
+    "api-contract", "cache", "message", "rollback", "third-party",
+    "lifecycle", "concurrency", "config", "failure-mode", "clock",
+    "permission-propagation", "pagination", "idempotency",
+]
+VALID_EXECUTION_MODES = {"parallel", "serial", "batched"}
+VALID_COVERAGE_CLASSIFICATIONS = {"first-pass", "focused", "deep-complete"}
+PROFILE_EVIDENCE_REQUIRED_SECTIONS = {
+    "Risk Surfaces",
+    "Findings and Candidates",
+    "Known Uncovered Areas",
+}
 MERMAID_ID_RE = re.compile(r"\b[A-Za-z_][A-Za-z0-9_]*\b")
 MERMAID_DECL_RE = re.compile(r"\b([A-Za-z_][A-Za-z0-9_]*)\s*[\[(\{]")
 MERMAID_KEYWORDS = {
@@ -98,13 +167,51 @@ MERMAID_KEYWORDS = {
     "LR",
     "RL",
 }
-# Lens coverage record sections (5-section hard format from exploration-lenses.md).
-LENS_COVERAGE_SECTIONS = {
-    "zh": ["已扫描入口", "关注模式", "候选数", "排除原因", "未覆盖"],
-    "en": ["Scanned Entry Points", "Patterns", "Candidates", "Exclusion Reasons", "Uncovered"],
+# Lens coverage record sections. New 13-boundary records use concise fields;
+# legacy package records are accepted for compatibility.
+LENS_COVERAGE_SECTION_ALIASES = {
+    "zh": {
+        "scanned": ["已扫描", "已扫描入口"],
+        "candidates": ["候选", "候选数"],
+        "refuted": ["已排除", "排除原因"],
+        "uncovered": ["未覆盖"],
+    },
+    "en": {
+        "scanned": ["Scanned", "Scanned Entry Points"],
+        "candidates": ["Candidates"],
+        "refuted": ["Refuted", "Exclusion Reasons"],
+        "uncovered": ["Uncovered"],
+    },
 }
-SINGLE_REPO_DEFAULT_LENS = {f"L{i}" for i in range(1, 15)} | {"META-1", "META-2"}
-MULTI_REPO_DEFAULT_LENS = VALID_LENS
+DEPTH_COVERAGE_SECTION_ALIASES = [
+    ("Repository Roster Gate", ["Repository Roster Gate", "仓库名册门禁"]),
+    ("Repository Inventory", ["Repository Inventory", "仓库清单"]),
+    ("Historical Baselines", ["Historical Baselines", "历史审计基线"]),
+    ("Per-repo Coverage", ["Per-repo Coverage", "分仓覆盖"]),
+    ("Zero-finding Repos", ["Zero-finding Repos", "零 Bug 仓"]),
+    ("Depth Conclusion", ["Depth Conclusion", "深度结论"]),
+]
+REQUIRED_ISSUE_FAMILIES = {
+    "auth-authorization": ["auth-authorization", "authorization", "authentication", "authn", "authz", "鉴权", "授权", "认证"],
+    "secrets-config": ["secrets-config", "secret", "credential", "token", "key", "凭据", "密钥", "配置泄露"],
+    "execution-sandbox": ["execution-sandbox", "execution", "sandbox", "rce", "command", "eval", "exec", "执行", "沙箱", "命令"],
+    "deserialization-ipc": ["deserialization-ipc", "deserialization", "serialization", "ipc", "uds", "pickle", "反序列化", "进程间"],
+    "file-path-storage": ["file-path-storage", "path traversal", "file path", "upload", "download", "storage", "路径", "文件", "上传", "下载", "存储"],
+    "network-ssrf": ["network-ssrf", "ssrf", "network", "http client", "url", "callback", "网络", "回调"],
+    "tls-transport": ["tls-transport", "tls", "ssl", "certificate", "transport", "证书", "传输"],
+    "frontend-rendering": ["frontend-rendering", "frontend", "xss", "html", "markdown", "dom", "前端", "渲染"],
+    "state-data-integrity": ["state-data-integrity", "state", "transaction", "data integrity", "database", "一致性", "事务", "数据"],
+    "async-lifecycle-recovery": ["async-lifecycle-recovery", "async", "lifecycle", "recovery", "worker", "queue", "异步", "生命周期", "恢复"],
+    "resource-concurrency": ["resource-concurrency", "resource", "concurrency", "thread", "pool", "leak", "并发", "资源", "泄漏"],
+    "deployment-supply-chain": ["deployment-supply-chain", "deployment", "docker", "container", "dependency", "supply", "部署", "容器", "依赖", "供应链"],
+}
+ISSUE_FAMILY_OUTCOME_RE = re.compile(
+    r"\b(promoted|parked|refuted|merged|none|no[- ]hit|not[- ]applicable|out[- ]of[- ]scope)\b|"
+    r"提交|候选|排除|合并|无命中|未发现|不适用|范围外|保留",
+    re.IGNORECASE,
+)
+SINGLE_REPO_DEFAULT_LENS = VALID_BOUNDARIES | VALID_META_LENS
+MULTI_REPO_DEFAULT_LENS = VALID_BOUNDARIES | VALID_META_LENS
 PROFILE_REQUIRED_SECTION_ALIASES = [
     ("Tech Stack", ["Tech Stack", "技术栈"]),
     ("Entry Points", ["Entry Points", "入口点"]),
@@ -119,6 +226,29 @@ PROFILE_REQUIRED_SECTION_ALIASES = [
     ("Call Graph", ["Call Graph", "调用图"]),
     ("Findings and Candidates", ["Findings and Candidates", "发现与候选", "Bug 与候选"]),
     ("Known Uncovered Areas", ["Known Uncovered Areas", "已知未覆盖区域", "未覆盖区域"]),
+]
+GENERIC_SHARD_PHRASES = [
+    "representative entry files",
+    "auth/config/http/shell/path patterns",
+    "no lead had enough code evidence",
+    "pattern-only hits in generated clients",
+    "no executable trigger path and impact were proven",
+    "manual nl -ba review of promoted code paths",
+    "external route/controller -> service/helper -> storage/network/shell boundary",
+    "profile updated from shard evidence",
+    "entry points; auth; config; outbound",
+    "entry points, auth, config, outbound",
+    "risk surface map",
+    "surface map completed",
+    "not promoted due to insufficient evidence",
+    "retained in the broad funnel and parked because static review did not prove",
+    "fresh current-source seed from",
+]
+GENERIC_PROFILE_PATTERNS = [
+    "A[External entry points] --> B[Service/controller module]",
+    "B --> C[Storage, shell, network, or runtime boundary]",
+    "Confirmed boundaries are listed in findings when promoted",
+    "Shared storage was inferred only when code referenced S3, NFS, Redis, PostgreSQL, or Kubernetes resources",
 ]
 REQUIRED_SECTIONS = {
     "zh": [
@@ -245,6 +375,34 @@ PRIORITIES = {"P1", "P2", "P3", "P4"}
 CONFIDENCE = {"high", "medium", "low"}
 FIX_RISK = {"low", "medium", "high", "unknown"}
 BUG_FILE_RE = re.compile(r"^P[1-4]-BUG-\d{4}-[a-z0-9]+(?:-[a-z0-9]+)*\.md$")
+REPO_SOURCE_EXTENSIONS = {
+    ".c",
+    ".cc",
+    ".cpp",
+    ".cs",
+    ".css",
+    ".go",
+    ".h",
+    ".hpp",
+    ".html",
+    ".java",
+    ".js",
+    ".jsx",
+    ".kt",
+    ".php",
+    ".py",
+    ".rb",
+    ".rs",
+    ".scala",
+    ".sh",
+    ".sql",
+    ".swift",
+    ".ts",
+    ".tsx",
+    ".vue",
+    ".yaml",
+    ".yml",
+}
 
 
 def parse_value(raw: str):
@@ -315,9 +473,1251 @@ def as_list(value) -> list:
     return [value]
 
 
+def sanitize_profile_name(name: str) -> str:
+    safe = name.replace("/", "__").lower()
+    return re.sub(r"[^a-z0-9._-]+", "-", safe).strip("-") or "repo"
+
+
+def text_mentions_alias(text: str, aliases: list[str]) -> bool:
+    for alias in aliases:
+        if not alias:
+            continue
+        pattern = rf"(^|[^A-Za-z0-9_.-]){re.escape(alias)}($|[^A-Za-z0-9_.-])"
+        if re.search(pattern, text):
+            return True
+    return False
+
+
+def repo_item_matches_name(repo_item: dict, repo_name: str) -> bool:
+    return text_mentions_alias(str(repo_name), repo_aliases(repo_item))
+
+
+def is_git_repo(path: Path) -> bool:
+    return (path / ".git").exists()
+
+
+def should_skip_repo_discovery_dir(path: Path) -> bool:
+    name = path.name
+    skip_names = {
+        ".git",
+        ".hg",
+        ".svn",
+        ".idea",
+        ".vscode",
+        "__pycache__",
+        ".pytest_cache",
+        ".mypy_cache",
+        ".ruff_cache",
+        ".tox",
+        ".venv",
+        "venv",
+        "env",
+        "node_modules",
+        "dist",
+        "build",
+        "target",
+        "coverage",
+    }
+    return name in skip_names or "bug-audit" in name
+
+
+def count_source_like_files(repo: Path) -> int:
+    count = 0
+    for path in repo.rglob("*"):
+        if not path.is_file():
+            continue
+        rel_parts = path.relative_to(repo).parts
+        if any(should_skip_repo_discovery_dir(Path(part)) for part in rel_parts[:-1]):
+            continue
+        if path.suffix.lower() in REPO_SOURCE_EXTENSIONS or path.name in {"Dockerfile", "Makefile"}:
+            count += 1
+    return count
+
+
+def discover_expected_repos(repo_roots: list[Path], max_depth: int = 2) -> list[dict]:
+    """Discover repo roster from --repo-root for coverage checks.
+
+    A Git root is one expected repo. A non-Git group root contributes every nested
+    Git repo up to max_depth, stopping at each discovered repo. This mirrors
+    scripts/discover_repositories.py closely enough for final package validation.
+    """
+    discovered: dict[Path, dict] = {}
+    for root in repo_roots:
+        if not root.exists():
+            continue
+        root = root.resolve()
+        if is_git_repo(root):
+            display_name = root.name
+            discovered[root] = {
+                "display_name": display_name,
+                "profile_name": sanitize_profile_name(display_name),
+                "path_name": root.name,
+                "path": str(root),
+                "source_like_files": count_source_like_files(root),
+            }
+            continue
+        stack: list[tuple[Path, int]] = [(root, 0)]
+        while stack:
+            current, depth = stack.pop()
+            if depth > max_depth:
+                continue
+            if current != root and is_git_repo(current):
+                try:
+                    rel = current.relative_to(root).as_posix()
+                except ValueError:
+                    rel = current.name
+                discovered[current] = {
+                    "display_name": rel,
+                    "profile_name": sanitize_profile_name(rel),
+                    "path_name": current.name,
+                    "path": str(current),
+                    "source_like_files": count_source_like_files(current),
+                }
+                continue
+            if depth == max_depth:
+                continue
+            try:
+                children = sorted(
+                    child
+                    for child in current.iterdir()
+                    if child.is_dir() and not should_skip_repo_discovery_dir(child)
+                )
+            except OSError:
+                continue
+            for child in reversed(children):
+                stack.append((child, depth + 1))
+    return [discovered[path] for path in sorted(discovered, key=lambda p: discovered[p]["profile_name"])]
+
+
+def repo_aliases(repo_item: dict) -> list[str]:
+    aliases = [
+        str(repo_item.get("display_name", "")),
+        str(repo_item.get("profile_name", "")),
+        str(repo_item.get("path_name", "")),
+    ]
+    return list(dict.fromkeys(alias for alias in aliases if alias))
+
+
+def expected_repo_for_name(repo_name: str, expected_repo_items: list[dict]) -> dict | None:
+    for repo_item in expected_repo_items:
+        if repo_item_matches_name(repo_item, repo_name):
+            return repo_item
+    return None
+
+
+def path_is_under(path: Path, parent: Path) -> bool:
+    try:
+        path.resolve().relative_to(parent.resolve())
+        return True
+    except ValueError:
+        return False
+
+
+def file_path_exists_for_repo(rel_path: str, repo_item: dict, repo_roots: list[Path]) -> bool:
+    repo_path = Path(str(repo_item.get("path", ""))).expanduser().resolve()
+    direct = repo_path / rel_path
+    if direct.exists():
+        return True
+    for root in repo_roots:
+        candidate = root / rel_path
+        if candidate.exists() and path_is_under(candidate, repo_path):
+            return True
+    return False
+
+
+def audit_workspace_root(root: Path) -> Path:
+    return root.parent if root.name == "submit" else root
+
+
+def as_string_list(value) -> list[str]:
+    if isinstance(value, list):
+        return [str(item) for item in value if str(item).strip()]
+    if value in (None, ""):
+        return []
+    return [str(value)]
+
+
+def load_json_file(path: Path) -> tuple[dict | None, str | None]:
+    try:
+        payload = json.loads(path.read_text(encoding="utf-8"))
+    except OSError as exc:
+        return None, str(exc)
+    except json.JSONDecodeError as exc:
+        return None, str(exc)
+    if not isinstance(payload, dict):
+        return None, "expected JSON object"
+    return payload, None
+
+
+def section_body_for_aliases(text: str, aliases: list[str]) -> str:
+    lines = text.splitlines()
+    for index, line in enumerate(lines):
+        for alias in aliases:
+            if re.match(rf"^#{{2,4}}\s+{re.escape(alias)}\s*$", line.strip(), flags=re.IGNORECASE):
+                body: list[str] = []
+                for body_line in lines[index + 1:]:
+                    if re.match(r"^#{2,4}\s+", body_line):
+                        return "\n".join(body).strip()
+                    body.append(body_line)
+                return "\n".join(body).strip()
+    return ""
+
+
+def section_is_emptyish(text: str) -> bool:
+    normalized = re.sub(r"[\s`*_>-]+", " ", text).strip().lower()
+    return normalized in {
+        "",
+        "none",
+        "none.",
+        "n/a",
+        "na",
+        "no candidate",
+        "no candidates",
+        "no candidate promoted",
+        "none recorded yet",
+        "暂无",
+        "无",
+        "无候选",
+    }
+
+
+def contains_generic_shard_phrase(text: str) -> bool:
+    lowered = text.lower()
+    return any(phrase.lower() in lowered for phrase in GENERIC_SHARD_PHRASES)
+
+
+def generic_candidate_boilerplate_count(text: str) -> int:
+    lowered = text.lower()
+    return sum(
+        lowered.count(phrase)
+        for phrase in [
+            "retained in the broad funnel and parked because static review did not prove",
+            "fresh current-source seed from",
+        ]
+    )
+
+
+def has_code_anchor(text: str) -> bool:
+    return bool(
+        re.search(
+            r"(`?[\w./-]+\.(c|cc|cpp|cs|css|go|h|hpp|html|java|js|jsx|kt|m|mm|php|py|rb|rs|scala|sh|sql|swift|ts|tsx|vue|yaml|yml|xml|gradle|toml|json|properties)`?|/[\w./-]+|[A-Za-z_][\w$]*\.[A-Za-z_][\w$]*)",
+            text,
+        )
+        or re.search(r"\b(Dockerfile|Makefile|go\.mod|package\.json|pyproject\.toml|pom\.xml|build\.gradle(?:\.kts)?)\b", text)
+        or re.search(r"\b(GET|POST|PUT|PATCH|DELETE)\s+/", text)
+    )
+
+
+def search_entry_is_specific(text: str) -> bool:
+    stripped = text.strip()
+    if not stripped or contains_generic_shard_phrase(stripped):
+        return False
+    if re.search(r"\b(rg|grep|find|sed|nl|git|pytest|mvn|gradle|go|npm|pnpm|yarn)\b", stripped):
+        return has_code_anchor(stripped) or bool(re.search(r"['\"][^'\"]{3,}['\"]", stripped))
+    return has_code_anchor(stripped)
+
+
+def surface_entry_is_specific(text: str) -> bool:
+    stripped = text.strip()
+    if len(stripped) < 4 or contains_generic_shard_phrase(stripped):
+        return False
+    if stripped.lower() in {"none", "n/a", "na", "unknown", "todo", "pending", "无", "暂无"}:
+        return False
+    return has_code_anchor(stripped)
+
+
+def normalized_surface_map(value) -> dict[str, list[str]]:
+    if not isinstance(value, dict):
+        return {}
+    normalized: dict[str, list[str]] = {}
+    for category, entries in value.items():
+        key = str(category).strip()
+        if not key:
+            continue
+        normalized[key] = as_string_list(entries)
+    return normalized
+
+
+def specific_surface_entries(surface_map: dict[str, list[str]]) -> dict[str, list[str]]:
+    specific: dict[str, list[str]] = {}
+    for category, entries in surface_map.items():
+        filtered = [entry for entry in entries if surface_entry_is_specific(entry)]
+        if filtered:
+            specific[category] = filtered
+    return specific
+
+
+def hypothesis_loop_has_evidence(loop) -> bool:
+    if isinstance(loop, str):
+        return bool(loop.strip()) and has_code_anchor(loop) and not contains_generic_shard_phrase(loop)
+    if not isinstance(loop, dict):
+        return False
+    hypothesis = str(loop.get("hypothesis", "")).strip()
+    result = str(loop.get("result", "")).strip().lower()
+    evidence_text = " ".join(str(value) for value in loop.values())
+    return (
+        len(hypothesis) >= 10
+        and result in {"promoted", "parked", "refuted", "merged"}
+        and has_code_anchor(evidence_text)
+        and not contains_generic_shard_phrase(evidence_text)
+    )
+
+
+def seed_triage_has_evidence(item) -> bool:
+    if not isinstance(item, dict):
+        return False
+    outcome = str(item.get("outcome", "")).strip().lower()
+    location = str(item.get("location", "")).strip()
+    follow_up = str(item.get("follow_up", "")).strip()
+    candidate_or_reason = str(item.get("candidate_or_reason", "")).strip()
+    return (
+        outcome in VALID_SEED_TRIAGE_OUTCOMES
+        and bool(location)
+        and (has_code_anchor(location) or ":" in location)
+        and len(follow_up) >= 12
+        and len(candidate_or_reason) >= 8
+    )
+
+
+def profile_sections_are_present(payload: dict) -> tuple[set[str], set[str]]:
+    raw_sections = payload.get("profile_evidence_sections")
+    if isinstance(raw_sections, dict):
+        present = {str(key).strip() for key, value in raw_sections.items() if str(value).strip()}
+    else:
+        present = {str(item).strip() for item in as_string_list(raw_sections)}
+    return present, PROFILE_EVIDENCE_REQUIRED_SECTIONS - present
+
+
+def explicit_candidate_entry_count(candidate_body: str) -> int:
+    count = 0
+    for raw in candidate_body.splitlines():
+        line = raw.strip()
+        if not line.startswith(("- ", "* ", "### ", "#### ")):
+            continue
+        if re.search(r"\bnone recorded yet\b|pending shard exploration|暂无|待补充", line, re.IGNORECASE):
+            continue
+        if re.search(r"\b(C\d+|BUG-\d{4,})\b", line, flags=re.IGNORECASE):
+            count += 1
+            continue
+        if re.search(r"`[^`]+:\d+`|[A-Za-z0-9_./-]+\.(py|ts|tsx|js|java|go|rs|yaml|yml|sh|md):\d+", line):
+            count += 1
+    return count
+
+
+def check_candidates_evidence(
+    path: Path,
+    rel_path: str,
+    candidate_count: int,
+    submitted_bug_ids: list[str],
+) -> tuple[list[str], list[str]]:
+    errors: list[str] = []
+    warnings: list[str] = []
+    text = path.read_text(encoding="utf-8", errors="replace")
+    if "Pending shard exploration" in text:
+        errors.append(f"{rel_path}: still contains pending shard exploration template")
+    candidate_body = section_body_for_aliases(text, ["Candidate Leads", "候选线索"])
+    promotion_body = section_body_for_aliases(text, ["Promotion Review", "提升复核", "升级复核"])
+    refuted_body = section_body_for_aliases(text, ["Refuted Leads", "已排除线索", "误报排查"])
+    zero_body = section_body_for_aliases(text, ["Zero-candidate Rationale", "零候选理由", "零候选说明"])
+    # Format warnings
+    if candidate_body == "":
+        warnings.append(f"{rel_path}: missing Candidate Leads section")
+    if refuted_body == "":
+        warnings.append(f"{rel_path}: missing Refuted Leads section")
+    if zero_body == "":
+        warnings.append(f"{rel_path}: missing Zero-candidate Rationale section")
+    # Evidence errors
+    if candidate_count > 0 and section_is_emptyish(candidate_body):
+        errors.append(f"{rel_path}: candidate_count > 0 but Candidate Leads is empty")
+    if candidate_count > 0 and not has_code_anchor(candidate_body) and "BUG-" not in candidate_body:
+        errors.append(f"{rel_path}: candidate leads need a Bug ID, candidate file, or code path anchor")
+    boilerplate_count = generic_candidate_boilerplate_count(candidate_body)
+    if boilerplate_count >= 3:
+        warnings.append(
+            f"{rel_path}: Candidate Leads contains {boilerplate_count} generic scanner-seed parked lines"
+        )
+    explicit_count = explicit_candidate_entry_count(candidate_body)
+    allowed_count = explicit_count + len(submitted_bug_ids)
+    if candidate_count > allowed_count:
+        errors.append(
+            f"{rel_path}: candidate_count ({candidate_count}) exceeds explicit Candidate Leads entries "
+            f"plus submitted Bugs ({allowed_count})"
+        )
+    if candidate_count == 0 and len(zero_body) < 40:
+        warnings.append(f"{rel_path}: zero-candidate rationale is short, consider naming concrete paths")
+    if candidate_count == 0 and contains_generic_shard_phrase(zero_body) and not has_code_anchor(zero_body):
+        errors.append(f"{rel_path}: zero-candidate rationale is too generic; name concrete paths or scanned surfaces")
+    if contains_generic_shard_phrase(refuted_body) and not has_code_anchor(refuted_body):
+        warnings.append(f"{rel_path}: refuted leads — name the specific guard, sibling implementation, or false-positive reason with file:line")
+    high_priority_parked_ids: list[str] = []
+    for line in candidate_body.splitlines():
+        if not re.search(r"\bparked\s+P[12]\b|\bP[12]\s*[:,-]?\s*parked\b", line, flags=re.IGNORECASE):
+            continue
+        match = re.search(r"\b(C\d+)\b", line, flags=re.IGNORECASE)
+        high_priority_parked_ids.append(match.group(1).upper() if match else "<unlabeled>")
+    if high_priority_parked_ids:
+        if section_is_emptyish(promotion_body):
+            errors.append(
+                f"{rel_path}: parked P1/P2 candidates require a Promotion Review section "
+                f"({', '.join(high_priority_parked_ids[:8])})"
+            )
+        else:
+            review_upper = promotion_body.upper()
+            missing_ids = [
+                candidate_id
+                for candidate_id in high_priority_parked_ids
+                if candidate_id != "<unlabeled>" and candidate_id not in review_upper
+            ]
+            if missing_ids:
+                warnings.append(
+                    f"{rel_path}: Promotion Review — add an entry for each parked P1/P2 candidate id "
+                    f"(missing {', '.join(missing_ids[:8])})"
+                )
+            if not has_code_anchor(promotion_body) and "BUG-" not in promotion_body:
+                warnings.append(f"{rel_path}: Promotion Review could use a code anchor or merge target")
+            if not re.search(
+                r"\b(missing|insufficient|runtime|deployment|duplicate|merged|merge target|false-positive|"
+                r"guard|scope|needs?|unconfirmed|blocked)\b|缺|未确认|运行时|部署|合并|误报|缺少|范围",
+                promotion_body,
+                flags=re.IGNORECASE,
+            ):
+                warnings.append(f"{rel_path}: Promotion Review should name the missing gate or guard")
+    return errors, warnings
+
+
+def write_shard_gate_receipt(workspace_root: Path, root: Path, expected_repo_items: list[dict]) -> None:
+    receipt_path = workspace_root / SHARD_GATE_RECEIPT_FILE
+    receipt_path.parent.mkdir(parents=True, exist_ok=True)
+    now = datetime.now(timezone.utc)
+    payload = {
+        "validator_version": VALIDATOR_VERSION,
+        "passed_at": now.isoformat(),
+        "passed_at_epoch": now.timestamp(),
+        "submit_root": str(root),
+        "repo_count": len(expected_repo_items),
+        "profiles": [item["profile_name"] for item in expected_repo_items],
+    }
+    receipt_path.write_text(json.dumps(payload, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+
+
+def write_prepackage_receipt(workspace_root: Path, root: Path, expected_repo_items: list[dict], finding_count: int) -> None:
+    receipt_path = workspace_root / PREPACKAGE_RECEIPT_FILE
+    receipt_path.parent.mkdir(parents=True, exist_ok=True)
+    now = datetime.now(timezone.utc)
+    payload = {
+        "validator_version": VALIDATOR_VERSION,
+        "passed_at": now.isoformat(),
+        "passed_at_epoch": now.timestamp(),
+        "submit_root": str(root),
+        "repo_count": len(expected_repo_items),
+        "finding_count": finding_count,
+        "profiles": [item["profile_name"] for item in expected_repo_items],
+    }
+    receipt_path.write_text(json.dumps(payload, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+
+
+def check_prepackage_receipt(
+    workspace_root: Path,
+    root: Path,
+    require_asset_order: bool,
+) -> tuple[list[str], list[str]]:
+    errors: list[str] = []
+    warnings: list[str] = []
+    if not require_asset_order:
+        return errors, warnings
+    receipt_path = workspace_root / PREPACKAGE_RECEIPT_FILE
+    if not receipt_path.is_file():
+        errors.append(
+            f"Missing pre-package validation receipt: {PREPACKAGE_RECEIPT_FILE}. "
+            "Run validate_bug_package.py <submit-root> --repo-root <path> before generating HTML or overview assets."
+        )
+        return errors, warnings
+    payload, error = load_json_file(receipt_path)
+    if error or payload is None:
+        errors.append(f"{PREPACKAGE_RECEIPT_FILE} is not valid JSON: {error}")
+        return errors, warnings
+    if payload.get("validator_version") != VALIDATOR_VERSION:
+        warnings.append(
+            f"{PREPACKAGE_RECEIPT_FILE}: validator_version differs from current {VALIDATOR_VERSION}; rerun pre-package validation if in doubt"
+        )
+    passed_epoch = payload.get("passed_at_epoch")
+    if isinstance(passed_epoch, (int, float)):
+        for asset in (root / HTML_REPORT_FILE, root / "audit-overview.png"):
+            if asset.exists() and asset.stat().st_mtime + 0.000001 < float(passed_epoch):
+                rel = asset.relative_to(root).as_posix()
+                errors.append(f"{rel} is older than pre-package validation; regenerate report assets after validation")
+    return errors, warnings
+
+
+def check_shard_gate_receipt(
+    workspace_root: Path,
+    root: Path,
+    expected_repo_items: list[dict],
+    require_asset_order: bool,
+) -> tuple[list[str], list[str]]:
+    errors: list[str] = []
+    warnings: list[str] = []
+    if len(expected_repo_items) <= 1:
+        return errors, warnings
+    receipt_path = workspace_root / SHARD_GATE_RECEIPT_FILE
+    if not receipt_path.is_file():
+        errors.append(
+            f"Missing shard evidence gate receipt: {SHARD_GATE_RECEIPT_FILE}. "
+            "Run validate_bug_package.py <submit-root> --validate-shards-only --repo-root <path> before packaging."
+        )
+        return errors, warnings
+    payload, error = load_json_file(receipt_path)
+    if error or payload is None:
+        errors.append(f"{SHARD_GATE_RECEIPT_FILE} is not valid JSON: {error}")
+        return errors, warnings
+    if payload.get("validator_version") != VALIDATOR_VERSION:
+        warnings.append(
+            f"{SHARD_GATE_RECEIPT_FILE}: validator_version differs from current {VALIDATOR_VERSION}; rerun shard gate if in doubt"
+        )
+    if payload.get("repo_count") != len(expected_repo_items):
+        errors.append(
+            f"{SHARD_GATE_RECEIPT_FILE}: repo_count={payload.get('repo_count')} does not match discovered roster {len(expected_repo_items)}"
+        )
+    profiles = set(as_string_list(payload.get("profiles")))
+    expected_profiles = {str(item["profile_name"]) for item in expected_repo_items}
+    if profiles != expected_profiles:
+        errors.append(f"{SHARD_GATE_RECEIPT_FILE}: profiles do not match current discovered roster")
+    if require_asset_order:
+        passed_epoch = payload.get("passed_at_epoch")
+        if isinstance(passed_epoch, (int, float)):
+            final_assets = [root / rel for rel in ("README.md", HTML_REPORT_FILE, "audit-overview.png")]
+            final_assets.extend(sorted((root / "findings").glob("P[1-4]/*.md")))
+            for asset in final_assets:
+                if asset.exists() and asset.stat().st_mtime + 0.000001 < float(passed_epoch):
+                    rel = asset.relative_to(root).as_posix()
+                    errors.append(
+                        f"{rel} is older than the shard gate receipt; generate or rewrite final findings "
+                        "from shard evidence after shard validation. Do not use touch or timestamp-only updates."
+                    )
+    return errors, warnings
+
+
+def check_scan_roots_file(workspace_root: Path, expected_repo_items: list[dict]) -> list[str]:
+    errors: list[str] = []
+    if len(expected_repo_items) <= 1:
+        return errors
+    path = workspace_root / SCAN_ROOTS_FILE
+    if not path.is_file():
+        errors.append(f"Missing repo source scan roots: {SCAN_ROOTS_FILE}")
+        return errors
+    raw_lines = path.read_text(encoding="utf-8", errors="replace").splitlines()
+    roots = [line.strip() for line in raw_lines if line.strip() and not line.lstrip().startswith("#")]
+    expected_paths = {str(Path(str(item["path"])).expanduser().resolve()) for item in expected_repo_items}
+    actual_paths = {str(Path(line).expanduser().resolve()) for line in roots}
+    if actual_paths != expected_paths:
+        missing = sorted(expected_paths - actual_paths)
+        extra = sorted(actual_paths - expected_paths)
+        if missing:
+            errors.append(f"{SCAN_ROOTS_FILE}: missing repo source roots: " + ", ".join(missing[:8]))
+        if extra:
+            errors.append(f"{SCAN_ROOTS_FILE}: contains non-roster roots: " + ", ".join(extra[:8]))
+    for line in roots:
+        resolved = Path(line).expanduser().resolve()
+        if "bug-audit" in resolved.name or any("bug-audit" in part for part in resolved.parts):
+            errors.append(f"{SCAN_ROOTS_FILE}: audit package path is not a source root: {line}")
+        if not (resolved / ".git").exists():
+            errors.append(f"{SCAN_ROOTS_FILE}: source root is not a Git repo: {line}")
+    return errors
+
+
+def load_high_recall_repo_index(workspace_root: Path) -> dict[str, dict]:
+    json_path = workspace_root / HIGH_RECALL_SCAN_JSON
+    payload, error = load_json_file(json_path)
+    if error or not isinstance(payload, dict):
+        return {}
+    repos = payload.get("repos")
+    if not isinstance(repos, list):
+        return {}
+    index: dict[str, dict] = {}
+    for item in repos:
+        if not isinstance(item, dict):
+            continue
+        profile_name = str(item.get("profile_name", "")).strip()
+        if not profile_name:
+            continue
+        categories = {
+            str(hit.get("category", "")).strip()
+            for hit in item.get("hits", [])
+            if isinstance(hit, dict) and str(hit.get("category", "")).strip()
+        }
+        index[profile_name] = {
+            "hit_count": item.get("hit_count") if isinstance(item.get("hit_count"), int) else 0,
+            "categories": categories,
+        }
+    return index
+
+
+VALID_SEED_TRIAGE_OUTCOMES = {"promoted", "parked", "refuted", "merged"}
+
+
+
+
+def check_shard_summaries(
+    workspace_root: Path,
+    expected_repo_items: list[dict],
+    repo_roots: list[Path],
+    coverage_mode: str = "deep",
+) -> tuple[list[str], list[str]]:
+    errors: list[str] = []
+    warnings: list[str] = []
+    relaxed = coverage_mode == "batch-first-pass"
+    if len(expected_repo_items) <= 1:
+        return errors, warnings
+    shards_root = workspace_root / "work/shards"
+    high_recall_by_profile = load_high_recall_repo_index(workspace_root)
+    for repo_item in expected_repo_items:
+        profile_name = str(repo_item["profile_name"])
+        summary_path = shards_root / profile_name / SHARD_SUMMARY_FILE
+        rel_summary = f"work/shards/{profile_name}/{SHARD_SUMMARY_FILE}"
+        candidates_path = shards_root / profile_name / "candidates.md"
+        rel_candidates = f"work/shards/{profile_name}/candidates.md"
+        has_candidates_file = candidates_path.is_file()
+        if not has_candidates_file:
+            errors.append(f"Missing repo shard candidates file: {rel_candidates}")
+        if not summary_path.is_file():
+            errors.append(f"Missing repo shard summary: {rel_summary}")
+            continue
+        payload, error = load_json_file(summary_path)
+        if error or payload is None:
+            errors.append(f"{rel_summary} is not valid JSON: {error}")
+            continue
+        if str(payload.get("profile_name", "")) != profile_name:
+            errors.append(f"{rel_summary}: profile_name must be {profile_name}")
+        if not repo_item_matches_name(repo_item, str(payload.get("repo", ""))):
+            errors.append(f"{rel_summary}: repo must match discovered repo {repo_item['display_name']}")
+        source_count = int(repo_item.get("source_like_files", 0) or 0)
+
+        # === EVIDENCE ERRORS (blocking) ===
+        # These check for fabricated, missing, or inconsistent evidence. They
+        # intentionally do not prescribe which Bug patterns the agent must hunt.
+        execution_mode = str(payload.get("execution_mode", "")).strip()
+        if execution_mode not in VALID_EXECUTION_MODES:
+            errors.append(
+                f"{rel_summary}: execution_mode must be one of "
+                f"{', '.join(sorted(VALID_EXECUTION_MODES))}"
+            )
+        parallel_eligible = payload.get("parallel_eligible")
+        if not isinstance(parallel_eligible, bool):
+            errors.append(f"{rel_summary}: parallel_eligible must be a boolean")
+        elif source_count > 10 and not parallel_eligible:
+            warnings.append(f"{rel_summary}: repo has >10 source-like files but parallel_eligible is false")
+        serial_reason = str(payload.get("serial_reason", "")).strip()
+        if parallel_eligible is True and execution_mode == "serial" and len(serial_reason) < 20:
+            errors.append(f"{rel_summary}: serial execution for a parallel-eligible shard needs a concrete serial_reason")
+
+        classification = str(payload.get("coverage_classification", "")).strip()
+        if classification not in VALID_COVERAGE_CLASSIFICATIONS:
+            errors.append(
+                f"{rel_summary}: coverage_classification must be first-pass, focused, or deep-complete"
+            )
+        focus_scope = str(payload.get("focus_scope", "")).strip()
+        if classification == "focused" and len(focus_scope) < 10:
+            errors.append(f"{rel_summary}: focused coverage requires a concrete focus_scope")
+
+        risk_surfaces = as_string_list(payload.get("risk_surfaces_scanned"))
+        evidence_paths = as_string_list(payload.get("evidence_paths"))
+        searches = as_string_list(payload.get("commands_or_searches"))
+        submitted_bug_ids = as_string_list(payload.get("submitted_bug_ids"))
+        candidate_count = payload.get("candidate_count")
+        if not isinstance(candidate_count, int) or candidate_count < 0:
+            errors.append(f"{rel_summary}: candidate_count must be a non-negative integer")
+            candidate_count = 0
+        if source_count > 0 and not evidence_paths:
+            errors.append(f"{rel_summary}: evidence_paths must include at least one real path")
+        if not risk_surfaces:
+            errors.append(f"{rel_summary}: risk_surfaces_scanned must not be empty")
+        if not searches:
+            errors.append(f"{rel_summary}: commands_or_searches must not be empty")
+        # Check that cited file paths actually exist in the repo
+        for rel_path in evidence_paths:
+            if not file_path_exists_for_repo(rel_path.strip().lstrip("/"), repo_item, repo_roots):
+                errors.append(f"{rel_summary}: evidence path does not exist in repo {repo_item['display_name']}: {rel_path}")
+
+        surface_map = normalized_surface_map(payload.get("surface_map"))
+        specific_surfaces = specific_surface_entries(surface_map)
+        if source_count > 10 and not specific_surfaces:
+            errors.append(
+                f"{rel_summary}: non-trivial repo needs at least one evidence-bearing surface_map entry"
+            )
+        elif not relaxed and source_count > 50 and len(specific_surfaces) < 2:
+            warnings.append(
+                f"{rel_summary}: large repo has a thin surface_map; keep coverage_classification honest"
+            )
+
+        raw_loops = payload.get("hypothesis_loops")
+        if isinstance(raw_loops, list):
+            hypothesis_loops = raw_loops
+        elif raw_loops in (None, ""):
+            hypothesis_loops = []
+        else:
+            hypothesis_loops = [raw_loops]
+        evidence_loops = [loop for loop in hypothesis_loops if hypothesis_loop_has_evidence(loop)]
+        if source_count > 10 and not evidence_loops:
+            errors.append(
+                f"{rel_summary}: non-trivial repo needs at least one evidence-bearing hypothesis_loops entry"
+            )
+
+        profile_updated = payload.get("profile_updated_from_shard")
+        if source_count > 0 and profile_updated is not True:
+            errors.append(f"{rel_summary}: profile_updated_from_shard must be true after shard exploration")
+        _, missing_profile_sections = profile_sections_are_present(payload)
+        if source_count > 0 and missing_profile_sections:
+            errors.append(
+                f"{rel_summary}: profile_evidence_sections missing "
+                + ", ".join(sorted(missing_profile_sections))
+            )
+
+        high_recall_info = high_recall_by_profile.get(profile_name, {})
+        high_recall_hits = high_recall_info.get("hit_count") if isinstance(high_recall_info, dict) else 0
+        if isinstance(high_recall_hits, int) and high_recall_hits > 0:
+            raw_seed_triage = payload.get("seed_triage")
+            seed_triage = raw_seed_triage if isinstance(raw_seed_triage, list) else []
+            if not any(seed_triage_has_evidence(item) for item in seed_triage):
+                errors.append(
+                    f"{rel_summary}: high-recall seeds exist; seed_triage needs at least one evidence-bearing reviewed seed"
+                )
+
+        # Candidate count consistency
+        if submitted_bug_ids and candidate_count < len(submitted_bug_ids):
+            errors.append(
+                f"{rel_summary}: candidate_count must include promoted submitted_bug_ids; "
+                f"found {candidate_count} candidates for {len(submitted_bug_ids)} submitted Bugs"
+            )
+        # Zero-finding repos must explain why
+        zero_rationale = str(payload.get("zero_finding_rationale", "")).strip()
+        if not submitted_bug_ids and candidate_count == 0 and len(zero_rationale) < 20:
+            errors.append(f"{rel_summary}: zero_finding_rationale is required when no candidates or Bugs were found")
+        call_chains = as_string_list(payload.get("call_chains_traced"))
+        remaining_gaps = as_string_list(payload.get("remaining_gaps"))
+        if not relaxed and classification in {"first-pass", "focused"} and not remaining_gaps:
+            warnings.append(f"{rel_summary}: partial coverage should name remaining_gaps")
+        if classification == "deep-complete":
+            if source_count >= 50 and not call_chains:
+                warnings.append(f"{rel_summary}: large deep-complete shard should list call_chains_traced")
+            blocking_gap_terms = [
+                "unknown", "uncovered", "not reviewed", "pending",
+                "未知", "未覆盖", "未审阅", "待确认",
+            ]
+            for gap in remaining_gaps:
+                lowered = gap.lower()
+                if any(term in lowered for term in blocking_gap_terms):
+                    errors.append(f"{rel_summary}: deep-complete cannot list blocking remaining gap: {gap}")
+        strongest_refuted = as_string_list(payload.get("strongest_refuted_leads"))
+        refuted_loop = any(
+            isinstance(loop, dict) and str(loop.get("result", "")).strip().lower() == "refuted"
+            for loop in evidence_loops
+        )
+        if source_count > 10 and not submitted_bug_ids and candidate_count == 0 and not strongest_refuted and not refuted_loop:
+            errors.append(
+                f"{rel_summary}: zero-candidate non-trivial repo needs a strongest_refuted_leads entry or refuted hypothesis loop"
+            )
+
+        # Candidate evidence checks compare declared counts against concrete notes.
+        if has_candidates_file:
+            cand_errors, _ = check_candidates_evidence(candidates_path, rel_candidates, candidate_count, submitted_bug_ids)
+            errors.extend(cand_errors)
+
+    # Cross-repo pattern detection: same candidate description in 3+ repos → worth deep-diving
+    cross_repo_warnings = detect_cross_repo_patterns(expected_repo_items, shards_root)
+    warnings.extend(cross_repo_warnings)
+
+    return errors, warnings
+
+
+def detect_cross_repo_patterns(
+    expected_repo_items: list[dict],
+    shards_root: Path,
+) -> list[str]:
+    """Detect candidate patterns via bigram matching across 3+ repos."""
+    warnings: list[str] = []
+    repo_candidates: dict[str, list[str]] = {}
+    for repo_item in expected_repo_items:
+        profile_name = str(repo_item["profile_name"])
+        candidates_path = shards_root / profile_name / "candidates.md"
+        if not candidates_path.is_file():
+            continue
+        text = candidates_path.read_text(encoding="utf-8", errors="replace")
+        entries = []
+        for line in text.splitlines():
+            stripped = line.strip()
+            if stripped.startswith("- ") and ("cand-" in stripped.lower() or "`" in stripped):
+                desc = re.sub(r'^-\s*\*?P\d-cand-\w+-\d+\*?\s*:?\s*', '', stripped)
+                desc = desc.strip()
+                if len(desc) > 20:
+                    entries.append(desc)
+        if entries:
+            repo_candidates[profile_name] = entries
+
+    from collections import Counter
+    bigram_repos: dict[str, Counter] = {}
+    for repo_name, entries in repo_candidates.items():
+        for entry in entries:
+            words = [w.lower() for w in re.findall(r'[a-z_]{3,}', entry.lower())]
+            for i in range(len(words) - 1):
+                w1, w2 = words[i], words[i+1]
+                if w1 in COMMON_WORDS or w2 in COMMON_WORDS:
+                    continue
+                bigram = f"{w1} {w2}"
+                if bigram not in bigram_repos:
+                    bigram_repos[bigram] = Counter()
+                bigram_repos[bigram][repo_name] += 1
+
+    reported: set[frozenset] = set()
+    for bigram, counter in sorted(bigram_repos.items(), key=lambda x: -len(x[1])):
+        if len(counter) < 3:
+            continue
+        repos_key = frozenset(counter.keys())
+        if repos_key in reported:
+            continue
+        reported.add(repos_key)
+        repos_str = ", ".join(sorted(counter.keys()))
+        warnings.append(
+            f"cross-repo pattern: '{bigram}' in {len(counter)} repos "
+            f"({repos_str}) — consider cross-repo lens deep-dive"
+        )
+
+    return warnings
+
+
+# Common words to exclude from cross-repo pattern detection
+COMMON_WORDS = {
+    "this", "that", "with", "from", "when", "code", "file", "user", "data",
+    "path", "line", "using", "used", "into", "does", "such", "they", "have",
+    "been", "would", "could", "which", "their", "them", "also", "than",
+    "then", "only", "over", "very", "just", "like", "make", "made", "need",
+    "well", "even", "much", "must", "part", "same", "some", "take", "work",
+    "what", "where", "while", "after", "before", "being", "other",
+}
+
+
+def check_candidate_index(
+    root: Path,
+    workspace_root: Path,
+    expected_repo_items: list[dict],
+    finding_count: int,
+) -> tuple[list[str], list[str]]:
+    errors: list[str] = []
+    warnings: list[str] = []
+    if len(expected_repo_items) <= 1:
+        return errors, warnings
+
+    index_path = root / CANDIDATE_INDEX_FILE
+    coverage_path = root / CANDIDATE_COVERAGE_FILE
+    markdown_path = root / "indexes/candidates.generated.md"
+    if not index_path.is_file():
+        errors.append(
+            f"Missing candidate pool index: {CANDIDATE_INDEX_FILE}; "
+            "run generate_candidate_index.py before pre-package validation"
+        )
+        return errors, warnings
+    if not markdown_path.is_file():
+        errors.append("Missing candidate pool Markdown index: indexes/candidates.generated.md")
+    if not coverage_path.is_file():
+        errors.append(f"Missing candidate discovery coverage: {CANDIDATE_COVERAGE_FILE}")
+
+    payload, error = load_json_file(index_path)
+    if error or not isinstance(payload, dict):
+        errors.append(f"{CANDIDATE_INDEX_FILE} is not valid JSON: {error}")
+        return errors, warnings
+    if payload.get("generated_by") != CANDIDATE_INDEX_GENERATOR:
+        errors.append(
+            f"{CANDIDATE_INDEX_FILE}: generated_by must be {CANDIDATE_INDEX_GENERATOR}; "
+            "run the deterministic candidate index generator instead of hand-writing this file"
+        )
+    if payload.get("schema_version") != CANDIDATE_INDEX_SCHEMA_VERSION:
+        errors.append(
+            f"{CANDIDATE_INDEX_FILE}: schema_version must be {CANDIDATE_INDEX_SCHEMA_VERSION}; "
+            "regenerate with generate_candidate_index.py"
+        )
+    for field in ("candidates_by_priority", "candidate_outcomes", "candidate_outcomes_by_priority"):
+        if not isinstance(payload.get(field), dict):
+            errors.append(f"{CANDIDATE_INDEX_FILE}: missing {field}; regenerate with generate_candidate_index.py")
+    gate_complete_unsubmitted = payload.get("gate_complete_unsubmitted_candidates")
+    if not isinstance(gate_complete_unsubmitted, list):
+        errors.append(
+            f"{CANDIDATE_INDEX_FILE}: missing gate_complete_unsubmitted_candidates; "
+            "regenerate with generate_candidate_index.py"
+        )
+        gate_complete_unsubmitted = []
+
+    shard_total = 0
+    submitted_links = 0
+    shard_repos: set[str] = set()
+    for repo_item in expected_repo_items:
+        profile_name = str(repo_item["profile_name"])
+        summary_path = workspace_root / "work/shards" / profile_name / SHARD_SUMMARY_FILE
+        if not summary_path.is_file():
+            continue
+        shard_payload, shard_error = load_json_file(summary_path)
+        if shard_error or not isinstance(shard_payload, dict):
+            continue
+        shard_repos.add(profile_name)
+        count = shard_payload.get("candidate_count")
+        if isinstance(count, int) and count >= 0:
+            shard_total += count
+        submitted = shard_payload.get("submitted_bug_ids")
+        if isinstance(submitted, list):
+            submitted_links += len(submitted)
+
+    index_total = payload.get("total_candidates")
+    if not isinstance(index_total, int) or index_total < 0:
+        errors.append(f"{CANDIDATE_INDEX_FILE}: total_candidates must be a non-negative integer")
+    elif index_total != shard_total:
+        errors.append(
+            f"{CANDIDATE_INDEX_FILE}: total_candidates ({index_total}) does not match shard candidate_count total ({shard_total})"
+        )
+    submitted_total = payload.get("total_submitted_findings")
+    if not isinstance(submitted_total, int) or submitted_total != finding_count:
+        errors.append(
+            f"{CANDIDATE_INDEX_FILE}: total_submitted_findings must match findings index count ({finding_count})"
+        )
+    promoted_links = payload.get("total_promoted_candidate_links")
+    if isinstance(promoted_links, int) and promoted_links != submitted_links:
+        errors.append(
+            f"{CANDIDATE_INDEX_FILE}: promoted candidate links ({promoted_links}) do not match shard submitted_bug_ids ({submitted_links})"
+        )
+    if finding_count > shard_total:
+        errors.append(
+            f"{CANDIDATE_INDEX_FILE}: submitted findings ({finding_count}) exceed candidate leads ({shard_total}); "
+            "every final Bug must come from a candidate or shard lead"
+        )
+
+    high_recall_payload, high_recall_error = load_json_file(workspace_root / HIGH_RECALL_SCAN_JSON)
+    total_seed_hits = 0
+    if not high_recall_error and isinstance(high_recall_payload, dict):
+        raw_hits = high_recall_payload.get("total_hits")
+        if isinstance(raw_hits, int) and raw_hits > 0:
+            total_seed_hits = raw_hits
+    depth_text = ""
+    depth_path = root / DEPTH_COVERAGE_FILE
+    if depth_path.is_file():
+        depth_text = depth_path.read_text(encoding="utf-8", errors="replace")
+    scope_text = ""
+    scope_path = root / "quality/submission-scope.md"
+    if scope_path.is_file():
+        scope_text = scope_path.read_text(encoding="utf-8", errors="replace")
+    intent = extract_depth_intent(scope_text)
+    requested_deep = bool(DEEP_INTENT_RE.search(intent) or scope_records_requested_deep(scope_text))
+    critical_only_scope = bool(CRITICAL_ONLY_SCOPE_RE.search(scope_text))
+    if gate_complete_unsubmitted:
+        sample = []
+        for item in gate_complete_unsubmitted[:6]:
+            if isinstance(item, dict):
+                label = str(item.get("id") or "unlabeled")
+                repo = str(item.get("repo") or item.get("profile_name") or "unknown")
+                priority = str(item.get("priority") or "unknown")
+                sample.append(f"{repo}:{label}:{priority}")
+            else:
+                sample.append(str(item))
+        message = (
+            f"{CANDIDATE_INDEX_FILE}: gate-complete candidates remain unsubmitted "
+            f"({', '.join(sample)}). Promote them to findings/P1-P4 or change their candidate note "
+            "to name the missing gate."
+        )
+        if critical_only_scope:
+            warnings.append(message + " Critical-only scope is recorded, so this is not blocking.")
+        else:
+            errors.append(message)
+    claims_deep_complete = bool(DEEP_COMPLETE_RE.search(depth_text)) and not depth_coverage_is_partial(depth_text)
+    if claims_deep_complete and total_seed_hits >= 100 and isinstance(index_total, int):
+        minimum_expected = min(160, max(40, len(expected_repo_items) * 4, total_seed_hits // 12))
+        if index_total < minimum_expected:
+            warnings.append(
+                f"{CANDIDATE_INDEX_FILE}: deep-complete high-recall funnel is too thin "
+                f"({index_total} retained candidates from {total_seed_hits} search seeds; heuristic comparison threshold "
+                f"{minimum_expected}). This is a review signal, not a fixed Bug quota; make sure seed_triage, "
+                "issue-family coverage, and depth-coverage explain why leads were refuted, parked, or not applicable."
+            )
+    if requested_deep and total_seed_hits >= 500 and isinstance(index_total, int):
+        minimum_expected = min(160, max(30, len(expected_repo_items) * 3, total_seed_hits // 50))
+        if index_total < minimum_expected:
+            message = (
+                f"{CANDIDATE_INDEX_FILE}: requested deep/high-recall funnel is too thin "
+                f"({index_total} retained candidates from {total_seed_hits} search seeds; heuristic comparison threshold "
+                f"{minimum_expected}). "
+                "Candidate admission is broader than final Bug submission; continue repo-local triage "
+                "or record that the user accepted a narrower recall target."
+            )
+            warnings.append(message)
+        parked_total = payload.get("total_parked_or_unpromoted_candidates")
+        if finding_count > 0 and index_total <= finding_count:
+            message = (
+                f"{CANDIDATE_INDEX_FILE}: candidate funnel collapsed into final findings "
+                f"({index_total} candidates for {finding_count} submitted Bugs). "
+                "A high-recall deep audit should preserve parked, merged, refuted, or follow-up-needed leads "
+                "instead of submitting every retained candidate."
+            )
+            warnings.append(message)
+        if isinstance(parked_total, int) and finding_count > 0 and parked_total == 0:
+            message = (
+                f"{CANDIDATE_INDEX_FILE}: no parked or unpromoted candidates are visible despite "
+                f"{total_seed_hits} high-recall seeds. Retain credible lower-confidence/P3/P4/follow-up leads "
+                "or explain the user-accepted recall downgrade."
+            )
+            warnings.append(message)
+        findings_by_priority = payload.get("findings_by_priority") if isinstance(payload.get("findings_by_priority"), dict) else {}
+        candidates_by_priority = payload.get("candidates_by_priority") if isinstance(payload.get("candidates_by_priority"), dict) else {}
+        non_p1_findings = sum(int(findings_by_priority.get(priority, 0) or 0) for priority in ("P2", "P3", "P4"))
+        non_p1_candidates = sum(int(candidates_by_priority.get(priority, 0) or 0) for priority in ("P2", "P3", "P4"))
+        if finding_count > 0 and non_p1_findings == 0 and non_p1_candidates > 0 and not critical_only_scope:
+            warnings.append(
+                f"{CANDIDATE_INDEX_FILE}: submitted findings are P1-only while lower-priority candidates exist. "
+                "This can be valid, but candidate-coverage.md must make their parked/refuted/missing-gate outcomes clear."
+            )
+        unknown_priority = payload.get("unknown_priority_candidate_count")
+        unknown_outcome = payload.get("unknown_outcome_candidate_count")
+        if isinstance(unknown_priority, int) and unknown_priority > 0:
+            warnings.append(
+                f"{CANDIDATE_INDEX_FILE}: {unknown_priority} candidate entries lack a priority estimate; "
+                "P1-saturation checks are weaker without P1-P4 candidate tags."
+            )
+        if isinstance(unknown_outcome, int) and unknown_outcome > 0:
+            warnings.append(
+                f"{CANDIDATE_INDEX_FILE}: {unknown_outcome} candidate entries lack an outcome; "
+                "mark promoted, parked, refuted, or merged during the promotion sweep."
+            )
+
+    repos = payload.get("repos")
+    if not isinstance(repos, list):
+        errors.append(f"{CANDIDATE_INDEX_FILE}: repos must be a list")
+    else:
+        index_profiles = {str(item.get("profile_name", "")) for item in repos if isinstance(item, dict)}
+        missing = sorted(shard_repos - index_profiles)
+        if missing:
+            errors.append(f"{CANDIDATE_INDEX_FILE}: missing repo candidate rows: " + ", ".join(missing[:12]))
+        for item in repos:
+            if not isinstance(item, dict):
+                continue
+            profile = str(item.get("profile_name", "unknown"))
+            candidate_count = item.get("candidate_count")
+            explicit_count = item.get("explicit_candidate_entries")
+            submitted = item.get("submitted_bug_ids")
+            submitted_count = len(submitted) if isinstance(submitted, list) else 0
+            if not isinstance(explicit_count, int) or explicit_count < 0:
+                errors.append(
+                    f"{CANDIDATE_INDEX_FILE}: repo {profile} missing explicit_candidate_entries; "
+                    "regenerate with generate_candidate_index.py"
+                )
+                continue
+            if isinstance(candidate_count, int) and candidate_count > explicit_count + submitted_count:
+                errors.append(
+                    f"{CANDIDATE_INDEX_FILE}: repo {profile} candidate_count ({candidate_count}) "
+                    f"exceeds explicit candidate entries plus submitted Bugs ({explicit_count + submitted_count})"
+                )
+            gate_complete = item.get("gate_complete_unsubmitted_candidates")
+            if gate_complete is not None and not isinstance(gate_complete, list):
+                errors.append(f"{CANDIDATE_INDEX_FILE}: repo {profile} gate_complete_unsubmitted_candidates must be a list")
+
+    if coverage_path.is_file():
+        text = coverage_path.read_text(encoding="utf-8", errors="replace")
+        for required in ("Candidate Funnel", "Priority Promotion Sweep", "Repository Candidate Coverage"):
+            if required not in text:
+                errors.append(f"{CANDIDATE_COVERAGE_FILE}: missing section {required!r}")
+        if str(index_total) not in text:
+            warnings.append(f"{CANDIDATE_COVERAGE_FILE}: candidate total is not visibly recorded")
+    return errors, warnings
+
+
+def check_issue_family_coverage(
+    root: Path,
+    workspace_root: Path,
+    expected_repo_items: list[dict],
+) -> tuple[list[str], list[str]]:
+    """Validate fresh-run risk-family coverage for high-recall repo-group audits."""
+    errors: list[str] = []
+    warnings: list[str] = []
+    if len(expected_repo_items) <= 1:
+        return errors, warnings
+
+    high_recall_payload, high_recall_error = load_json_file(workspace_root / HIGH_RECALL_SCAN_JSON)
+    total_seed_hits = 0
+    if not high_recall_error and isinstance(high_recall_payload, dict):
+        raw_hits = high_recall_payload.get("total_hits")
+        if isinstance(raw_hits, int) and raw_hits > 0:
+            total_seed_hits = raw_hits
+    if total_seed_hits < 100:
+        return errors, warnings
+
+    path = root / ISSUE_FAMILY_COVERAGE_FILE
+    if not path.is_file():
+        errors.append(
+            f"Missing fresh-run issue-family coverage matrix: {ISSUE_FAMILY_COVERAGE_FILE}; "
+            "deep/high-recall audits must show which risk families were promoted, parked, refuted, or had no credible hits"
+        )
+        return errors, warnings
+
+    text = path.read_text(encoding="utf-8", errors="replace")
+    if not re.search(r"Issue Family Coverage|问题家族覆盖|风险家族覆盖", text, flags=re.IGNORECASE):
+        errors.append(f"{ISSUE_FAMILY_COVERAGE_FILE}: missing Issue Family Coverage heading")
+    if not re.search(r"fresh[- ]run|first[- ]run|independent scan|首次|独立扫描|新扫描", text, flags=re.IGNORECASE):
+        errors.append(
+            f"{ISSUE_FAMILY_COVERAGE_FILE}: must state that the matrix comes from the fresh current-source scan, "
+            "not from historical package reuse"
+        )
+
+    lower_text = text.lower()
+    for family, aliases in REQUIRED_ISSUE_FAMILIES.items():
+        match_positions: list[int] = []
+        for alias in aliases:
+            pos = lower_text.find(alias.lower())
+            if pos >= 0:
+                match_positions.append(pos)
+        if not match_positions:
+            errors.append(f"{ISSUE_FAMILY_COVERAGE_FILE}: missing required issue family: {family}")
+            continue
+        pos = min(match_positions)
+        window = text[max(0, pos - 300): pos + 900]
+        if not ISSUE_FAMILY_OUTCOME_RE.search(window):
+            errors.append(
+                f"{ISSUE_FAMILY_COVERAGE_FILE}: issue family {family} needs an outcome "
+                "(promoted, parked, refuted, merged, no-hit, not-applicable, or out-of-scope)"
+            )
+        if not (has_code_anchor(window) or re.search(r"no[- ]hit|not[- ]applicable|out[- ]of[- ]scope|无命中|未发现|不适用|范围外", window, re.IGNORECASE)):
+            warnings.append(
+                f"{ISSUE_FAMILY_COVERAGE_FILE}: issue family {family} should cite a sample code anchor "
+                "or explicitly state no credible fresh-run hit"
+            )
+    return errors, warnings
+
+
+def check_high_recall_scan(workspace_root: Path, expected_repo_items: list[dict]) -> tuple[list[str], list[str]]:
+    errors: list[str] = []
+    warnings: list[str] = []
+    if len(expected_repo_items) <= 1:
+        return errors, warnings
+
+    json_path = workspace_root / HIGH_RECALL_SCAN_JSON
+    md_path = workspace_root / HIGH_RECALL_SCAN_MD
+    if not json_path.is_file():
+        errors.append(
+            f"Missing high-recall search seed index: {HIGH_RECALL_SCAN_JSON}; "
+            "generate LLM patterns after initial exploration, then run run_high_recall_scan.py against repo-scan-roots.txt"
+        )
+        return errors, warnings
+    if not md_path.is_file():
+        errors.append(f"Missing high-recall search seed summary: {HIGH_RECALL_SCAN_MD}")
+
+    payload, error = load_json_file(json_path)
+    if error or not isinstance(payload, dict):
+        errors.append(f"{HIGH_RECALL_SCAN_JSON} is not valid JSON: {error}")
+        return errors, warnings
+
+    repo_count = payload.get("repo_count")
+    if repo_count != len(expected_repo_items):
+        errors.append(
+            f"{HIGH_RECALL_SCAN_JSON}: repo_count ({repo_count}) does not match frozen roster ({len(expected_repo_items)})"
+        )
+    total_hits = payload.get("total_hits")
+    if not isinstance(total_hits, int) or total_hits < 0:
+        errors.append(f"{HIGH_RECALL_SCAN_JSON}: total_hits must be a non-negative integer")
+    patterns = payload.get("patterns")
+    if not isinstance(patterns, list) or not patterns:
+        errors.append(f"{HIGH_RECALL_SCAN_JSON}: patterns must contain at least one LLM-generated pattern")
+    elif len(patterns) < 6:
+        warnings.append(
+            f"{HIGH_RECALL_SCAN_JSON}: pattern bank has only {len(patterns)} patterns; "
+            "ensure this is a deliberately focused scan rather than a missed gap-analysis step"
+        )
+
+    repos = payload.get("repos")
+    if not isinstance(repos, list):
+        errors.append(f"{HIGH_RECALL_SCAN_JSON}: repos must be a list")
+        return errors, warnings
+    index_profiles = {str(item.get("profile_name", "")) for item in repos if isinstance(item, dict)}
+    expected_profiles = {str(item["profile_name"]) for item in expected_repo_items}
+    missing = sorted(expected_profiles - index_profiles)
+    if missing:
+        errors.append(f"{HIGH_RECALL_SCAN_JSON}: missing repository scan rows: " + ", ".join(missing[:12]))
+
+    for profile_name in sorted(expected_profiles):
+        seed_path = workspace_root / "work/shards" / profile_name / "search-seeds.md"
+        if not seed_path.is_file():
+            errors.append(f"Missing per-shard high-recall seed file: work/shards/{profile_name}/search-seeds.md")
+            continue
+        seed_text = seed_path.read_text(encoding="utf-8", errors="replace")
+        if "high-recall exploration seeds" not in seed_text and "Search Seeds" not in seed_text:
+            warnings.append(f"work/shards/{profile_name}/search-seeds.md does not look like a high-recall seed file")
+
+    if md_path.is_file():
+        md_text = md_path.read_text(encoding="utf-8", errors="replace")
+        for required in ("High-recall Search Seeds", "Repository Seeds"):
+            if required not in md_text:
+                errors.append(f"{HIGH_RECALL_SCAN_MD}: missing section {required!r}")
+    return errors, warnings
+
+
+FINAL_MARKDOWN_SCRIPT_MARKERS = {
+    "findings": [
+        r"findings/P[1-4]",
+        r"SUBMIT\s*/\s*[\"']findings[\"']",
+        r"submit/.*/?findings",
+    ],
+    "repo_profiles": [
+        r"knowledge/repo-profiles",
+        r"SUBMIT\s*/\s*[\"']knowledge[\"']\s*/\s*[\"']repo-profiles[\"']",
+    ],
+    "quality": [
+        r"quality/(lens-coverage|depth-coverage|submission-scope|repository-versions)",
+        r"SUBMIT\s*/\s*[\"']quality[\"']",
+    ],
+    "knowledge": [
+        r"knowledge/(system-overview|repo-relationship-map|risk-paths|architecture-design-review)",
+        r"SUBMIT\s*/\s*[\"']knowledge[\"']",
+    ],
+    "readme": [
+        r"README\.md",
+        r"SUBMIT\s*/\s*[\"']README\.md[\"']",
+    ],
+}
+
+
+def script_final_markdown_categories(text: str) -> set[str]:
+    categories: set[str] = set()
+    if not re.search(r"\b(write_text|open\s*\(|Path\s*\().*", text, re.DOTALL):
+        return categories
+    if not re.search(r"\bwrite_text\s*\(|\bopen\s*\([^)]*[\"']w", text):
+        return categories
+    for category, patterns in FINAL_MARKDOWN_SCRIPT_MARKERS.items():
+        if any(re.search(pattern, text, flags=re.IGNORECASE) for pattern in patterns):
+            categories.add(category)
+    return categories
+
+
+def check_package_writer_scripts(workspace_root: Path) -> list[str]:
+    errors: list[str] = []
+    work_root = workspace_root / "work"
+    if not work_root.is_dir():
+        return errors
+    for script_path in sorted(work_root.rglob("*.py")):
+        if any(part in {"__pycache__", "node_modules"} for part in script_path.parts):
+            continue
+        text = script_path.read_text(encoding="utf-8", errors="replace")
+        categories = script_final_markdown_categories(text)
+        suspicious_name = re.search(
+            r"(write|generate|build|make|render).*(package|evidence|docs|final|handoff|deliverable)|"
+            r"(package|evidence|docs|final|handoff|deliverable).*(write|generate|build|make|render)",
+            script_path.name,
+            re.IGNORECASE,
+        )
+        if len(categories) >= 2 or (categories and suspicious_name):
+            errors.append(
+                f"{script_path.relative_to(workspace_root)} appears to mass-generate final Markdown deliverables "
+                f"({', '.join(sorted(categories))}); write findings/profiles/depth/lens coverage "
+                "incrementally from shard evidence instead"
+            )
+    return errors
+
+
 def lens_sort_key(lens_id: str) -> tuple[int, int]:
     if lens_id.startswith("L") and lens_id[1:].isdigit():
-        return (0, int(lens_id[1:]))
+        return (3, int(lens_id[1:]))
+    if lens_id in BOUNDARY_ORDER:
+        return (0, BOUNDARY_ORDER.index(lens_id))
     if lens_id.startswith("META-") and lens_id[-1:].isdigit():
         return (1, int(lens_id[-1]))
     return (2, 999)
@@ -349,7 +1749,7 @@ def section_body(text: str, section: str) -> str | None:
 
 def has_heading_alias(text: str, aliases: list[str]) -> bool:
     for alias in aliases:
-        if re.search(rf"^##\s+{re.escape(alias)}\s*$", text, flags=re.MULTILINE | re.IGNORECASE):
+        if re.search(rf"^#{{2,4}}\s+{re.escape(alias)}\s*$", text, flags=re.MULTILINE | re.IGNORECASE):
             return True
     return False
 
@@ -362,6 +1762,170 @@ def missing_profile_sections(text: str) -> list[str]:
     return missing
 
 
+def missing_depth_sections(text: str, require_roster_gate: bool) -> list[str]:
+    missing = []
+    for canonical, aliases in DEPTH_COVERAGE_SECTION_ALIASES:
+        if canonical == "Repository Roster Gate" and not require_roster_gate:
+            continue
+        if not has_heading_alias(text, aliases):
+            missing.append(canonical)
+    return missing
+
+
+def check_depth_coverage(
+    text: str,
+    profile_paths: list[Path],
+    index_payload: dict | None,
+    expected_repo_items: list[dict] | None = None,
+) -> tuple[list[str], list[str]]:
+    """Validate the deep/multi-repo coverage ledger."""
+    errors: list[str] = []
+    warnings: list[str] = []
+    expected_count = len(expected_repo_items or [])
+    require_roster_gate = expected_count > 1 or len(profile_paths) > 1
+    missing_sections = missing_depth_sections(text, require_roster_gate)
+    if missing_sections:
+        errors.append(
+            f"{DEPTH_COVERAGE_FILE}: missing required sections: "
+            + ", ".join(missing_sections)
+        )
+
+    profile_repos = [p.stem for p in profile_paths]
+    for repo in profile_repos:
+        if repo not in text:
+            errors.append(f"{DEPTH_COVERAGE_FILE}: missing repo coverage row/text for profile: {repo}")
+    for repo_item in expected_repo_items or []:
+        if not text_mentions_alias(text, repo_aliases(repo_item)):
+            errors.append(
+                f"{DEPTH_COVERAGE_FILE}: missing discovered repo coverage row/text: "
+                f"{repo_item['display_name']} (expected profile {repo_item['profile_name']})"
+            )
+
+    if not re.search(r"Historical Baselines|历史审计基线", text, flags=re.IGNORECASE):
+        errors.append(f"{DEPTH_COVERAGE_FILE}: missing historical baseline section")
+    if not re.search(
+        r"reviewed for contrast|excluded|none found|reviewed|未发现|对照|已审阅|排除",
+        text,
+        flags=re.IGNORECASE,
+    ):
+        errors.append(
+            f"{DEPTH_COVERAGE_FILE}: historical baselines must state reviewed-for-contrast/excluded/none-found status"
+        )
+    if re.search(r"\b(imported|copied|reused)\b|导入|复制|复用", text, flags=re.IGNORECASE):
+        errors.append(
+            f"{DEPTH_COVERAGE_FILE}: fresh deep audits must not import/copy/reuse previous audit structure; "
+            "historical baselines are contrast-only unless the user explicitly requested repackaging"
+        )
+
+    if index_payload and isinstance(index_payload.get("repo"), dict):
+        finding_repos = set(index_payload.get("repo", {}).keys())
+        zero_finding_repos = [repo for repo in profile_repos if repo not in finding_repos]
+        if zero_finding_repos and not re.search(r"Zero-finding Repos|零 Bug 仓", text, flags=re.IGNORECASE):
+            errors.append(f"{DEPTH_COVERAGE_FILE}: zero-finding repos exist but no zero-finding section found")
+        for repo in zero_finding_repos:
+            if repo not in text:
+                errors.append(f"{DEPTH_COVERAGE_FILE}: zero-finding repo missing rationale: {repo}")
+        if len(finding_repos - set(profile_repos) - {"cross-repo"}) > 0:
+            warnings.append(
+                f"{DEPTH_COVERAGE_FILE}: index has finding repos without matching profiles: "
+                + ", ".join(sorted(finding_repos - set(profile_repos) - {"cross-repo"}))
+            )
+
+    if expected_count > 1 and not re.search(
+        r"Coverage Classification|覆盖分类|first[- ]pass|focused|deep[- ]complete|首轮|聚焦|深度完成",
+        text,
+        flags=re.IGNORECASE,
+    ):
+        errors.append(
+            f"{DEPTH_COVERAGE_FILE}: repo-group coverage must state coverage classification "
+            "(first-pass/focused/deep-complete)"
+        )
+    if expected_count >= 10 and not re.search(
+        r"Repo Shard Plan|Shard|shard|parallel|serial|分片|并行|串行|任务拆分",
+        text,
+        flags=re.IGNORECASE,
+    ):
+        errors.append(
+            f"{DEPTH_COVERAGE_FILE}: large repo-group coverage must document a repo shard/parallelization plan"
+        )
+    if expected_count >= 10 and not re.search(
+        r"first[- ]pass|focused|deep|complete|首轮|第一阶段|聚焦|深度|完整|完成",
+        text,
+        flags=re.IGNORECASE,
+    ):
+        warnings.append(
+            f"{DEPTH_COVERAGE_FILE}: large repo group should state coverage classification "
+            "(first-pass/focused/deep-complete) in the depth conclusion"
+        )
+
+    if re.search(r"\b(TODO|TBD|xxx)\b", text, flags=re.IGNORECASE):
+        errors.append(f"{DEPTH_COVERAGE_FILE}: unresolved placeholder marker found")
+    return errors, warnings
+
+
+def extract_depth_intent(scope_text: str) -> str:
+    match = DEPTH_INTENT_RE.search(scope_text)
+    if match:
+        return match.group(2).strip()
+    return ""
+
+
+def scope_records_requested_deep(scope_text: str) -> bool:
+    return bool(REQUESTED_DEEP_RE.search(scope_text))
+
+
+def check_depth_intent_gate(scope_text: str, depth_text: str, final_assets_expected: bool) -> list[str]:
+    errors: list[str] = []
+    if not final_assets_expected:
+        return errors
+    intent = extract_depth_intent(scope_text)
+    if not intent:
+        errors.append(
+            "quality/submission-scope.md must record audit depth intent before final report assets "
+            "(for example: Audit depth intent: deep | first-pass | focused | lightweight | custom)"
+        )
+        return errors
+    if intent.lower() in {"pending", "unknown", "todo", "tbd", "待确认", "未知"}:
+        errors.append(f"quality/submission-scope.md audit depth intent is unresolved: {intent}")
+        return errors
+    requested_deep = bool(DEEP_INTENT_RE.search(intent) or scope_records_requested_deep(scope_text))
+    if scope_records_requested_deep(scope_text) and not DEEP_INTENT_RE.search(intent):
+        errors.append(
+            "Depth intent mismatch: submission-scope.md says the user requested deep/full/per-repo analysis, "
+            "but audit depth intent was rewritten to a non-deep value. Keep requested depth intent separate "
+            "from delivered coverage classification; record user-accepted downgrade before final report assets."
+        )
+    if requested_deep and not depth_text.strip():
+        errors.append(
+            f"Depth intent mismatch: requested depth is deep/full/per-repo, but {DEPTH_COVERAGE_FILE} is missing or empty."
+        )
+        return errors
+    if requested_deep and depth_coverage_is_partial(depth_text):
+        if not (DOWNGRADE_ACCEPTED_RE.search(scope_text) or DOWNGRADE_ACCEPTED_RE.search(depth_text)):
+            errors.append(
+                "Depth intent mismatch: requested depth is deep/full/per-repo, but depth coverage is "
+                "first-pass/focused/in-progress. Continue exploration or record that the user accepted "
+                "a depth downgrade before final HTML/overview handoff."
+            )
+    return errors
+
+
+def depth_coverage_is_partial(depth_text: str) -> bool:
+    classification_lines = [
+        line
+        for line in depth_text.splitlines()
+        if re.search(r"coverage classification|覆盖分类|scope claim|范围结论|深度结论", line, re.IGNORECASE)
+    ]
+    for line in classification_lines:
+        if DEEP_COMPLETE_RE.search(line) and not PARTIAL_COVERAGE_RE.search(line):
+            return False
+        if PARTIAL_COVERAGE_RE.search(line):
+            return True
+    if DEEP_COMPLETE_RE.search(depth_text) and not PARTIAL_COVERAGE_RE.search(depth_text):
+        return False
+    return bool(PARTIAL_COVERAGE_RE.search(depth_text))
+
+
 def has_verification_command_or_marker(body: str) -> bool:
     normalized = body.lower()
     return bool(
@@ -372,6 +1936,26 @@ def has_verification_command_or_marker(body: str) -> bool:
     )
 
 
+def normalize_lens_heading(header: str) -> tuple[str | None, bool]:
+    legacy = re.search(r"\b(L\d{1,2})\b", header)
+    if legacy:
+        return legacy.group(1), True
+    meta = re.search(r"\b(META-[12])\b", header, flags=re.IGNORECASE)
+    if meta:
+        return meta.group(1).upper(), False
+    boundary = re.match(r"Boundary:\s*(.+)|(.+)", header.strip(), flags=re.IGNORECASE)
+    if not boundary:
+        return None, False
+    name = (boundary.group(1) or boundary.group(2)).strip().lower()
+    name = re.sub(r"[^a-z0-9]+", "-", name).strip("-")
+    return name or None, False
+
+
+def block_has_section_alias(block: str, aliases: list[str]) -> bool:
+    lowered = block.lower()
+    return any(alias.lower() in lowered for alias in aliases)
+
+
 def check_lens_coverage(
     text: str,
     language: str,
@@ -379,31 +1963,33 @@ def check_lens_coverage(
 ) -> tuple[list[str], list[str]]:
     """Parse lens-coverage.md content. Return (errors, warnings).
 
-    Format: each lens is an H3 like '### Lens L9 ...' or '### L9 ...',
-    followed by 5 bullet sections.
+    Accepts the current boundary format ('### Boundary: API Contract') and
+    legacy L1-L19 records for old packages.
     """
     errors: list[str] = []
     warnings: list[str] = []
-    sections = LENS_COVERAGE_SECTIONS[language]
+    section_aliases = LENS_COVERAGE_SECTION_ALIASES[language]
     blocks = re.split(r"^###\s+", text, flags=re.MULTILINE)
     declared_lens: list[str] = []
     for block in blocks[1:]:
         header = block.split("\n", 1)[0]
-        m = re.search(r"\b(L\d{1,2}|META-[12])\b", header)
-        if not m:
+        lens_id, legacy = normalize_lens_heading(header)
+        if not lens_id:
             continue
-        lens_id = m.group(1)
-        if lens_id not in VALID_LENS:
-            errors.append(f"lens-coverage.md: unknown lens identifier in heading: {header}")
-            continue
+        if legacy:
+            warnings.append(
+                f"lens-coverage.md: legacy lens heading {lens_id} is accepted for compatibility; prefer architecture boundaries"
+            )
+        elif lens_id not in VALID_LENS:
+            warnings.append(f"lens-coverage.md: custom boundary '{lens_id}' is outside the default 13-boundary set")
         declared_lens.append(lens_id)
-        for sec in sections:
-            if sec not in block:
-                errors.append(f"lens-coverage.md: lens {lens_id} record missing section '{sec}'")
+        for section_name, aliases in section_aliases.items():
+            if not block_has_section_alias(block, aliases):
+                errors.append(f"lens-coverage.md: lens {lens_id} record missing section '{section_name}'")
         if "无未覆盖" in block or "no uncovered" in block.lower():
             warnings.append(f"lens-coverage.md: lens {lens_id} claims no uncovered area; honest-uncertainty markers preferred")
     if not declared_lens:
-        errors.append("lens-coverage.md present but contains no lens record (expected '### Lens L? ...' or '### L? ...' blocks)")
+        errors.append("lens-coverage.md present but contains no lens record (expected '### Boundary: API Contract' or META heading)")
     if expected_lens:
         declared = set(declared_lens)
         missing = sorted(expected_lens - declared, key=lens_sort_key)
@@ -464,6 +2050,14 @@ def check_repo_profile_guards(text: str, rel_path: str) -> list[str]:
         f"{rel_path}: missing mermaid call graph; use a documented small-repo call graph exemption when the repo has <=10 files"
     )
     return warnings
+
+
+def profile_generic_errors(text: str, rel_path: str) -> list[str]:
+    errors: list[str] = []
+    for pattern in GENERIC_PROFILE_PATTERNS:
+        if pattern in text:
+            errors.append(f"{rel_path}: contains generic profile placeholder text: {pattern[:80]}")
+    return errors
 
 
 def compact_css(text: str) -> str:
@@ -576,6 +2170,19 @@ def main() -> int:
     parser.add_argument("--language", choices=["zh", "en"], default="zh", help="Expected Bug section language")
     parser.add_argument("--max-image-kb", type=int, default=500, help="Warn if PNG exceeds this size")
     parser.add_argument("--require-knowledge", action="store_true", help="Require reusable knowledge docs for final handoff packages")
+    parser.add_argument(
+        "--require-depth-coverage",
+        action="store_true",
+        help="Require quality/depth-coverage.md. Multi-repo final handoffs with --require-knowledge require it by default.",
+    )
+    parser.add_argument(
+        "--validate-shards-only",
+        action="store_true",
+        help=(
+            "Run the early repo-shard evidence gate only. Use before writing final Bug records, "
+            "README, HTML, or overview assets."
+        ),
+    )
     parser.add_argument("--require-image", action="store_true", help="Require audit-overview.png for final handoff packages")
     parser.add_argument("--require-html-report", action="store_true", help="Require bug-audit-report.html for final handoff packages")
     parser.add_argument("--banned", action="append", default=[], help="Additional banned text")
@@ -584,8 +2191,23 @@ def main() -> int:
         action="append",
         default=[],
         help=(
-            "Path to a target repository checkout. Enables existence checks for "
-            "frontmatter `files[].path` references. May be repeated for multi-repo audits."
+            "Path to a target repository checkout or a parent directory containing multiple repo checkouts. "
+            "Enables roster coverage and frontmatter `files[].path` existence checks. "
+            "May be repeated for multi-repo audits."
+        ),
+    )
+    parser.add_argument(
+        "--repo-discovery-depth",
+        type=int,
+        default=2,
+        help="Depth to search below non-Git --repo-root directories when discovering repo-group rosters.",
+    )
+    parser.add_argument(
+        "--allow-missing-repo-root",
+        action="store_true",
+        help=(
+            "Allow final validation without --repo-root. Reserved for non-local source snapshots; "
+            "record the reason in quality/submission-scope.md."
         ),
     )
     parser.add_argument(
@@ -606,8 +2228,8 @@ def main() -> int:
         choices=["auto", "single", "multi", "custom"],
         default="auto",
         help=(
-            "Expected lens set for lens-coverage.md. auto uses repo-profile count "
-            "(one profile = L1-L14 + META; multiple profiles = L1-L19 + META). "
+            "Expected lens set for lens-coverage.md. auto uses repo-profile count. "
+            "Accepts 13-boundary identifiers and META-1/2; legacy L1-L19 records are compatibility-only. "
             "Use custom only when submission-scope.md declares a narrowed strategy."
         ),
     )
@@ -616,6 +2238,16 @@ def main() -> int:
         action="store_true",
         help="Allow non-contiguous BUG-xxxx IDs. Reserved for in-progress / resume runs only; final delivery must be contiguous BUG-0001..BUG-N",
     )
+    parser.add_argument(
+        "--coverage-mode",
+        choices=["deep", "batch-first-pass"],
+        default="deep",
+        help=(
+            "Coverage strictness for shard validation. deep (default): minimum evidence contract plus depth warnings. "
+            "batch-first-pass: same authenticity checks with relaxed depth warnings "
+            "for multi-repo first-pass scans. See references/shard-schema.md."
+        ),
+    )
     args = parser.parse_args()
     root = Path(args.root).expanduser().resolve()
     if (root / "submit").is_dir() and not (root / "findings").is_dir():
@@ -623,8 +2255,69 @@ def main() -> int:
     errors = []
     warnings = []
     index_payload_for_html = None
+    workspace_root = audit_workspace_root(root)
     if args.require_lens_coverage and args.skip_lens_coverage:
         errors.append("Cannot combine --require-lens-coverage with --skip-lens-coverage")
+    if args.require_knowledge and not args.repo_root and not args.allow_missing_repo_root:
+        errors.append(
+            "Final handoff validation with --require-knowledge must include --repo-root so roster and path checks can run "
+            "(use --allow-missing-repo-root only for non-local source snapshots and record the reason in submission-scope.md)"
+        )
+    repo_roots = [Path(p).expanduser().resolve() for p in args.repo_root] if args.repo_root else []
+    missing_repo_roots = [str(path) for path in repo_roots if not path.exists()]
+    for path in missing_repo_roots:
+        warnings.append(f"--repo-root path does not exist and cannot be used for roster/path validation: {path}")
+    expected_repo_items = discover_expected_repos(repo_roots, args.repo_discovery_depth)
+    path_check_roots = repo_roots + [
+        Path(item["path"]).expanduser().resolve()
+        for item in expected_repo_items
+        if item.get("path")
+    ]
+    html_report_exists = (root / HTML_REPORT_FILE).is_file()
+    overview_image_exists = (root / "audit-overview.png").is_file()
+    submitted_findings_exist = any((root / "findings").glob("P[1-4]/*.md"))
+    final_asset_validation = args.require_html_report or args.require_image or html_report_exists or overview_image_exists
+    repo_group_strong_validation = (
+        len(expected_repo_items) > 1
+        and (args.require_knowledge or final_asset_validation or submitted_findings_exist)
+    )
+
+    if args.validate_shards_only:
+        if not repo_roots and not args.allow_missing_repo_root:
+            errors.append("--validate-shards-only requires --repo-root unless --allow-missing-repo-root is recorded")
+        if not expected_repo_items:
+            errors.append("--validate-shards-only could not discover any repos from --repo-root")
+        inventory_path = workspace_root / "work/scanner-output/repo-inventory.json"
+        shards_plan_path = workspace_root / "work/scanner-output/repo-shards.md"
+        if not inventory_path.is_file():
+            errors.append("Missing frozen repo roster: work/scanner-output/repo-inventory.json")
+        if not shards_plan_path.is_file():
+            errors.append("Missing repo shard plan: work/scanner-output/repo-shards.md")
+        errors.extend(check_scan_roots_file(workspace_root, expected_repo_items))
+        high_recall_errors, high_recall_warnings = check_high_recall_scan(workspace_root, expected_repo_items)
+        errors.extend(high_recall_errors)
+        warnings.extend(high_recall_warnings)
+        shard_errors, shard_warnings = check_shard_summaries(workspace_root, expected_repo_items, repo_roots, args.coverage_mode)
+        errors.extend(shard_errors)
+        warnings.extend(shard_warnings)
+        errors.extend(check_package_writer_scripts(workspace_root))
+        receipt_path = workspace_root / SHARD_GATE_RECEIPT_FILE
+        if not errors:
+            write_shard_gate_receipt(workspace_root, root, expected_repo_items)
+        print(f"Validated package: {root}")
+        print(f"Errors: {len(errors)}")
+        for e in errors[:100]:
+            print(f"ERROR: {e}")
+        if len(errors) > 100:
+            print(f"ERROR: ... {len(errors)-100} more")
+        print(f"Warnings: {len(warnings)}")
+        for w in warnings[:100]:
+            print(f"WARN: {w}")
+        if len(warnings) > 100:
+            print(f"WARN: ... {len(warnings)-100} more")
+        if not errors:
+            print(f"Shard gate receipt: {receipt_path}")
+        return 1 if errors else 0
 
     for d in REQUIRED_DIRS:
         if not (root / d).is_dir():
@@ -632,6 +2325,76 @@ def main() -> int:
     for f in REQUIRED_FILES:
         if not (root / f).is_file():
             errors.append(f"Missing file: {f}")
+    submission_scope_text = ""
+    submission_scope_path = root / "quality/submission-scope.md"
+    if submission_scope_path.is_file():
+        submission_scope_text = submission_scope_path.read_text(encoding="utf-8", errors="replace")
+    early_finding_count = len(list((root / "findings").glob("P*/*.md")))
+    if final_asset_validation:
+        has_overview_label = re.search(
+            r"audit-overview|overview image|概览图|概览图片|总览图",
+            submission_scope_text,
+            flags=re.IGNORECASE,
+        )
+        has_overview_decision = any(value in submission_scope_text for value in OVERVIEW_DECISION_VALUES)
+        if args.require_image or overview_image_exists:
+            if not has_overview_label or not has_overview_decision:
+                errors.append(
+                    "quality/submission-scope.md must record audit-overview.png decision "
+                    f"({', '.join(sorted(OVERVIEW_DECISION_VALUES))}) before requiring or submitting the image"
+                )
+        elif not has_overview_label or not has_overview_decision:
+            warnings.append(
+                "quality/submission-scope.md should record audit-overview.png as deferred-post-handoff "
+                "or omitted; final validation no longer blocks on the optional overview image decision"
+            )
+    if repo_group_strong_validation:
+        inventory_path = workspace_root / "work/scanner-output/repo-inventory.json"
+        shards_plan_path = workspace_root / "work/scanner-output/repo-shards.md"
+        if not inventory_path.is_file():
+            errors.append("Missing frozen repo roster: work/scanner-output/repo-inventory.json")
+        if not shards_plan_path.is_file():
+            errors.append("Missing repo shard plan: work/scanner-output/repo-shards.md")
+        errors.extend(check_scan_roots_file(workspace_root, expected_repo_items))
+        high_recall_errors, high_recall_warnings = check_high_recall_scan(workspace_root, expected_repo_items)
+        errors.extend(high_recall_errors)
+        warnings.extend(high_recall_warnings)
+        shard_errors, shard_warnings = check_shard_summaries(workspace_root, expected_repo_items, repo_roots, args.coverage_mode)
+        errors.extend(shard_errors)
+        warnings.extend(shard_warnings)
+        if not args.validate_shards_only:
+            candidate_errors, candidate_warnings = check_candidate_index(
+                root,
+                workspace_root,
+                expected_repo_items,
+                early_finding_count,
+            )
+            errors.extend(candidate_errors)
+            warnings.extend(candidate_warnings)
+            family_errors, family_warnings = check_issue_family_coverage(
+                root,
+                workspace_root,
+                expected_repo_items,
+            )
+            errors.extend(family_errors)
+            warnings.extend(family_warnings)
+        receipt_errors, receipt_warnings = check_shard_gate_receipt(
+            workspace_root,
+            root,
+            expected_repo_items,
+            require_asset_order=final_asset_validation,
+        )
+        errors.extend(receipt_errors)
+        warnings.extend(receipt_warnings)
+    prepackage_errors, prepackage_warnings = check_prepackage_receipt(
+        workspace_root,
+        root,
+        require_asset_order=final_asset_validation,
+    )
+    errors.extend(prepackage_errors)
+    warnings.extend(prepackage_warnings)
+    if args.require_knowledge or repo_group_strong_validation:
+        errors.extend(check_package_writer_scripts(workspace_root))
     versions_path = root / "quality/repository-versions.md"
     if versions_path.is_file():
         version_text = versions_path.read_text(encoding="utf-8", errors="replace")
@@ -644,6 +2407,17 @@ def main() -> int:
             warnings.append("quality/repository-versions.md should include commit hash information when available")
         if not any(term in version_text for term in ("Dirty", "工作区状态")):
             warnings.append("quality/repository-versions.md should include dirty worktree status when available")
+        if expected_repo_items:
+            missing_versions = [
+                item["display_name"]
+                for item in expected_repo_items
+                if not text_mentions_alias(version_text, repo_aliases(item))
+            ]
+            if missing_versions:
+                errors.append(
+                    "quality/repository-versions.md missing discovered repo(s) from --repo-root roster: "
+                    + ", ".join(missing_versions)
+                )
     for f in OPTIONAL_KNOWLEDGE_FILES:
         path = root / f
         if path.exists():
@@ -660,13 +2434,26 @@ def main() -> int:
         errors.append(
             "Missing repo profiles: knowledge/repo-profiles/*.md is required for final lens-based delivery"
         )
+    if expected_repo_items and not args.skip_lens_coverage:
+        profile_stems = {path.stem for path in profile_paths}
+        missing_profiles = [
+            item["profile_name"]
+            for item in expected_repo_items
+            if item["profile_name"] not in profile_stems
+        ]
+        if missing_profiles:
+            errors.append(
+                "Missing repo profile(s) for discovered --repo-root roster: "
+                + ", ".join(missing_profiles)
+                + ". Generate one submit/knowledge/repo-profiles/<repo>.md per discovered repo, "
+                "even when no Bug is submitted for that repo."
+            )
 
     seen_ids = {}
     finding_count = 0
     repos = set()
     # Authenticity: collect long paragraphs from high-risk sections for cross-Bug duplicate detection.
     dedupe_index: dict[str, list[str]] = {}
-    repo_roots = [Path(p).expanduser().resolve() for p in args.repo_root] if args.repo_root else []
     for path in sorted((root / "findings").glob("P*/*.md")):
         finding_count += 1
         rel = path.relative_to(root)
@@ -710,8 +2497,11 @@ def main() -> int:
         if lens_meta is not None:
             lens_values = lens_meta if isinstance(lens_meta, list) else [lens_meta]
             for lv in lens_values:
-                if str(lv).strip() not in VALID_LENS:
-                    errors.append(f"{rel} invalid lens value: {lv} (allowed: L1-L19, META-1, META-2)")
+                lens_value = str(lv).strip()
+                if lens_value in LEGACY_LENS:
+                    warnings.append(f"{rel} uses legacy lens value {lv}; prefer a 13-boundary lens id")
+                elif lens_value not in VALID_LENS:
+                    warnings.append(f"{rel} unrecognized lens value: {lv} (expected 13-boundary id or META-1/2)")
         domains = as_list(meta.get("infra_domains"))
         if not domains:
             errors.append(f"{rel} infra_domains must contain at least one value")
@@ -734,7 +2524,7 @@ def main() -> int:
                 if len(normalized) >= DEDUPE_MIN_CHARS:
                     dedupe_index.setdefault(normalized, []).append(f"{rel}::{section}")
         # Authenticity: frontmatter file paths must exist in at least one provided repo root.
-        if repo_roots:
+        if path_check_roots:
             files_meta = meta.get("files")
             file_entries = files_meta if isinstance(files_meta, list) else []
             for entry in file_entries:
@@ -748,7 +2538,12 @@ def main() -> int:
                 rel_path = str(rel_path).strip().lstrip("/")
                 if not rel_path:
                     continue
-                if not any((rr / rel_path).exists() for rr in repo_roots):
+                target_repo_item = expected_repo_for_name(str(meta.get("repo", "")), expected_repo_items)
+                if target_repo_item:
+                    exists = file_path_exists_for_repo(rel_path, target_repo_item, repo_roots)
+                else:
+                    exists = any((rr / rel_path).exists() for rr in path_check_roots)
+                if not exists:
                     errors.append(
                         f"{rel} references non-existent path in frontmatter files: {rel_path}"
                     )
@@ -820,7 +2615,7 @@ def main() -> int:
                 expected_lens = SINGLE_REPO_DEFAULT_LENS
             elif args.lens_scope == "multi":
                 expected_lens = MULTI_REPO_DEFAULT_LENS
-            elif len(profile_paths) > 1:
+            elif len(profile_paths) > 1 or len(expected_repo_items) > 1:
                 expected_lens = MULTI_REPO_DEFAULT_LENS
             else:
                 expected_lens = SINGLE_REPO_DEFAULT_LENS
@@ -838,6 +2633,11 @@ def main() -> int:
             profile_rel = profile_path.relative_to(root).as_posix()
             profile_text = profile_path.read_text(encoding="utf-8", errors="replace")
             warnings.extend(check_repo_profile_guards(profile_text, profile_rel))
+            generic_profile_errors = profile_generic_errors(profile_text, profile_rel)
+            if args.require_knowledge or len(expected_repo_items) > 1:
+                errors.extend(generic_profile_errors)
+            else:
+                warnings.extend(generic_profile_errors)
             missing_sections = missing_profile_sections(profile_text)
             if missing_sections:
                 message = (
@@ -856,7 +2656,11 @@ def main() -> int:
         except json.JSONDecodeError as exc:
             errors.append(f"indexes/findings.generated.json is not valid JSON: {exc}")
         else:
-            index_payload_for_html = index_payload
+            if not isinstance(index_payload, dict):
+                errors.append("indexes/findings.generated.json must be a JSON object")
+                index_payload = {}
+            else:
+                index_payload_for_html = index_payload
             if index_payload.get("total") != finding_count:
                 errors.append(
                     "indexes/findings.generated.json total is stale: "
@@ -882,6 +2686,35 @@ def main() -> int:
                     for key in ("entry_points", "files", "related_repos"):
                         if key not in item:
                             errors.append(f"indexes/findings.generated.json finding {item.get('id', '<unknown>')} missing {key}")
+
+    depth_intent = extract_depth_intent(submission_scope_text)
+    deep_intent_requires_depth = (
+        final_asset_validation
+        and bool(depth_intent)
+        and depth_intent.lower() not in {"pending", "unknown", "todo", "tbd", "待确认", "未知"}
+        and bool(DEEP_INTENT_RE.search(depth_intent))
+    )
+    depth_required = args.require_depth_coverage or deep_intent_requires_depth or (
+        args.require_knowledge and (len(profile_paths) > 1 or len(expected_repo_items) > 1)
+    )
+    depth_coverage_path = root / DEPTH_COVERAGE_FILE
+    depth_text = ""
+    if depth_required and not depth_coverage_path.is_file():
+        errors.append(
+            f"Missing {DEPTH_COVERAGE_FILE} (required for multi-repo/deep final handoff; see references/depth-coverage.md)"
+        )
+    if depth_coverage_path.is_file():
+        depth_text = depth_coverage_path.read_text(encoding="utf-8", errors="replace")
+        depth_errors, depth_warnings = check_depth_coverage(
+            depth_text,
+            profile_paths,
+            index_payload_for_html,
+            expected_repo_items,
+        )
+        errors.extend(depth_errors)
+        warnings.extend(depth_warnings)
+    if final_asset_validation:
+        errors.extend(check_depth_intent_gate(submission_scope_text, depth_text, final_asset_validation))
 
     if args.require_knowledge and finding_count:
         for f in REQUIRED_KNOWLEDGE_FOR_HANDOFF:
@@ -963,6 +2796,9 @@ def main() -> int:
         html_errors, html_warnings = check_html_report(html_text, index_payload_for_html)
         errors.extend(html_errors)
         warnings.extend(html_warnings)
+
+    if not errors and not final_asset_validation:
+        write_prepackage_receipt(workspace_root, root, expected_repo_items, finding_count)
 
     print(f"Validated package: {root}")
     print(f"Errors: {len(errors)}")
