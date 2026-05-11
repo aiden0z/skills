@@ -54,6 +54,7 @@ Use `--language en` for English packages.
 The generator reads submitted package files only:
 
 - `indexes/findings.generated.json`
+- `indexes/audit-scope.generated.json`
 - `README.md`
 - `quality/submission-scope.md`
 - `quality/repository-versions.md`
@@ -68,6 +69,7 @@ The generator reads submitted package files only:
 
 Do not read `work/` for final report content. Promote reusable exploration facts into `submit/knowledge/` first.
 For repo-group packages, surface the coverage classification from `quality/depth-coverage.md` (`first-pass`, `focused`, or `deep-complete`) near the repository section so the HTML report does not imply deeper coverage than the package supports.
+For final handoff and multi-repo packages, read the simplified scope baseline from `indexes/audit-scope.generated.json`: repository, audit branch, commit, dirty/worktree status, and submitted Bug count. Repos with `0` submitted Bugs must remain visible. `quality/repository-versions.md` remains the detailed branch/stable-candidate evidence source and must match the generated contract.
 
 ## Page Structure
 
@@ -75,13 +77,14 @@ Required sections:
 
 1. **Top Bar and Hero**: use a desktop-first report top bar for orientation only: delivery-report label, short scope label, and section navigation. Do not use logo-like decorative marks in the top bar or hero. Do not duplicate date, Bug counts, priority summary, or status in the top bar; those belong in the hero metadata strip and Metrics console. In the hero, give the title full editorial width, keep audit metadata as a compact inline strip, then place a single unified Metrics console below the title. Do not put `repo-bug-audit` or `github.com/aiden0z/skills` in the top/hero metadata; reserve those for footer provenance. Do not show absolute filesystem paths in the visible scope; prefer repo names or declared audit labels.
 2. **Metrics**: total Bugs, P1-P4 counts, P1/P2 focus, repo count, and risk type count. Keep secondary metric cards aligned on an equal-width grid unless the data clearly requires a different hierarchy.
-3. **Quality Core**: keep this section MECE. Separate evidence/admission gates, exploration coverage strategy, known exclusions/uncovered areas, and confidence distribution. Do not repeat header metadata or dump raw submission-scope fields.
-4. **Architecture Insights**: surface architecture invariants and risk paths before repository distribution. Extract both bullet lists and headed narrative sections from `knowledge/architecture-design-review.md` / `knowledge/risk-paths.md`; do not claim the architecture file is missing just because it uses paragraphs instead of bullets.
-5. **Repository Situation**: per-repo Bug counts, dominant risk categories, shared boundaries, uncovered areas.
-6. **Findings Preview**: searchable/filterable list with expandable Bug summaries and Markdown file paths.
-7. **Reusable Knowledge**: show reusable product/development knowledge such as issue families, impact domains, and fix handoff focus. Do not show exploration-view / lens-tag distribution charts in this section; exploration views are quality-coverage evidence and belong only in **Quality Core** plus `quality/lens-coverage.md`. Preserve technical `lens` metadata for Bug filters and source files when useful.
-8. **Delivery Package Guide**: reading order and file guide. File cards must reflect files and directories that actually exist in the submitted package; optional artifacts such as `audit-overview.png` should be omitted when absent.
-9. **Footer Provenance**: compact labeled source lines for generated-with skill, skill source, static-analysis status, and package data source.
+3. **Analysis Scope**: full analyzed repo roster from `indexes/audit-scope.generated.json`, with audit branch, commit, dirty/worktree status, and submitted Bug count. This section must count analyzed repos, not only repos with submitted findings.
+4. **Quality Core**: keep this section MECE. Separate evidence/admission gates, exploration coverage strategy, known exclusions/uncovered areas, and confidence distribution. Do not repeat header metadata or dump raw submission-scope fields.
+5. **Architecture Insights**: surface architecture invariants and risk paths before repository distribution. Extract both bullet lists and headed narrative sections from `knowledge/architecture-design-review.md` / `knowledge/risk-paths.md`; do not claim the architecture file is missing just because it uses paragraphs instead of bullets.
+6. **Repository Situation**: per-repo Bug counts, dominant risk categories, shared boundaries, uncovered areas.
+7. **Findings Preview**: searchable/filterable list with expandable Bug summaries and Markdown file paths.
+8. **Reusable Knowledge**: show reusable product/development knowledge such as issue families, impact domains, and fix handoff focus. Do not show exploration-view / lens-tag distribution charts in this section; exploration views are quality-coverage evidence and belong only in **Quality Core** plus `quality/lens-coverage.md`. Preserve technical `lens` metadata for Bug filters and source files when useful.
+9. **Delivery Package Guide**: reading order and file guide. File cards must reflect files and directories that actually exist in the submitted package; optional artifacts such as `audit-overview.png` should be omitted when absent.
+10. **Footer Provenance**: compact labeled source lines for generated-with skill, skill source, static-analysis status, and package data source.
 
 ## Interaction Scope
 

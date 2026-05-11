@@ -12,6 +12,7 @@ Evaluation does not replace `validate_bug_package.py`. The script checks structu
 - Bug-Level Gate
 - Q6 — Lens Coverage Gate (Package-Level)
 - Package-Level Gate
+- Semantic Judge Pass
 - Depth Gate
 - Priority Calibration
 - Skill Regression Gate
@@ -81,6 +82,7 @@ Apply after Q1-Q5 pass on individual Bugs. Read `submit/quality/lens-coverage.md
 
 Check the package as a single artifact:
 
+- `indexes/audit-scope.generated.json` is the machine contract for analyzed repos, version baseline, and submitted Bug counts. README and HTML are render layers and must not be treated as the source of truth.
 - README counts match `indexes/findings.generated.json` exactly. No rounding, no estimates.
 - Knowledge claims in `system-overview.md`, `repo-relationship-map.md`, `risk-paths.md` each have ≥1 supporting code reference or Bug ID anchor (Q5 veto applies to knowledge files too).
 - `repo-profiles/<repo>.md` tech stack is read from real `package.json` / `pyproject.toml` / `pom.xml` / `Cargo.toml` / `go.mod`, not inferred from filenames.
@@ -96,6 +98,34 @@ Check the package as a single artifact:
 - `audit-overview.png`, README, indexes, and knowledge use the same counts and risk names.
 - No temporary files, candidates, scanner dumps, old images, or drafts are inside `submit/`.
 - Text avoids process narration, self-reference, audience explanation, and AI-flavored phrases.
+
+## Semantic Judge Pass
+
+Use an LLM judge only after deterministic validation has passed or after its remaining errors are understood. The judge is for semantic honesty, not for enforcing brittle headings or discovery patterns.
+
+Ask for structured JSON with this shape:
+
+```json
+{
+  "pass": true,
+  "failures": [
+    {"severity": "P1", "claim": "...", "evidence": "...", "reason": "..."}
+  ],
+  "uncertain": [
+    {"area": "...", "reason": "...", "needed_evidence": "..."}
+  ]
+}
+```
+
+Use narrow criteria:
+
+- Does README/HTML imply deeper coverage than `depth-coverage.md` supports?
+- Do final Bugs each show code evidence, trigger path, realistic failure mode, affected resource, impact, and false-positive review?
+- Are parked P1/P2 candidates explicitly missing a gate rather than parked for time or priority saturation?
+- Do knowledge docs make claims without Bug IDs or code anchors?
+- Does the package hide analyzed repos with 0 submitted Bugs, or contradict `indexes/audit-scope.generated.json`?
+
+Do not ask the judge to decide which patterns to scan or which Bug families to prefer. That would constrain discovery. The judge reviews the final package's honesty and usefulness after the LLM-led audit has already explored and promoted findings.
 
 ## Depth Gate
 
@@ -136,7 +166,7 @@ Use when editing this skill itself:
 - Validate the portable eval suite:
 
 ```bash
-python3 /Users/aiden/.agents/skills/skill-evaluator/scripts/check_eval_cases.py evals/core-regressions.json --strict-portable
+python3 ../skill-evaluator/scripts/check_eval_cases.py evals/core-regressions.json --strict-portable
 ```
 
 - When a fresh-agent run is available, grade its transcript and audit workspace:

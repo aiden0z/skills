@@ -4,8 +4,15 @@ from __future__ import annotations
 
 import argparse
 import json
+import sys
 from collections import Counter
 from pathlib import Path
+
+SCRIPT_DIR = Path(__file__).resolve().parent
+if str(SCRIPT_DIR) not in sys.path:
+    sys.path.insert(0, str(SCRIPT_DIR))
+
+import audit_scope_contract
 
 PRIO_ORDER = {"P1": 1, "P2": 2, "P3": 3, "P4": 4}
 CONF_ORDER = {"high": 1, "medium": 2, "low": 3}
@@ -225,6 +232,17 @@ def main() -> int:
         "findings": findings,
     }
     (root / "indexes/findings.generated.json").write_text(json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8")
+    versions_text = audit_scope_contract.read_text(root / "quality/repository-versions.md")
+    if versions_text:
+        audit_scope = audit_scope_contract.build_audit_scope_payload(
+            versions_text,
+            payload,
+            generated_by="generate_bug_index.py",
+        )
+        (root / audit_scope_contract.AUDIT_SCOPE_INDEX).write_text(
+            json.dumps(audit_scope, ensure_ascii=False, indent=2),
+            encoding="utf-8",
+        )
     print(f"Generated indexes for {len(findings)} findings")
     return 0
 

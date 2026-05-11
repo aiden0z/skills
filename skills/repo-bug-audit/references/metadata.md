@@ -94,7 +94,7 @@ If there are multiple repositories, ask with a short table and offer one decisio
 
 ## Where Metadata Appears
 
-- `submit/README.md`: concise analysis info and scope.
+- `submit/README.md`: concise analysis info plus a simplified scope baseline table (`Repository`, `Audit Branch`, `Commit`, `Dirty`, `Submitted Bugs`) rendered from `indexes/audit-scope.generated.json` for final handoff, multi-repo, or deep packages.
 - `submit/quality/submission-scope.md`: assumptions, exclusions, confidence threshold, continuation notes.
 - `submit/quality/repository-versions.md`: audit branch, commit, dirty status, default branch, stable candidate, confidence, evidence, and notes.
 - `submit/knowledge/system-overview.md`: scope and reference repositories when relevant.

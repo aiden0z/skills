@@ -80,6 +80,58 @@
       "failure_categories": ["workflow-skip", "missing-roster", "missing-shard-gate", "depth-overclaim"]
     },
     {
+      "id": "final-report-full-roster-scope-baseline",
+      "type": "regression",
+      "scope": "artifact-review",
+      "trigger_expectation": "explicit",
+      "tags": ["multi-repo", "readme", "html", "scope", "version-baseline"],
+      "prompt": "Use $repo-bug-audit at /path/to/repo-bug-audit to finish a final handoff package for a parent directory with 20 repositories. The final findings contain submitted Bugs in only 16 repositories.",
+      "must_do": [
+        "Keep quality/repository-versions.md as the complete detailed version-evidence table.",
+        "Add a simplified Analysis Scope and Version Baseline table to submit/README.md.",
+        "Show only repository, audit branch, commit, dirty/worktree status, and submitted Bug count in the README/HTML main scope table.",
+        "List every analyzed repository in README and HTML, including the four repositories with 0 submitted Bugs.",
+        "Use the HTML repository metric for analyzed repositories, not only repositories with submitted Bugs.",
+        "Keep default branch, stable candidate, candidate confidence, evidence, and notes out of the README/HTML main scope table unless a short branch-baseline exception note is needed."
+      ],
+      "must_not_do": [
+        "Let the README or HTML imply that only the 16 repositories with submitted Bugs were analyzed.",
+        "Hide 0-Bug repositories in quality/repository-versions.md only.",
+        "Use the findings repo distribution as the analyzed repository count.",
+        "Overload the README/HTML main table with default branch, stable candidate, role, evidence, or notes columns."
+      ],
+      "required_artifacts": [
+        "submit/README.md",
+        "submit/bug-audit-report.html",
+        "submit/indexes/audit-scope.generated.json",
+        "submit/quality/repository-versions.md"
+      ],
+      "success_evidence": [
+        "README contains a scope baseline table with repository, audit branch, commit, dirty/worktree status, and submitted Bug count columns.",
+        "README names all 20 analyzed repositories and includes rows with submitted Bug count 0.",
+        "indexes/audit-scope.generated.json contains all 20 analyzed repositories and at least four zero-Bug rows.",
+        "HTML contains an analysis-scope section listing all 20 analyzed repositories.",
+        "HTML repository metric reports 20 analyzed repositories even when only 16 repositories have submitted Bugs.",
+        "validate_bug_package.py --require-html-report --require-knowledge --repo-root exits 0."
+      ],
+      "trace_assertions": [
+        {"type": "skill_invoked", "value": "repo-bug-audit"},
+        {"type": "command_contains", "value": "generate_bug_report_html.py"},
+        {"type": "command_contains", "value": "--require-html-report"}
+      ],
+      "artifact_assertions": [
+        {"type": "exists", "path": "submit/README.md"},
+        {"type": "exists", "path": "submit/bug-audit-report.html"},
+        {"type": "exists", "path": "submit/indexes/audit-scope.generated.json"},
+        {"type": "exists", "path": "submit/quality/repository-versions.md"},
+        {"type": "file_contains", "path": "submit/README.md", "value": "分析范围与版本基线"},
+        {"type": "file_contains", "path": "submit/bug-audit-report.html", "value": "analysis-scope"},
+        {"type": "scope_baseline_complete", "require_manifest": true, "min_repositories": 20, "min_zero_bug_rows": 4}
+      ],
+      "grader": {"mode": "deterministic", "threshold": 1.0},
+      "failure_categories": ["scope-hidden", "version-baseline-missing", "zero-bug-repos-hidden"]
+    },
+    {
       "id": "candidate-discovery-funnel-visible",
       "type": "regression",
       "scope": "agent-level",
@@ -225,7 +277,7 @@
       ],
       "success_evidence": [
         "Issue-family coverage states fresh/current-source scan provenance.",
-        "All required issue families have outcomes.",
+        "All declared issue families have fresh sources, outcomes, and evidence.",
         "Candidate funnel, seed triage, and issue-family coverage explain promoted, parked, refuted, or not-applicable outcomes.",
         "No historical baseline artifact is required for success."
       ],

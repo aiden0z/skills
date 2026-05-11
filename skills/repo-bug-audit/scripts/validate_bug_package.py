@@ -3,11 +3,20 @@
 from __future__ import annotations
 
 import argparse
+import html
 import json
 import re
 import struct
+import sys
+from collections import Counter
 from datetime import datetime, timezone
 from pathlib import Path
+
+SCRIPT_DIR = Path(__file__).resolve().parent
+if str(SCRIPT_DIR) not in sys.path:
+    sys.path.insert(0, str(SCRIPT_DIR))
+
+import audit_scope_contract
 
 REQUIRED_DIRS = [
     "findings/P1",
@@ -24,6 +33,7 @@ REQUIRED_FILES = [
     "README.md",
     "indexes/findings.generated.md",
     "indexes/findings.generated.json",
+    "indexes/audit-scope.generated.json",
     "quality/submission-scope.md",
     "quality/repository-versions.md",
     "standards/bug-report-standard.md",
@@ -51,7 +61,7 @@ PREPACKAGE_RECEIPT_FILE = "work/scanner-output/prepackage-validation.passed.json
 SCAN_ROOTS_FILE = "work/scanner-output/repo-scan-roots.txt"
 HIGH_RECALL_SCAN_JSON = "work/scanner-output/high-recall-scan.json"
 HIGH_RECALL_SCAN_MD = "work/scanner-output/high-recall-scan.md"
-VALIDATOR_VERSION = "repo-bug-audit-validator-2026-05-11-promotion-overview"
+VALIDATOR_VERSION = "repo-bug-audit-validator-2026-05-11-scope-scan-family"
 CANDIDATE_INDEX_GENERATOR = "generate_candidate_index.py"
 CANDIDATE_INDEX_SCHEMA_VERSION = 3
 HTML_TOP_NAV_GRADIENT = (
@@ -101,6 +111,7 @@ CRITICAL_ONLY_SCOPE_RE = re.compile(
 REQUIRED_HTML_SECTIONS = [
     "hero",
     "metrics",
+    "analysis-scope",
     "quality",
     "architecture",
     "repositories",
@@ -191,25 +202,28 @@ DEPTH_COVERAGE_SECTION_ALIASES = [
     ("Zero-finding Repos", ["Zero-finding Repos", "零 Bug 仓"]),
     ("Depth Conclusion", ["Depth Conclusion", "深度结论"]),
 ]
-REQUIRED_ISSUE_FAMILIES = {
-    "auth-authorization": ["auth-authorization", "authorization", "authentication", "authn", "authz", "鉴权", "授权", "认证"],
-    "secrets-config": ["secrets-config", "secret", "credential", "token", "key", "凭据", "密钥", "配置泄露"],
-    "execution-sandbox": ["execution-sandbox", "execution", "sandbox", "rce", "command", "eval", "exec", "执行", "沙箱", "命令"],
-    "deserialization-ipc": ["deserialization-ipc", "deserialization", "serialization", "ipc", "uds", "pickle", "反序列化", "进程间"],
-    "file-path-storage": ["file-path-storage", "path traversal", "file path", "upload", "download", "storage", "路径", "文件", "上传", "下载", "存储"],
-    "network-ssrf": ["network-ssrf", "ssrf", "network", "http client", "url", "callback", "网络", "回调"],
-    "tls-transport": ["tls-transport", "tls", "ssl", "certificate", "transport", "证书", "传输"],
-    "frontend-rendering": ["frontend-rendering", "frontend", "xss", "html", "markdown", "dom", "前端", "渲染"],
-    "state-data-integrity": ["state-data-integrity", "state", "transaction", "data integrity", "database", "一致性", "事务", "数据"],
-    "async-lifecycle-recovery": ["async-lifecycle-recovery", "async", "lifecycle", "recovery", "worker", "queue", "异步", "生命周期", "恢复"],
-    "resource-concurrency": ["resource-concurrency", "resource", "concurrency", "thread", "pool", "leak", "并发", "资源", "泄漏"],
-    "deployment-supply-chain": ["deployment-supply-chain", "deployment", "docker", "container", "dependency", "supply", "部署", "容器", "依赖", "供应链"],
-}
 ISSUE_FAMILY_OUTCOME_RE = re.compile(
     r"\b(promoted|parked|refuted|merged|none|no[- ]hit|not[- ]applicable|out[- ]of[- ]scope)\b|"
     r"提交|候选|排除|合并|无命中|未发现|不适用|范围外|保留",
     re.IGNORECASE,
 )
+ISSUE_FAMILY_REQUIRED_COLUMNS = {"family", "sources", "outcome", "evidence"}
+ISSUE_FAMILY_PLACEHOLDER_VALUES = {
+    "",
+    "-",
+    "—",
+    "pending",
+    "todo",
+    "tbd",
+    "unknown",
+    "n/a",
+    "na",
+    "待填",
+    "待补充",
+    "待确认",
+    "未知",
+    "<family-id>",
+}
 SINGLE_REPO_DEFAULT_LENS = VALID_BOUNDARIES | VALID_META_LENS
 MULTI_REPO_DEFAULT_LENS = VALID_BOUNDARIES | VALID_META_LENS
 PROFILE_REQUIRED_SECTION_ALIASES = [
@@ -492,6 +506,497 @@ def repo_item_matches_name(repo_item: dict, repo_name: str) -> bool:
     return text_mentions_alias(str(repo_name), repo_aliases(repo_item))
 
 
+def strip_table_cell(value: str) -> str:
+    value = html.unescape(str(value))
+    value = re.sub(r"<[^>]+>", " ", value)
+    value = re.sub(r"```.*?```", " ", value, flags=re.DOTALL)
+    value = re.sub(r"`([^`]*)`", r"\1", value)
+    value = re.sub(r"\[([^\]]+)\]\([^)]+\)", r"\1", value)
+    value = re.sub(r"[*_>#]+", " ", value)
+    value = re.sub(r"\s+", " ", value).strip()
+    return value
+
+
+def normalize_scope_header(value: str) -> str:
+    raw = strip_table_cell(value)
+    lowered = raw.lower().replace(" ", "_").replace("-", "_")
+    if "repository" in lowered or lowered == "repo" or "仓库" in raw:
+        return "repository"
+    if ("audit" in lowered and "branch" in lowered) or lowered == "branch" or "审计分支" in raw or raw == "分支":
+        return "audit_branch"
+    if "commit" in lowered:
+        return "commit"
+    if "dirty" in lowered or "worktree" in lowered or "工作区" in raw:
+        return "dirty"
+    if ("submitted" in lowered and "bug" in lowered) or ("bug" in lowered and "提交" in raw) or "提交 Bug" in raw:
+        return "submitted_bugs"
+    return lowered
+
+
+def parse_markdown_scope_tables(text: str) -> list[list[dict[str, str]]]:
+    tables: list[list[dict[str, str]]] = []
+    current: list[str] = []
+
+    def flush() -> None:
+        nonlocal current
+        if not current:
+            return
+        headers: list[str] = []
+        rows: list[dict[str, str]] = []
+        for line in current:
+            cells = [strip_table_cell(cell.strip()) for cell in line.strip().strip("|").split("|")]
+            is_separator = cells and all(re.fullmatch(r":?-{3,}:?", cell.replace(" ", "")) for cell in cells if cell)
+            if is_separator:
+                continue
+            if not headers:
+                headers = [normalize_scope_header(cell) for cell in cells]
+                continue
+            if len(cells) < len(headers):
+                cells.extend([""] * (len(headers) - len(cells)))
+            rows.append(dict(zip(headers, cells)))
+        if rows:
+            tables.append(rows)
+        current = []
+
+    for raw_line in text.splitlines():
+        line = raw_line.strip()
+        if line.startswith("|"):
+            current.append(line)
+        else:
+            flush()
+    flush()
+    return tables
+
+
+def parse_html_scope_tables(text: str) -> list[list[dict[str, str]]]:
+    section_match = re.search(
+        r"<section\b[^>]*\bid=[\"']analysis-scope[\"'][^>]*>(.*?)</section>",
+        text,
+        flags=re.IGNORECASE | re.DOTALL,
+    )
+    if not section_match:
+        return []
+    section = section_match.group(1)
+    tables: list[list[dict[str, str]]] = []
+    for table_match in re.finditer(r"<table\b[^>]*>(.*?)</table>", section, flags=re.IGNORECASE | re.DOTALL):
+        headers: list[str] = []
+        rows: list[dict[str, str]] = []
+        for row_match in re.finditer(r"<tr\b[^>]*>(.*?)</tr>", table_match.group(1), flags=re.IGNORECASE | re.DOTALL):
+            row_html = row_match.group(1)
+            header_cells = re.findall(r"<th\b[^>]*>(.*?)</th>", row_html, flags=re.IGNORECASE | re.DOTALL)
+            data_cells = re.findall(r"<td\b[^>]*>(.*?)</td>", row_html, flags=re.IGNORECASE | re.DOTALL)
+            if header_cells:
+                headers = [normalize_scope_header(cell) for cell in header_cells]
+                continue
+            if data_cells and headers:
+                cells = [strip_table_cell(cell) for cell in data_cells]
+                if len(cells) < len(headers):
+                    cells.extend([""] * (len(headers) - len(cells)))
+                rows.append(dict(zip(headers, cells)))
+        if rows:
+            tables.append(rows)
+    return tables
+
+
+def scope_table_rows(tables: list[list[dict[str, str]]]) -> list[dict[str, str]]:
+    required = {"repository", "audit_branch", "commit", "dirty", "submitted_bugs"}
+    for rows in tables:
+        if rows and required.issubset(set(rows[0])):
+            return rows
+    return []
+
+
+def normalize_issue_family_header(value: str) -> str:
+    raw = strip_table_cell(value)
+    lowered = raw.lower().replace(" ", "_").replace("-", "_")
+    if "family" in lowered or "家族" in raw or "风险" in raw:
+        return "family"
+    if "source" in lowered or "fresh" in lowered or "scan" in lowered or "来源" in raw or "扫描" in raw:
+        return "sources"
+    if "outcome" in lowered or "result" in lowered or "结果" in raw or "结论" in raw:
+        return "outcome"
+    if "evidence" in lowered or "anchor" in lowered or "证据" in raw or "锚点" in raw:
+        return "evidence"
+    return lowered
+
+
+def parse_markdown_issue_family_rows(text: str) -> list[dict[str, str]]:
+    tables: list[list[dict[str, str]]] = []
+    current: list[str] = []
+
+    def flush() -> None:
+        nonlocal current
+        if not current:
+            return
+        headers: list[str] = []
+        rows: list[dict[str, str]] = []
+        for line in current:
+            cells = [strip_table_cell(cell.strip()) for cell in line.strip().strip("|").split("|")]
+            is_separator = cells and all(re.fullmatch(r":?-{3,}:?", cell.replace(" ", "")) for cell in cells if cell)
+            if is_separator:
+                continue
+            if not headers:
+                headers = [normalize_issue_family_header(cell) for cell in cells]
+                continue
+            if len(cells) < len(headers):
+                cells.extend([""] * (len(headers) - len(cells)))
+            rows.append(dict(zip(headers, cells)))
+        if rows:
+            tables.append(rows)
+        current = []
+
+    for raw_line in text.splitlines():
+        line = raw_line.strip()
+        if line.startswith("|"):
+            current.append(line)
+        else:
+            flush()
+    flush()
+
+    for rows in tables:
+        if rows and ISSUE_FAMILY_REQUIRED_COLUMNS.issubset(set(rows[0])):
+            return rows
+    return []
+
+
+def issue_family_cell_missing(value: str) -> bool:
+    return strip_table_cell(value).lower() in ISSUE_FAMILY_PLACEHOLDER_VALUES
+
+
+REQUIRED_SCOPE_COLUMNS = {"repository", "audit_branch", "commit", "dirty", "submitted_bugs"}
+ALLOWED_SCOPE_COLUMNS = set(REQUIRED_SCOPE_COLUMNS)
+PLACEHOLDER_SCOPE_VALUES = {
+    "",
+    "-",
+    "—",
+    "unknown",
+    "pending",
+    "待采集",
+    "待补充",
+    "not specified",
+    "n/a",
+    "na",
+    "tbd",
+    "todo",
+    "unconfirmed",
+    "未知",
+}
+
+
+def scope_value_missing(value: str) -> bool:
+    return strip_table_cell(value).lower() in PLACEHOLDER_SCOPE_VALUES
+
+
+def repo_alias_counts(expected_repo_items: list[dict]) -> Counter:
+    counts: Counter[str] = Counter()
+    for item in expected_repo_items:
+        for alias in {strip_table_cell(alias).lower() for alias in repo_aliases(item) if strip_table_cell(alias)}:
+            counts[alias] += 1
+    return counts
+
+
+def unique_repo_aliases(repo_item: dict, expected_repo_items: list[dict]) -> list[str]:
+    counts = repo_alias_counts(expected_repo_items)
+    aliases = []
+    for alias in repo_aliases(repo_item):
+        normalized = strip_table_cell(alias).lower()
+        if normalized and counts[normalized] == 1:
+            aliases.append(alias)
+    return aliases
+
+
+def match_scope_rows_to_repos(
+    rows: list[dict[str, str]], expected_repo_items: list[dict], source_name: str
+) -> tuple[dict[str, dict[str, str]], list[str]]:
+    errors: list[str] = []
+    matched_rows: dict[str, dict[str, str]] = {}
+    for row in rows:
+        repo_cell = row.get("repository", "")
+        matches = [
+            item
+            for item in expected_repo_items
+            if text_mentions_alias(repo_cell, unique_repo_aliases(item, expected_repo_items))
+        ]
+        if len(matches) > 1:
+            errors.append(
+                f"{source_name} scope baseline row is ambiguous and matches multiple discovered repos: "
+                f"{strip_table_cell(repo_cell)}"
+            )
+            continue
+        if not matches:
+            continue
+        display_name = matches[0]["display_name"]
+        if display_name in matched_rows:
+            errors.append(f"{source_name} scope baseline has duplicate row for discovered repo: {display_name}")
+            continue
+        matched_rows[display_name] = row
+    return matched_rows, errors
+
+
+def submitted_bug_counts_for_repos(
+    submitted_repo_counts: dict[str, object] | None,
+    expected_repo_items: list[dict],
+    source_name: str,
+) -> tuple[dict[str, int], list[str]]:
+    if submitted_repo_counts is None:
+        return {}, []
+    errors: list[str] = []
+    counts_by_repo = {item["display_name"]: 0 for item in expected_repo_items}
+    for item in expected_repo_items:
+        aliases = unique_repo_aliases(item, expected_repo_items)
+        matches = [
+            (repo_name, count)
+            for repo_name, count in submitted_repo_counts.items()
+            if text_mentions_alias(str(repo_name), aliases)
+        ]
+        if len(matches) > 1:
+            errors.append(
+                f"{source_name} cannot verify submitted Bug count for {item['display_name']}: "
+                "indexes/findings.generated.json repo key is ambiguous"
+            )
+            continue
+        if len(matches) == 1:
+            try:
+                counts_by_repo[item["display_name"]] = int(matches[0][1] or 0)
+            except (TypeError, ValueError):
+                errors.append(
+                    f"{source_name} cannot verify submitted Bug count for {item['display_name']}: "
+                    f"non-numeric index count {matches[0][1]!r}"
+                )
+    return counts_by_repo, errors
+
+
+def check_scope_baseline_rows(
+    rows: list[dict[str, str]],
+    expected_repo_items: list[dict],
+    source_name: str,
+    submitted_repo_counts: dict[str, object] | None = None,
+) -> list[str]:
+    errors: list[str] = []
+    if not rows:
+        errors.append(
+            f"{source_name} scope baseline table must include columns: "
+            "Repository, Audit Branch, Commit, Dirty/Worktree, Submitted Bugs"
+        )
+        return errors
+
+    columns = set(rows[0])
+    extra_columns = sorted(column for column in columns - ALLOWED_SCOPE_COLUMNS if column)
+    if extra_columns:
+        errors.append(
+            f"{source_name} scope baseline table must stay simplified; remove column(s): "
+            + ", ".join(extra_columns)
+        )
+
+    matched_rows, match_errors = match_scope_rows_to_repos(rows, expected_repo_items, source_name)
+    errors.extend(match_errors)
+    expected_bug_counts, count_errors = submitted_bug_counts_for_repos(
+        submitted_repo_counts,
+        expected_repo_items,
+        source_name,
+    )
+    errors.extend(count_errors)
+
+    missing_repos = [item["display_name"] for item in expected_repo_items if item["display_name"] not in matched_rows]
+    if missing_repos:
+        errors.append(f"{source_name} scope baseline missing discovered repo row(s): " + ", ".join(missing_repos))
+
+    for repo_name, row in matched_rows.items():
+        for key, label in (
+            ("audit_branch", "audit branch"),
+            ("commit", "commit"),
+            ("dirty", "dirty/worktree status"),
+        ):
+            if scope_value_missing(row.get(key, "")):
+                errors.append(f"{source_name} scope baseline row for {repo_name} is missing {label}")
+        bug_count = strip_table_cell(row.get("submitted_bugs", ""))
+        if not re.fullmatch(r"\d+", bug_count):
+            errors.append(f"{source_name} scope baseline row for {repo_name} must have numeric submitted Bug count")
+        elif submitted_repo_counts is not None and int(bug_count) != expected_bug_counts.get(repo_name, 0):
+            errors.append(
+                f"{source_name} scope baseline row for {repo_name} has submitted Bug count {bug_count}, "
+                f"expected {expected_bug_counts.get(repo_name, 0)} from indexes/findings.generated.json"
+            )
+    return errors
+
+
+def check_readme_scope_baseline(
+    readme_text: str,
+    expected_repo_items: list[dict],
+    submitted_repo_counts: dict[str, object] | None = None,
+) -> list[str]:
+    errors: list[str] = []
+    if not expected_repo_items:
+        return errors
+    if not re.search(r"分析范围与版本基线|Analysis Scope and Version Baseline", readme_text, re.IGNORECASE):
+        errors.append(
+            "README.md missing simplified analysis scope/version baseline section "
+            "(`分析范围与版本基线` / `Analysis Scope and Version Baseline`)"
+        )
+    rows = scope_table_rows(parse_markdown_scope_tables(readme_text))
+    errors.extend(check_scope_baseline_rows(rows, expected_repo_items, "README.md", submitted_repo_counts))
+    return errors
+
+
+def check_html_scope_baseline(
+    html_text: str,
+    expected_repo_items: list[dict],
+    submitted_repo_counts: dict[str, object] | None = None,
+) -> list[str]:
+    rows = scope_table_rows(parse_html_scope_tables(html_text))
+    return check_scope_baseline_rows(rows, expected_repo_items, HTML_REPORT_FILE, submitted_repo_counts)
+
+
+def scope_expected_items_from_payload(payload: dict) -> list[dict]:
+    items = []
+    for row in audit_scope_contract.scope_records_from_payload(payload):
+        repo = str(row.get("repository", "")).strip()
+        if not repo:
+            continue
+        items.append(
+            {
+                "display_name": repo,
+                "profile_name": sanitize_profile_name(repo),
+                "path_name": repo.split("/")[-1],
+                "path": "",
+                "source_like_files": 0,
+            }
+        )
+    return items
+
+
+def scope_repo_counts_from_payload(payload: dict) -> dict[str, int]:
+    counts: dict[str, int] = {}
+    for row in audit_scope_contract.scope_records_from_payload(payload):
+        repo = str(row.get("repository", "")).strip()
+        submitted = row.get("submitted_bugs", 0)
+        if not repo or not isinstance(submitted, int) or submitted < 0:
+            continue
+        counts[repo] = submitted
+    return counts
+
+
+def read_audit_scope_payload(root: Path) -> tuple[dict | None, list[str]]:
+    path = root / audit_scope_contract.AUDIT_SCOPE_INDEX
+    if not path.is_file():
+        return None, [f"Missing generated audit scope contract: {audit_scope_contract.AUDIT_SCOPE_INDEX}"]
+    payload, err = load_json_file(path)
+    if err:
+        if err == "expected JSON object":
+            return None, [f"{audit_scope_contract.AUDIT_SCOPE_INDEX} must be a JSON object"]
+        return None, [f"{audit_scope_contract.AUDIT_SCOPE_INDEX} is not valid JSON: {err}"]
+    return payload, []
+
+
+def check_audit_scope_manifest(
+    root: Path,
+    payload: dict,
+    expected_repo_items: list[dict],
+    index_repo_counts: dict[str, object] | None,
+) -> list[str]:
+    errors: list[str] = []
+    if not isinstance(payload, dict):
+        return [f"{audit_scope_contract.AUDIT_SCOPE_INDEX} must be a JSON object"]
+    if payload.get("schema_version") != audit_scope_contract.SCHEMA_VERSION:
+        errors.append(
+            f"{audit_scope_contract.AUDIT_SCOPE_INDEX} schema_version must be {audit_scope_contract.SCHEMA_VERSION}"
+        )
+    rows = audit_scope_contract.scope_records_from_payload(payload)
+    if not rows:
+        errors.append(f"{audit_scope_contract.AUDIT_SCOPE_INDEX} must contain non-empty repositories list")
+        return errors
+    if payload.get("total_analyzed_repos") != len(rows):
+        errors.append(
+            f"{audit_scope_contract.AUDIT_SCOPE_INDEX} total_analyzed_repos is stale: "
+            f"index={payload.get('total_analyzed_repos')}, rows={len(rows)}"
+        )
+    version_evidence = payload.get("version_evidence")
+    if isinstance(version_evidence, dict):
+        complete = sum(
+            1
+            for row in rows
+            if not any(audit_scope_contract.version_value_missing(str(row.get(key, ""))) for key in ("audit_branch", "commit", "dirty"))
+        )
+        if version_evidence.get("total") != len(rows) or version_evidence.get("complete") != complete:
+            errors.append(
+                f"{audit_scope_contract.AUDIT_SCOPE_INDEX} version_evidence is stale: "
+                f"index={version_evidence}, expected={{'complete': {complete}, 'total': {len(rows)}}}"
+            )
+    else:
+        errors.append(f"{audit_scope_contract.AUDIT_SCOPE_INDEX} missing version_evidence object")
+
+    seen_repos: set[str] = set()
+    count_checked_rows: list[dict] = []
+    for row in rows:
+        repo = str(row.get("repository", "")).strip()
+        if repo in seen_repos:
+            errors.append(f"{audit_scope_contract.AUDIT_SCOPE_INDEX} has duplicate repository row: {repo}")
+        seen_repos.add(repo)
+        for key, label in (("audit_branch", "audit branch"), ("commit", "commit"), ("dirty", "dirty/worktree status")):
+            if audit_scope_contract.version_value_missing(str(row.get(key, ""))):
+                errors.append(f"{audit_scope_contract.AUDIT_SCOPE_INDEX} row for {repo} is missing {label}")
+        submitted = row.get("submitted_bugs")
+        if not isinstance(submitted, int) or submitted < 0:
+            errors.append(f"{audit_scope_contract.AUDIT_SCOPE_INDEX} row for {repo} must have non-negative integer submitted_bugs")
+        else:
+            count_checked_rows.append(row)
+
+    if expected_repo_items:
+        missing = [
+            item["display_name"]
+            for item in expected_repo_items
+            if not any(text_mentions_alias(row["repository"], unique_repo_aliases(item, expected_repo_items)) for row in rows)
+        ]
+        if missing:
+            errors.append(
+                f"{audit_scope_contract.AUDIT_SCOPE_INDEX} missing discovered repo(s) from --repo-root roster: "
+                + ", ".join(missing)
+            )
+        ambiguous = [
+            item["display_name"]
+            for item in expected_repo_items
+            if not unique_repo_aliases(item, expected_repo_items)
+        ]
+        if ambiguous:
+            errors.append(
+                f"{audit_scope_contract.AUDIT_SCOPE_INDEX} cannot uniquely match discovered repo(s); use full relative repo names: "
+                + ", ".join(ambiguous)
+            )
+
+    if index_repo_counts is not None:
+        expected_counts, count_errors = submitted_bug_counts_for_repos(
+            index_repo_counts,
+            scope_expected_items_from_payload(payload),
+            audit_scope_contract.AUDIT_SCOPE_INDEX,
+        )
+        errors.extend(count_errors)
+        for row in count_checked_rows:
+            repo = str(row.get("repository", ""))
+            if row.get("submitted_bugs") != expected_counts.get(repo, 0):
+                errors.append(
+                    f"{audit_scope_contract.AUDIT_SCOPE_INDEX} row for {repo} has submitted_bugs "
+                    f"{row.get('submitted_bugs')}, expected {expected_counts.get(repo, 0)} from indexes/findings.generated.json"
+                )
+
+    version_text = audit_scope_contract.read_text(root / "quality/repository-versions.md")
+    if version_text:
+        version_rows = audit_scope_contract.parse_repository_versions(version_text)
+        version_by_repo = {row["repository"]: row for row in version_rows}
+        for row in rows:
+            repo = row["repository"]
+            source_row = version_by_repo.get(repo)
+            if source_row is None:
+                errors.append(f"{audit_scope_contract.AUDIT_SCOPE_INDEX} row for {repo} is not present in quality/repository-versions.md")
+                continue
+            for key in ("audit_branch", "commit", "dirty"):
+                if str(row.get(key, "")) != str(source_row.get(key, "")):
+                    errors.append(
+                        f"{audit_scope_contract.AUDIT_SCOPE_INDEX} row for {repo} has stale {key}: "
+                        f"manifest={row.get(key)!r}, repository-versions.md={source_row.get(key)!r}"
+                    )
+    return errors
+
+
 def is_git_repo(path: Path) -> bool:
     return (path / ".git").exists()
 
@@ -708,15 +1213,6 @@ def has_code_anchor(text: str) -> bool:
     )
 
 
-def search_entry_is_specific(text: str) -> bool:
-    stripped = text.strip()
-    if not stripped or contains_generic_shard_phrase(stripped):
-        return False
-    if re.search(r"\b(rg|grep|find|sed|nl|git|pytest|mvn|gradle|go|npm|pnpm|yarn)\b", stripped):
-        return has_code_anchor(stripped) or bool(re.search(r"['\"][^'\"]{3,}['\"]", stripped))
-    return has_code_anchor(stripped)
-
-
 def surface_entry_is_specific(text: str) -> bool:
     stripped = text.strip()
     if len(stripped) < 4 or contains_generic_shard_phrase(stripped):
@@ -764,6 +1260,12 @@ def hypothesis_loop_has_evidence(loop) -> bool:
 
 
 def seed_triage_has_evidence(item) -> bool:
+    if isinstance(item, str):
+        return (
+            has_code_anchor(item)
+            and bool(re.search(r"\b(promoted|parked|refuted|merged)\b|提交|候选|排除|合并|保留", item, re.IGNORECASE))
+            and not contains_generic_shard_phrase(item)
+        )
     if not isinstance(item, dict):
         return False
     outcome = str(item.get("outcome", "")).strip().lower()
@@ -1528,26 +2030,14 @@ def check_issue_family_coverage(
     workspace_root: Path,
     expected_repo_items: list[dict],
 ) -> tuple[list[str], list[str]]:
-    """Validate fresh-run risk-family coverage for high-recall repo-group audits."""
+    """Validate the fresh-run issue-family matrix without prescribing families."""
     errors: list[str] = []
     warnings: list[str] = []
-    if len(expected_repo_items) <= 1:
-        return errors, warnings
-
-    high_recall_payload, high_recall_error = load_json_file(workspace_root / HIGH_RECALL_SCAN_JSON)
-    total_seed_hits = 0
-    if not high_recall_error and isinstance(high_recall_payload, dict):
-        raw_hits = high_recall_payload.get("total_hits")
-        if isinstance(raw_hits, int) and raw_hits > 0:
-            total_seed_hits = raw_hits
-    if total_seed_hits < 100:
-        return errors, warnings
-
     path = root / ISSUE_FAMILY_COVERAGE_FILE
     if not path.is_file():
         errors.append(
             f"Missing fresh-run issue-family coverage matrix: {ISSUE_FAMILY_COVERAGE_FILE}; "
-            "deep/high-recall audits must show which risk families were promoted, parked, refuted, or had no credible hits"
+            "deep or multi-repository audits must show which risk families were promoted, parked, refuted, or had no credible hits"
         )
         return errors, warnings
 
@@ -1560,28 +2050,36 @@ def check_issue_family_coverage(
             "not from historical package reuse"
         )
 
-    lower_text = text.lower()
-    for family, aliases in REQUIRED_ISSUE_FAMILIES.items():
-        match_positions: list[int] = []
-        for alias in aliases:
-            pos = lower_text.find(alias.lower())
-            if pos >= 0:
-                match_positions.append(pos)
-        if not match_positions:
-            errors.append(f"{ISSUE_FAMILY_COVERAGE_FILE}: missing required issue family: {family}")
-            continue
-        pos = min(match_positions)
-        window = text[max(0, pos - 300): pos + 900]
-        if not ISSUE_FAMILY_OUTCOME_RE.search(window):
+    rows = parse_markdown_issue_family_rows(text)
+    if not rows:
+        errors.append(
+            f"{ISSUE_FAMILY_COVERAGE_FILE}: missing issue-family table with columns "
+            "Family, Fresh Sources, Outcome, Evidence"
+        )
+        return errors, warnings
+    for index, row in enumerate(rows, 1):
+        family = strip_table_cell(row.get("family", ""))
+        sources = strip_table_cell(row.get("sources", ""))
+        outcome = strip_table_cell(row.get("outcome", ""))
+        evidence = strip_table_cell(row.get("evidence", ""))
+        label = family or f"row {index}"
+        if issue_family_cell_missing(family):
+            errors.append(f"{ISSUE_FAMILY_COVERAGE_FILE}: issue-family row {index} has no family name")
+        if issue_family_cell_missing(sources):
+            errors.append(f"{ISSUE_FAMILY_COVERAGE_FILE}: issue-family {label} needs fresh source/surface evidence")
+        if not ISSUE_FAMILY_OUTCOME_RE.search(outcome):
             errors.append(
-                f"{ISSUE_FAMILY_COVERAGE_FILE}: issue family {family} needs an outcome "
+                f"{ISSUE_FAMILY_COVERAGE_FILE}: issue-family {label} needs an outcome "
                 "(promoted, parked, refuted, merged, no-hit, not-applicable, or out-of-scope)"
             )
-        if not (has_code_anchor(window) or re.search(r"no[- ]hit|not[- ]applicable|out[- ]of[- ]scope|无命中|未发现|不适用|范围外", window, re.IGNORECASE)):
-            warnings.append(
-                f"{ISSUE_FAMILY_COVERAGE_FILE}: issue family {family} should cite a sample code anchor "
-                "or explicitly state no credible fresh-run hit"
-            )
+        if issue_family_cell_missing(evidence):
+            errors.append(f"{ISSUE_FAMILY_COVERAGE_FILE}: issue-family {label} needs evidence or a no-hit explanation")
+            continue
+        if re.search(r"\b(promoted|parked|refuted|merged)\b|提交|候选|排除|合并|保留", outcome, re.IGNORECASE):
+            if not (has_code_anchor(evidence) or "BUG-" in evidence):
+                warnings.append(
+                    f"{ISSUE_FAMILY_COVERAGE_FILE}: issue-family {label} should cite a code anchor or submitted Bug id"
+                )
     return errors, warnings
 
 
@@ -1618,11 +2116,6 @@ def check_high_recall_scan(workspace_root: Path, expected_repo_items: list[dict]
     patterns = payload.get("patterns")
     if not isinstance(patterns, list) or not patterns:
         errors.append(f"{HIGH_RECALL_SCAN_JSON}: patterns must contain at least one LLM-generated pattern")
-    elif len(patterns) < 6:
-        warnings.append(
-            f"{HIGH_RECALL_SCAN_JSON}: pattern bank has only {len(patterns)} patterns; "
-            "ensure this is a deliberately focused scan rather than a missed gap-analysis step"
-        )
 
     repos = payload.get("repos")
     if not isinstance(repos, list):
@@ -1633,6 +2126,35 @@ def check_high_recall_scan(workspace_root: Path, expected_repo_items: list[dict]
     missing = sorted(expected_profiles - index_profiles)
     if missing:
         errors.append(f"{HIGH_RECALL_SCAN_JSON}: missing repository scan rows: " + ", ".join(missing[:12]))
+
+    scan_error_rows: list[str] = []
+    for item in repos:
+        if not isinstance(item, dict):
+            continue
+        raw_errors = item.get("errors")
+        if isinstance(raw_errors, list):
+            repo_errors = [str(value).strip() for value in raw_errors if str(value).strip()]
+        elif raw_errors:
+            repo_errors = [str(raw_errors).strip()]
+        else:
+            repo_errors = []
+        if repo_errors:
+            label = str(item.get("profile_name") or item.get("repo") or "<unknown>")
+            scan_error_rows.append(f"{label}: {repo_errors[0]}")
+    if scan_error_rows:
+        preview = "; ".join(scan_error_rows[:5])
+        if len(scan_error_rows) > 5:
+            preview += f"; ... (+{len(scan_error_rows) - 5} more)"
+        if isinstance(total_hits, int) and total_hits == 0:
+            errors.append(
+                f"{HIGH_RECALL_SCAN_JSON}: scan recorded errors and produced zero hits; "
+                f"fix the LLM-generated patterns or scanner setup, then rerun. Sample: {preview}"
+            )
+        else:
+            warnings.append(
+                f"{HIGH_RECALL_SCAN_JSON}: scan recorded errors for {len(scan_error_rows)} repo row(s); "
+                f"verify failed patterns were intentionally skipped. Sample: {preview}"
+            )
 
     for profile_name in sorted(expected_profiles):
         seed_path = workspace_root / "work/shards" / profile_name / "search-seeds.md"
@@ -2255,6 +2777,8 @@ def main() -> int:
     errors = []
     warnings = []
     index_payload_for_html = None
+    index_repo_counts: dict[str, object] | None = None
+    audit_scope_payload: dict | None = None
     workspace_root = audit_workspace_root(root)
     if args.require_lens_coverage and args.skip_lens_coverage:
         errors.append("Cannot combine --require-lens-coverage with --skip-lens-coverage")
@@ -2280,6 +2804,9 @@ def main() -> int:
     repo_group_strong_validation = (
         len(expected_repo_items) > 1
         and (args.require_knowledge or final_asset_validation or submitted_findings_exist)
+    )
+    scope_baseline_validation = bool(expected_repo_items) and (
+        repo_group_strong_validation or final_asset_validation or args.require_depth_coverage
     )
 
     if args.validate_shards_only:
@@ -2329,6 +2856,10 @@ def main() -> int:
     submission_scope_path = root / "quality/submission-scope.md"
     if submission_scope_path.is_file():
         submission_scope_text = submission_scope_path.read_text(encoding="utf-8", errors="replace")
+    readme_text = ""
+    readme_path = root / "README.md"
+    if readme_path.is_file():
+        readme_text = readme_path.read_text(encoding="utf-8", errors="replace")
     early_finding_count = len(list((root / "findings").glob("P*/*.md")))
     if final_asset_validation:
         has_overview_label = re.search(
@@ -2371,13 +2902,6 @@ def main() -> int:
             )
             errors.extend(candidate_errors)
             warnings.extend(candidate_warnings)
-            family_errors, family_warnings = check_issue_family_coverage(
-                root,
-                workspace_root,
-                expected_repo_items,
-            )
-            errors.extend(family_errors)
-            warnings.extend(family_warnings)
         receipt_errors, receipt_warnings = check_shard_gate_receipt(
             workspace_root,
             root,
@@ -2411,7 +2935,7 @@ def main() -> int:
             missing_versions = [
                 item["display_name"]
                 for item in expected_repo_items
-                if not text_mentions_alias(version_text, repo_aliases(item))
+                if not text_mentions_alias(version_text, unique_repo_aliases(item, expected_repo_items))
             ]
             if missing_versions:
                 errors.append(
@@ -2661,6 +3185,9 @@ def main() -> int:
                 index_payload = {}
             else:
                 index_payload_for_html = index_payload
+                repo_counts = index_payload.get("repo")
+                if isinstance(repo_counts, dict):
+                    index_repo_counts = repo_counts
             if index_payload.get("total") != finding_count:
                 errors.append(
                     "indexes/findings.generated.json total is stale: "
@@ -2687,6 +3214,17 @@ def main() -> int:
                         if key not in item:
                             errors.append(f"indexes/findings.generated.json finding {item.get('id', '<unknown>')} missing {key}")
 
+    if scope_baseline_validation:
+        audit_scope_payload, audit_scope_errors = read_audit_scope_payload(root)
+        errors.extend(audit_scope_errors)
+        if audit_scope_payload is not None:
+            errors.extend(check_audit_scope_manifest(root, audit_scope_payload, expected_repo_items, index_repo_counts))
+
+    if scope_baseline_validation:
+        scope_expected_items = scope_expected_items_from_payload(audit_scope_payload) if audit_scope_payload else expected_repo_items
+        scope_repo_counts = scope_repo_counts_from_payload(audit_scope_payload) if audit_scope_payload else index_repo_counts
+        errors.extend(check_readme_scope_baseline(readme_text, scope_expected_items, scope_repo_counts))
+
     depth_intent = extract_depth_intent(submission_scope_text)
     deep_intent_requires_depth = (
         final_asset_validation
@@ -2697,6 +3235,14 @@ def main() -> int:
     depth_required = args.require_depth_coverage or deep_intent_requires_depth or (
         args.require_knowledge and (len(profile_paths) > 1 or len(expected_repo_items) > 1)
     )
+    if repo_group_strong_validation or depth_required:
+        family_errors, family_warnings = check_issue_family_coverage(
+            root,
+            workspace_root,
+            expected_repo_items,
+        )
+        errors.extend(family_errors)
+        warnings.extend(family_warnings)
     depth_coverage_path = root / DEPTH_COVERAGE_FILE
     depth_text = ""
     if depth_required and not depth_coverage_path.is_file():
@@ -2796,6 +3342,10 @@ def main() -> int:
         html_errors, html_warnings = check_html_report(html_text, index_payload_for_html)
         errors.extend(html_errors)
         warnings.extend(html_warnings)
+        if scope_baseline_validation:
+            scope_expected_items = scope_expected_items_from_payload(audit_scope_payload) if audit_scope_payload else expected_repo_items
+            scope_repo_counts = scope_repo_counts_from_payload(audit_scope_payload) if audit_scope_payload else index_repo_counts
+            errors.extend(check_html_scope_baseline(html_text, scope_expected_items, scope_repo_counts))
 
     if not errors and not final_asset_validation:
         write_prepackage_receipt(workspace_root, root, expected_repo_items, finding_count)

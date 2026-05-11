@@ -262,9 +262,9 @@ After Phase 7 passes with zero evidence errors (warnings are acceptable):
    - Write architecture signals such as use cases, adapters, Saga/Outbox, and state reconciliation as discovered risk signals, not as commands or abstract principles.
 
 12. **Pre-package validation and evaluation ⛔ BLOCKING**
-   - Run `scripts/generate_bug_index.py`.
+   - Run `scripts/generate_bug_index.py`; it generates both `indexes/findings.generated.*` and `indexes/audit-scope.generated.json` when `quality/repository-versions.md` is available.
    - Run `scripts/generate_candidate_index.py <submit-root>` for repo-group, deep/full, or high-recall runs. This creates `indexes/candidates.generated.json`, `indexes/candidates.generated.md`, and `quality/candidate-coverage.md`; final validation rejects repo-group packages when this funnel is missing, inconsistent with shard `candidate_count`, or shows `gate-complete` candidates that remain unsubmitted without a recorded critical-only scope.
-   - Validate that `quality/issue-family-coverage.md` exists and covers every required family for repo-group/deep/high-recall packages. A low Bug count is credible only when this file and the candidate funnel explain what was promoted, parked, refuted, or found not applicable.
+   - Validate that `quality/issue-family-coverage.md` exists and records the LLM-declared issue families from fresh exploration and gap analysis for repo-group/deep/high-recall packages. A low Bug count is credible only when this file and the candidate funnel explain what was promoted, parked, refuted, or found not applicable.
    - Run a pre-package validation pass with `scripts/validate_bug_package.py --repo-root <path>` after findings and knowledge are current. `<path>` may be either a single repo checkout or a parent directory containing multiple repo checkouts; the validator expands repo-group roots and fails if discovered repos are missing profiles, version evidence, shard evidence, or depth coverage. Lens coverage and default lens completeness are required by default; use `--lens-scope custom` only when `submission-scope.md` declares a narrowed strategy. Use `--skip-lens-coverage` only for in-progress / resume runs, never final handoff. Pass `--repo-root <path>` so frontmatter paths can be verified (see `references/authenticity.md`).
    - For repo-group final packages, validation also checks `work/scanner-output/repo-inventory.json`, `work/scanner-output/repo-shards.md`, `work/scanner-output/repo-scan-roots.txt`, every `work/shards/<repo>/shard-summary.json`, every shard candidates file, and the shard gate receipt. A package with generated-looking final Markdown but missing shard evidence must not pass final handoff.
    - Read `references/evaluation.md`.
@@ -281,6 +281,7 @@ After Phase 7 passes with zero evidence errors (warnings are acceptable):
    - For repo-group audits, `scripts/generate_bug_report_html.py` refuses final HTML generation unless `work/scanner-output/shard-gate.passed.json` exists. Use its ungated draft flag only for a clearly labeled non-final draft, never for final handoff.
    - If audit depth intent is deep/full/per-repo-deep but coverage is `first-pass`, `focused`, or `in-progress`, do not generate final HTML or overview assets until exploration continues or the user explicitly accepts a depth downgrade in `submission-scope.md`.
    - Add `README.md`, indexes, knowledge docs, quality scope, standards, optional `audit-overview.png`, and default `bug-audit-report.html` under `submit/` for final handoff/report packages.
+   - For final handoff, multi-repo, or deep packages, README and HTML must include a simplified analysis scope/version baseline table derived from `indexes/audit-scope.generated.json`: every analyzed repo, audit branch, commit, dirty/worktree status, and submitted Bug count. Include 0-Bug repos; keep default branch and stable-candidate detail in `quality/repository-versions.md`.
    - If `audit-overview.png` was not requested, continue without it and record `deferred-post-handoff` or an explicit omission in `submission-scope.md`. Do not block the final package on this optional image. Ask after the validated handoff summary whether the user wants the overview image added.
    - If creating `audit-overview.png`, use `references/audit-overview-image.md` for content, layout, color, metadata, and wording constraints.
    - Prefer HTML/CSS screenshot for dense text and exact numbers; native image generation is allowed after visual and data consistency review.
@@ -305,7 +306,7 @@ After Phase 7 passes with zero evidence errors (warnings are acceptable):
 - `indexes/candidates.generated.json` and `indexes/candidates.generated.md` exist and match shard `candidate_count`.
 - Every roster repo has `work/shards/<repo>/shard-summary.json` and `work/shards/<repo>/candidates.md` with code-anchored candidate bullets or a zero-finding rationale naming scanned surfaces.
 - `submit/quality/depth-coverage.md` lists every repo with candidate counts and coverage classification.
-- `work/session-end-state.md` records candidate totals, P1/P2 hotspots, and recommended repos for session 2 deepening.
+- `work/session-end-state.md` records candidate totals, risk hotspots, lower-priority recall gaps, and recommended repos for session 2 deepening.
 - Draft `bug-audit-report.html` generated with `--allow-ungated-draft`.
 
 ### Final Session (deep-complete package)
@@ -315,7 +316,7 @@ After Phase 7 passes with zero evidence errors (warnings are acceptable):
 - Every submitted Bug has: P1-P4 priority, confidence, `status=open`, `source=static-analysis`, code evidence, static reproduction path, fix boundary, and suggested verification commands.
 - `quality/candidate-coverage.md` includes the Priority Promotion Sweep, and no `gate-complete` P1-P4 candidate remains unsubmitted unless `submission-scope.md` records a critical-only scope.
 - P1/P2 Bugs pass `references/evaluation.md` gates.
-- `submit/quality/lens-coverage.md` covers every enabled lens. `submit/quality/issue-family-coverage.md` covers every required family.
+- `submit/quality/lens-coverage.md` covers every enabled lens. `submit/quality/issue-family-coverage.md` records each declared issue family with source, outcome, and evidence.
 - For repo-group: Bug IDs are one contiguous range `BUG-0001..BUG-N`. Global outputs merged serially.
 - Every repo has a `submit/knowledge/repo-profiles/<repo>.md` profile.
 - `bug-audit-report.html` is current and generated without `--allow-ungated-draft`.
@@ -342,13 +343,13 @@ After Phase 7 passes with zero evidence errors (warnings are acceptable):
 - `scripts/init_bug_workspace.py` — create output directories and baseline docs.
 - `scripts/discover_repositories.py` — discover and freeze a repo-group roster and source scan roots from a repo checkout or parent directory containing multiple repo checkouts.
 - `scripts/run_high_recall_scan.py` — run roster-safe supplemental search seeds from `repo-scan-roots.txt` and an LLM-generated `--patterns-file` without scanning historical audit outputs.
-- `scripts/generate_bug_index.py` — build Markdown/JSON indexes from Bug records.
+- `scripts/generate_bug_index.py` — build Markdown/JSON indexes from Bug records and the audit-scope machine contract.
+- `scripts/audit_scope_contract.py` — regenerate the machine-readable analyzed-repo contract when version evidence or finding counts change.
 - `scripts/generate_bug_report_html.py` — build a self-contained interactive `bug-audit-report.html` from final package files.
 - `scripts/validate_bug_package.py` — verify package structure, evidence paths, candidate count consistency, shard evidence honesty, and cross-repo pattern detection without prescribing Bug discovery routes.
 - `scripts/generate_candidate_index.py` — build candidate pool indexes from shard evidence.
-- `scripts/generate_session_handoff.py` — generate a session 1→2 deepening plan from candidate index and shard summaries.
 - `scripts/grade_eval_trace.py` — replay-grade stored fresh-agent transcripts and output artifacts against portable eval cases.
-- `evals/core-regressions.json` — five portable regression cases for multi-repo depth, forbidden package writers, default HTML/optional image, single-repo lightweight scans, and historical-baseline fresh rescans.
+- `evals/core-regressions.json` — portable regression cases for multi-repo depth, recall funnel visibility, report scope baseline, forbidden package writers, default HTML/optional image, single-repo lightweight scans, and historical-baseline fresh rescans.
 - `references/workflow.md` — full multi-pass workflow.
 - `references/authenticity.md` — **Authenticity First rule**, anti-fabrication categories, honest-uncertainty markers, per-output rules, and validator/evaluator enforcement levels.
 - `references/exploration-lenses.md` — **13 architecture boundaries** that guide exploration without hardcoded patterns. plus cross-repo amplification.

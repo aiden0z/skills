@@ -42,6 +42,20 @@ Use this documentation rule:
 
 If a document is meant to help future maintainers understand why a skill is designed a certain way, put it under `docs/` and commit it only when explicitly requested. If it is a transient artifact from an agent run, keep it under `docs/` but leave it untracked.
 
+## Privacy and Public-Safe Content
+
+This repository is a reusable skill package. Do not commit internal or user-specific names, concepts, paths, or raw run artifacts into skills, references, examples, evals, scripts, or generated docs.
+
+Forbidden content includes:
+
+- Private project, repository, product, customer, tenant, organization, environment, or codename strings.
+- Internal architecture names, incident names, service names, domain names, ticket IDs, meeting names, or roadmap concepts unless they are already intentionally public.
+- Local absolute paths, machine-specific home directories, private workspace paths, shell history, API keys, tokens, secrets, certificates, or credentials.
+- Raw agent transcripts, real audit packages, eval JSONL traces, screenshots, logs, or command outputs that were produced against private repositories or local workspaces.
+- Examples copied from internal projects, even when the code itself is not included.
+
+Use portable placeholders instead: `example-api`, `example-worker`, `example-repo`, `example.com`, `/path/to/repo`, `<skill-root>`, `<audit-workspace>`, `<transcript.jsonl>`. Before finishing a skill change, scan the touched skill package for private-name and local-path leakage, and replace or remove anything that is not public-safe.
+
 ## Installation
 
 ```bash

@@ -93,16 +93,21 @@ def load_patterns(path: Path) -> list[PatternSpec]:
     if not path.is_file():
         raise SystemExit(f"Patterns file not found: {path}. Generate it with the LLM before running this script.")
     data = json.loads(path.read_text(encoding="utf-8"))
+    if isinstance(data, dict):
+        data = data.get("patterns", [])
+    if not isinstance(data, list):
+        raise SystemExit(f"Patterns file must be a JSON list or an object with a 'patterns' list: {path}")
     patterns = []
-    for item in data:
+    for index, item in enumerate(data, 1):
         if not isinstance(item, dict):
             continue
-        patterns.append(PatternSpec(
-            category=str(item.get("category", "")),
-            name=str(item.get("name", "")),
-            pattern=str(item.get("pattern", "")),
-            guidance=str(item.get("guidance", "")),
-        ))
+        pattern = str(item.get("pattern", "")).strip()
+        if not pattern:
+            continue
+        category = str(item.get("category") or "llm-gap").strip()
+        name = str(item.get("name") or f"pattern-{index:02d}").strip()
+        guidance = str(item.get("guidance") or "Trace the hit before promoting.").strip()
+        patterns.append(PatternSpec(category=category, name=name, pattern=pattern, guidance=guidance))
     if not patterns:
         raise SystemExit(f"No valid patterns found in {path}")
     return patterns
@@ -148,66 +153,57 @@ def repo_name(root: Path, inventory_by_path: dict[str, dict[str, Any]]) -> tuple
     return root.name, safe
 
 
-def classify_line(line_text: str, patterns: list[PatternSpec]) -> list[PatternSpec]:
-    matched: list[PatternSpec] = []
-    for spec in patterns:
-        try:
-            if re.search(spec.pattern, line_text, flags=re.IGNORECASE):
-                matched.append(spec)
-        except re.error:
-            continue
-    return matched
-
-
 def run_rg_all(root: Path, patterns: list[PatternSpec], max_matches_per_category: int = 20) -> tuple[list[dict[str, Any]], list[str]]:
     if shutil.which("rg") is None:
         return [], ["rg not found"]
-    command = [
-        "rg",
-        "--json",
-        "--line-number",
-        "--no-heading",
-        "--hidden",
-        "--ignore-case",
-    ]
-    for glob in INCLUDE_GLOBS:
-        command.extend(["--glob", glob])
-    for glob in EXCLUDE_GLOBS:
-        command.extend(["--glob", glob])
-    for spec in patterns:
-        command.extend(["-e", spec.pattern])
-    command.append(str(root))
-    process = subprocess.Popen(
-        command,
-        stdout=subprocess.PIPE,
-        stderr=subprocess.PIPE,
-        text=True,
-    )
-
     hits: list[dict[str, Any]] = []
     seen: set[tuple[str, int, str]] = set()
     category_counts: defaultdict[str, int] = defaultdict(int)
-    assert process.stdout is not None
-    for raw in process.stdout:
-        try:
-            event = json.loads(raw)
-        except json.JSONDecodeError:
+    errors: list[str] = []
+    for spec in patterns:
+        if category_counts[spec.category] >= max_matches_per_category:
             continue
-        if event.get("type") != "match":
-            continue
-        data = event.get("data") if isinstance(event.get("data"), dict) else {}
-        path_text = data.get("path", {}).get("text")
-        line_number = data.get("line_number")
-        lines_text = data.get("lines", {}).get("text", "").strip()
-        if not isinstance(path_text, str) or not isinstance(line_number, int):
-            continue
-        try:
-            rel_path = Path(path_text).resolve().relative_to(root).as_posix()
-        except ValueError:
-            rel_path = path_text
-        for spec in classify_line(lines_text, patterns):
+        command = [
+            "rg",
+            "--json",
+            "--line-number",
+            "--no-heading",
+            "--hidden",
+            "--ignore-case",
+        ]
+        for glob in INCLUDE_GLOBS:
+            command.extend(["--glob", glob])
+        for glob in EXCLUDE_GLOBS:
+            command.extend(["--glob", glob])
+        command.extend(["-e", spec.pattern, str(root)])
+        process = subprocess.Popen(
+            command,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True,
+        )
+
+        assert process.stdout is not None
+        for raw in process.stdout:
             if category_counts[spec.category] >= max_matches_per_category:
+                process.kill()
+                break
+            try:
+                event = json.loads(raw)
+            except json.JSONDecodeError:
                 continue
+            if event.get("type") != "match":
+                continue
+            data = event.get("data") if isinstance(event.get("data"), dict) else {}
+            path_text = data.get("path", {}).get("text")
+            line_number = data.get("line_number")
+            lines_text = data.get("lines", {}).get("text", "").strip()
+            if not isinstance(path_text, str) or not isinstance(line_number, int):
+                continue
+            try:
+                rel_path = Path(path_text).resolve().relative_to(root).as_posix()
+            except ValueError:
+                rel_path = path_text
             key = (rel_path, line_number, spec.name)
             if key in seen:
                 continue
@@ -223,13 +219,10 @@ def run_rg_all(root: Path, patterns: list[PatternSpec], max_matches_per_category
                     "guidance": spec.guidance,
                 }
             )
-        if all(category_counts[spec.category] >= max_matches_per_category for spec in patterns):
-            process.kill()
-            break
-    _stdout, stderr = process.communicate()
-    errors: list[str] = []
-    if process.returncode not in {0, 1, -9} and not hits:
-        errors.append(stderr.strip() or f"rg exited {process.returncode}")
+        _stdout, stderr = process.communicate()
+        if process.returncode not in {0, 1, -9}:
+            detail = stderr.strip() or f"rg exited {process.returncode}"
+            errors.append(f"{spec.name}: {detail}")
     return hits, errors
 
 

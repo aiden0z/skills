@@ -6,10 +6,17 @@ import argparse
 import html
 import json
 import re
+import sys
 from collections import Counter
 from datetime import date
 from pathlib import Path
 from typing import Any
+
+SCRIPT_DIR = Path(__file__).resolve().parent
+if str(SCRIPT_DIR) not in sys.path:
+    sys.path.insert(0, str(SCRIPT_DIR))
+
+import audit_scope_contract
 
 SKILL_NAME = "repo-bug-audit"
 SKILL_SOURCE = "github.com/aiden0z/skills"
@@ -22,7 +29,6 @@ REPO_INVENTORY = "work/scanner-output/repo-inventory.json"
 DEPTH_COVERAGE = "quality/depth-coverage.md"
 SUBMISSION_SCOPE = "quality/submission-scope.md"
 CANDIDATE_COVERAGE = "quality/candidate-coverage.md"
-
 DEPTH_INTENT_RE = re.compile(
     r"(audit depth intent|analysis depth|requested depth|审计深度意图|分析深度|请求深度)\s*[:：]\s*`?([^\n`]+)",
     re.IGNORECASE,
@@ -119,7 +125,7 @@ LABELS = {
         "data_from": "Data from final package files",
         "total": "Total Bugs",
         "p1p2": "P1/P2 Focus",
-        "repos": "Repositories",
+        "repos": "Analyzed Repos",
         "quality": "Quality Core",
         "quality_gate": "Evidence Gate",
         "coverage_strategy": "Exploration Coverage",
@@ -136,6 +142,13 @@ LABELS = {
         "knowledge_eyebrow": "Reusable knowledge",
         "guide_eyebrow": "Handoff guide",
         "risk": "Risk Composition",
+        "analysis_scope": "Analysis Scope",
+        "analysis_scope_eyebrow": "Scope baseline",
+        "analysis_scope_title": "Analysis Scope and Version Baseline",
+        "audit_branch": "Audit Branch",
+        "commit": "Commit",
+        "dirty": "Worktree",
+        "submitted_bugs": "Submitted Bugs",
         "architecture": "Architecture Insights",
         "repo_situation": "Repository Situation",
         "coverage_classification": "Coverage Classification",
@@ -219,7 +232,7 @@ LABELS = {
         "data_from": "数据来自最终交付包",
         "total": "Bug 总数",
         "p1p2": "P1/P2 重点",
-        "repos": "仓库数",
+        "repos": "分析仓库",
         "quality": "质量核心",
         "quality_gate": "收录与证据门槛",
         "coverage_strategy": "覆盖策略",
@@ -236,6 +249,13 @@ LABELS = {
         "knowledge_eyebrow": "可复用认知",
         "guide_eyebrow": "交付指引",
         "risk": "风险组成",
+        "analysis_scope": "分析范围",
+        "analysis_scope_eyebrow": "范围基线",
+        "analysis_scope_title": "分析范围与版本基线",
+        "audit_branch": "审计分支",
+        "commit": "Commit",
+        "dirty": "工作区状态",
+        "submitted_bugs": "提交 Bug",
         "architecture": "架构洞察",
         "repo_situation": "仓库情况",
         "coverage_classification": "覆盖分类",
@@ -789,17 +809,6 @@ def split_count(counter: dict, key: str) -> int:
     return int(counter.get(key, 0) or 0)
 
 
-def counter_from_findings(findings: list[dict], key: str) -> Counter:
-    counter = Counter()
-    for item in findings:
-        value = item.get(key)
-        if isinstance(value, list):
-            counter.update(str(v) for v in value if v)
-        elif value:
-            counter[str(value)] += 1
-    return counter
-
-
 def load_findings(root: Path, index_payload: dict) -> list[dict]:
     findings = []
     for item in index_payload.get("findings", []):
@@ -846,23 +855,51 @@ def parse_metadata(readme: str, versions: str, scope_doc: str, language: str) ->
                 data[key] = strip_markdown(m.group(1), 120)
                 break
     if versions:
-        rows = [line for line in versions.splitlines() if line.startswith("|") and "---" not in line]
-        pending_terms = ("pending", "待采集", "unknown")
-        data_rows = rows[1:] if len(rows) > 1 else rows
+        version_records = audit_scope_contract.parse_repository_versions(versions)
         complete = 0
-        total = 0
-        for row in data_rows:
-            cells = [c.strip(" `") for c in row.strip("|").split("|")]
-            if len(cells) < 4:
-                continue
-            total += 1
-            if not any(term in " ".join(cells[2:5]).lower() for term in pending_terms):
+        total = len(version_records)
+        for record in version_records:
+            if not any(audit_scope_contract.version_value_missing(record.get(key, "")) for key in ("audit_branch", "commit", "dirty")):
                 complete += 1
         if total:
             data["version"] = f"{complete}/{total}"
     if data["date"] == label["not_specified"]:
         data["date"] = date.today().isoformat()
     return data
+
+
+def load_audit_scope_records(root: Path, versions: str, repo_counter: Counter) -> tuple[list[dict[str, str]], dict[str, int]]:
+    manifest_path = root / audit_scope_contract.AUDIT_SCOPE_INDEX
+    if manifest_path.is_file():
+        try:
+            payload = json.loads(read_text(manifest_path) or "{}")
+        except json.JSONDecodeError:
+            payload = {}
+        if isinstance(payload, dict):
+            manifest_records = audit_scope_contract.scope_records_from_payload(payload)
+            if manifest_records:
+                records = [
+                    {
+                        "repository": str(row.get("repository", "")),
+                        "audit_branch": str(row.get("audit_branch", "")),
+                        "commit": str(row.get("commit", "")),
+                        "dirty": str(row.get("dirty", "")),
+                    }
+                    for row in manifest_records
+                ]
+                bug_counts = {
+                    str(row["repository"]): audit_scope_contract.safe_int(row.get("submitted_bugs", 0))
+                    for row in manifest_records
+                    if row.get("repository")
+                }
+                return records, bug_counts
+    records = audit_scope_contract.parse_repository_versions(versions)
+    bug_counts = {
+        record["repository"]: audit_scope_contract.bug_count_for_repo(record["repository"], repo_counter)
+        for record in records
+        if record.get("repository")
+    }
+    return records, bug_counts
 
 
 def top_items(counter: Counter, limit: int = 6) -> list[tuple[str, int]]:
@@ -944,11 +981,6 @@ def priority_cells(priority: dict, label: dict) -> str:
             """
         )
     return "".join(cells)
-
-
-def priority_summary(priority: dict) -> str:
-    parts = [f"{item} {split_count(priority, item)}" for item in PRIORITY_ORDER if split_count(priority, item)]
-    return " · ".join(parts) if parts else "P1-P4 0"
 
 
 def bar_list(title: str, rows: list[tuple[str, int]], total: int, empty_label: str) -> str:
@@ -1104,6 +1136,58 @@ def render_repo_cards(findings: list[dict], repo_counter: Counter, label: dict) 
     return "".join(cards)
 
 
+def render_analysis_scope_table(
+    version_records: list[dict[str, str]],
+    repo_counter: Counter,
+    label: dict,
+    repo_bug_counts: dict[str, int] | None = None,
+) -> str:
+    records = version_records
+    if not records:
+        records = [
+            {"repository": repo, "audit_branch": "", "commit": "", "dirty": ""}
+            for repo, _ in top_items(repo_counter, 999)
+        ]
+    if not records:
+        records = [{"repository": label["not_specified"], "audit_branch": "", "commit": "", "dirty": ""}]
+
+    body_rows = []
+    repo_bug_counts = repo_bug_counts or {}
+    for record in records:
+        repo = record.get("repository", "").strip() or label["not_specified"]
+        bug_count = repo_bug_counts.get(repo, audit_scope_contract.bug_count_for_repo(repo, repo_counter))
+        branch = record.get("audit_branch", "").strip() or label["not_specified"]
+        commit = record.get("commit", "").strip() or label["not_specified"]
+        dirty = record.get("dirty", "").strip() or label["not_specified"]
+        body_rows.append(
+            f"""
+            <tr>
+              <td><strong>{esc(repo)}</strong></td>
+              <td><code>{esc(branch)}</code></td>
+              <td><code>{esc(commit)}</code></td>
+              <td>{esc(dirty)}</td>
+              <td class="number-cell">{esc(bug_count)}</td>
+            </tr>
+            """
+        )
+    return f"""
+    <div class="scope-table-wrap">
+      <table class="scope-table">
+        <thead>
+          <tr>
+            <th>{esc(label["repo"])}</th>
+            <th>{esc(label["audit_branch"])}</th>
+            <th>{esc(label["commit"])}</th>
+            <th>{esc(label["dirty"])}</th>
+            <th>{esc(label["submitted_bugs"])}</th>
+          </tr>
+        </thead>
+        <tbody>{''.join(body_rows)}</tbody>
+      </table>
+    </div>
+    """
+
+
 def package_entry_exists(root: Path, name: str) -> bool:
     target = root / name.rstrip("/")
     return target.is_dir() if name.endswith("/") else target.is_file()
@@ -1159,16 +1243,20 @@ def render_html(root: Path, language: str, output_name: str) -> str:
     priority = index_payload.get("priority", {})
     p1p2 = split_count(priority, "P1") + split_count(priority, "P2")
     repos = index_payload.get("repo", {})
-    repo_count = len([key for key, value in repos.items() if key and value])
     confidence = index_payload.get("confidence", {})
     categories = Counter(index_payload.get("category", {}))
     risk_type_count = len([key for key, value in categories.items() if key and value])
     infra = Counter(index_payload.get("infra_domains", {}))
     fix_risk = Counter(index_payload.get("fix_risk", {}))
     repo_counter = Counter(repos)
+    version_records, repo_bug_counts = load_audit_scope_records(root, versions, repo_counter)
+    analysis_repo_counter = Counter(
+        {record["repository"]: repo_bug_counts.get(record["repository"], 0) for record in version_records}
+    ) or repo_counter
+    repo_count = len(version_records) if version_records else len([key for key, value in repos.items() if key and value])
     family = Counter(index_payload.get("issue_family", {}))
-    project_title = f"{report_subject(root, metadata['scope'], repo_counter, label['not_specified'], language)} {label['title_suffix']}"
-    scope_label = display_scope(metadata["scope"], repo_counter, label["not_specified"])
+    project_title = f"{report_subject(root, metadata['scope'], analysis_repo_counter, label['not_specified'], language)} {label['title_suffix']}"
+    scope_label = display_scope(metadata["scope"], analysis_repo_counter, label["not_specified"])
 
     quality_gate_bullets = unique_items(
         extract_bullets(section_body(scope_doc, ["收录", "Included"]), 4)
@@ -1302,6 +1390,13 @@ def render_html(root: Path, language: str, output_name: str) -> str:
     .insight-item h3::before {{ content:""; width:7px; height:7px; border-radius:999px; background:var(--accent); flex:0 0 auto; transform:translateY(-1px); }}
     .tone-architecture .insight-item h3::before {{ background:var(--slate); }}
     .insight-item p {{ margin:0; color:var(--muted); font-size:13px; line-height:1.55; }}
+    .scope-table-wrap {{ overflow:auto; border:1px solid var(--line); border-radius:8px; background:#FFF; box-shadow:0 10px 28px -22px rgba(10,10,10,.18); }}
+    .scope-table {{ width:100%; border-collapse:collapse; min-width:760px; }}
+    .scope-table th, .scope-table td {{ padding:11px 13px; border-bottom:1px solid var(--line); text-align:left; font-size:13px; vertical-align:top; }}
+    .scope-table th {{ color:var(--soft); font-size:11px; text-transform:uppercase; letter-spacing:.04em; background:#F8FAFC; }}
+    .scope-table tr:last-child td {{ border-bottom:0; }}
+    .scope-table code {{ overflow-wrap:anywhere; }}
+    .scope-table .number-cell {{ font-family:var(--mono); font-weight:900; font-variant-numeric:tabular-nums; text-align:right; }}
     .repo-grid {{ display:grid; grid-template-columns:repeat(auto-fit,minmax(220px,1fr)); gap:12px; }}
     .repo-depth-panel {{ margin-bottom:12px; }}
     .repo-card {{ border:1px solid var(--line); border-radius:8px; padding:14px; background:#FFF; box-shadow:0 10px 28px -22px rgba(10,10,10,.18); }}
@@ -1383,6 +1478,7 @@ def render_html(root: Path, language: str, output_name: str) -> str:
       </div>
       <div class="nav-links">
         <a href="#metrics">{esc(label["metrics_eyebrow"])}</a>
+        <a href="#analysis-scope">{esc(label["analysis_scope"])}</a>
         <a href="#quality">{esc(label["quality"])}</a>
         <a href="#architecture">{esc(label["architecture"])}</a>
         <a href="#repositories">{esc(label["repo_situation"])}</a>
@@ -1435,6 +1531,11 @@ def render_html(root: Path, language: str, output_name: str) -> str:
         {bar_list(label["category"], top_items(categories, 6), total, label["not_specified"])}
         {bar_list(label["fix_risk"], top_items(fix_risk, 6), total, label["not_specified"])}
       </div>
+    </section>
+
+    <section id="analysis-scope" class="section-card">
+      <div class="section-heading"><div><p>{esc(label["analysis_scope_eyebrow"])}</p><h2>{esc(label["analysis_scope_title"])}</h2></div></div>
+      {render_analysis_scope_table(version_records, repo_counter, label, repo_bug_counts)}
     </section>
 
     <section id="quality" class="section-card tone-quality">

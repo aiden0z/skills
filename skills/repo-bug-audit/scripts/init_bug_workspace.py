@@ -234,20 +234,10 @@ def main() -> int:
 
 | Family | Fresh Sources | Outcome | Evidence |
 |---|---|---|---|
-| `auth-authorization` | 待填 | 待填 | 待填 |
-| `secrets-config` | 待填 | 待填 | 待填 |
-| `execution-sandbox` | 待填 | 待填 | 待填 |
-| `deserialization-ipc` | 待填 | 待填 | 待填 |
-| `file-path-storage` | 待填 | 待填 | 待填 |
-| `network-ssrf` | 待填 | 待填 | 待填 |
-| `tls-transport` | 待填 | 待填 | 待填 |
-| `frontend-rendering` | 待填 | 待填 | 待填 |
-| `state-data-integrity` | 待填 | 待填 | 待填 |
-| `async-lifecycle-recovery` | 待填 | 待填 | 待填 |
-| `resource-concurrency` | 待填 | 待填 | 待填 |
-| `deployment-supply-chain` | 待填 | 待填 | 待填 |
+| `<LLM-declared-family>` | <代码理解、agent gap、补盲扫描或人工追踪来源> | <outcome> | <代码锚点、BUG ID 或 no-hit 说明> |
 
 允许 outcome：`promoted`、`merged`、`parked`、`refuted`、`no-hit`、`not-applicable`、`out-of-scope`。
+不要从模板复制固定家族；按本次仓库真实风险面和 gap analysis 填写。
 """
         candidates = """# 候选线索
 
@@ -412,20 +402,10 @@ Source: fresh-run current-source scan, not historical package reuse.
 
 | Family | Fresh Sources | Outcome | Evidence |
 |---|---|---|---|
-| `auth-authorization` | pending | pending | pending |
-| `secrets-config` | pending | pending | pending |
-| `execution-sandbox` | pending | pending | pending |
-| `deserialization-ipc` | pending | pending | pending |
-| `file-path-storage` | pending | pending | pending |
-| `network-ssrf` | pending | pending | pending |
-| `tls-transport` | pending | pending | pending |
-| `frontend-rendering` | pending | pending | pending |
-| `state-data-integrity` | pending | pending | pending |
-| `async-lifecycle-recovery` | pending | pending | pending |
-| `resource-concurrency` | pending | pending | pending |
-| `deployment-supply-chain` | pending | pending | pending |
+| `<LLM-declared-family>` | <code understanding, agent gap, supplemental scan, or manual trace source> | <outcome> | <code anchor, BUG id, or no-hit explanation> |
 
 Allowed outcomes: `promoted`, `merged`, `parked`, `refuted`, `no-hit`, `not-applicable`, `out-of-scope`.
+Do not copy a fixed family list from the template; choose families from this audit's real risk surfaces and gap analysis.
 """
         candidates = """# Candidate Leads
 

@@ -4,6 +4,7 @@ output/
 evals/
 !skills/repo-bug-audit/evals/
 !skills/repo-bug-audit/evals/**
+skills/repo-bug-audit/evals/artifacts/*.jsonl
 saved-templates/
 
 # Node

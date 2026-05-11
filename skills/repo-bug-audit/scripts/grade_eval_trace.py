@@ -8,6 +8,7 @@ portable eval-case assertions under evals/.
 from __future__ import annotations
 
 import argparse
+import html
 import json
 import re
 from pathlib import Path
@@ -316,20 +317,78 @@ def artifact_candidate_index_integrity_failure(artifact_root: Path) -> str | Non
     return None
 
 
-REQUIRED_ISSUE_FAMILIES = {
-    "auth-authorization": ["auth-authorization", "authorization", "authentication", "authn", "authz", "鉴权", "授权", "认证"],
-    "secrets-config": ["secrets-config", "secret", "credential", "token", "key", "凭据", "密钥", "配置泄露"],
-    "execution-sandbox": ["execution-sandbox", "execution", "sandbox", "rce", "command", "eval", "exec", "执行", "沙箱", "命令"],
-    "deserialization-ipc": ["deserialization-ipc", "deserialization", "serialization", "ipc", "uds", "pickle", "反序列化", "进程间"],
-    "file-path-storage": ["file-path-storage", "path traversal", "file path", "upload", "download", "storage", "路径", "文件", "上传", "下载", "存储"],
-    "network-ssrf": ["network-ssrf", "ssrf", "network", "http client", "url", "callback", "网络", "回调"],
-    "tls-transport": ["tls-transport", "tls", "ssl", "certificate", "transport", "证书", "传输"],
-    "frontend-rendering": ["frontend-rendering", "frontend", "xss", "html", "markdown", "dom", "前端", "渲染"],
-    "state-data-integrity": ["state-data-integrity", "state", "transaction", "data integrity", "database", "一致性", "事务", "数据"],
-    "async-lifecycle-recovery": ["async-lifecycle-recovery", "async", "lifecycle", "recovery", "worker", "queue", "异步", "生命周期", "恢复"],
-    "resource-concurrency": ["resource-concurrency", "resource", "concurrency", "thread", "pool", "leak", "并发", "资源", "泄漏"],
-    "deployment-supply-chain": ["deployment-supply-chain", "deployment", "docker", "container", "dependency", "supply", "部署", "容器", "依赖", "供应链"],
+ISSUE_FAMILY_OUTCOME_RE = re.compile(
+    r"\b(promoted|parked|refuted|merged|none|no[- ]hit|not[- ]applicable|out[- ]of[- ]scope)\b|"
+    r"提交|候选|排除|合并|无命中|未发现|不适用|范围外|保留",
+    re.IGNORECASE,
+)
+ISSUE_FAMILY_PLACEHOLDERS = {
+    "",
+    "-",
+    "—",
+    "pending",
+    "todo",
+    "tbd",
+    "unknown",
+    "n/a",
+    "na",
+    "待填",
+    "待补充",
+    "待确认",
+    "未知",
+    "<family-id>",
 }
+
+
+def artifact_normalize_issue_family_header(value: str) -> str:
+    raw = artifact_strip_table_cell(value)
+    lowered = raw.lower().replace(" ", "_").replace("-", "_")
+    if "family" in lowered or "家族" in raw or "风险" in raw:
+        return "family"
+    if "source" in lowered or "fresh" in lowered or "scan" in lowered or "来源" in raw or "扫描" in raw:
+        return "sources"
+    if "outcome" in lowered or "result" in lowered or "结果" in raw or "结论" in raw:
+        return "outcome"
+    if "evidence" in lowered or "anchor" in lowered or "证据" in raw or "锚点" in raw:
+        return "evidence"
+    return lowered
+
+
+def artifact_issue_family_rows(text: str) -> list[dict[str, str]]:
+    tables: list[list[dict[str, str]]] = []
+    current: list[str] = []
+
+    def flush() -> None:
+        nonlocal current
+        if not current:
+            return
+        headers: list[str] = []
+        rows: list[dict[str, str]] = []
+        for line in current:
+            cells = [artifact_strip_table_cell(cell.strip()) for cell in line.strip().strip("|").split("|")]
+            if cells and all(re.fullmatch(r":?-{3,}:?", cell.replace(" ", "")) for cell in cells if cell):
+                continue
+            if not headers:
+                headers = [artifact_normalize_issue_family_header(cell) for cell in cells]
+                continue
+            if len(cells) < len(headers):
+                cells.extend([""] * (len(headers) - len(cells)))
+            rows.append(dict(zip(headers, cells)))
+        if rows:
+            tables.append(rows)
+        current = []
+
+    for raw_line in text.splitlines():
+        line = raw_line.strip()
+        if line.startswith("|"):
+            current.append(line)
+        else:
+            flush()
+    flush()
+    for rows in tables:
+        if rows and {"family", "sources", "outcome", "evidence"}.issubset(set(rows[0])):
+            return rows
+    return []
 
 
 def artifact_issue_family_coverage_failure(artifact_root: Path) -> str | None:
@@ -337,15 +396,27 @@ def artifact_issue_family_coverage_failure(artifact_root: Path) -> str | None:
     if not path.is_file():
         return "missing submit/quality/issue-family-coverage.md"
     text = path.read_text(encoding="utf-8", errors="replace")
-    lower = text.lower()
-    missing: list[str] = []
-    for family, aliases in REQUIRED_ISSUE_FAMILIES.items():
-        if not any(alias.lower() in lower for alias in aliases):
-            missing.append(family)
-    if missing:
-        return "issue-family coverage missing: " + ", ".join(missing[:8])
     if not re.search(r"fresh[- ]run|first[- ]run|independent scan|首次|独立扫描|新扫描", text, re.IGNORECASE):
         return "issue-family coverage does not state fresh/current-source scan provenance"
+    rows = artifact_issue_family_rows(text)
+    if not rows:
+        return "issue-family coverage missing table with Family/Fresh Sources/Outcome/Evidence"
+    bad_rows = []
+    for index, row in enumerate(rows, 1):
+        family = artifact_strip_table_cell(row.get("family", ""))
+        sources = artifact_strip_table_cell(row.get("sources", ""))
+        outcome = artifact_strip_table_cell(row.get("outcome", ""))
+        evidence = artifact_strip_table_cell(row.get("evidence", ""))
+        if family.lower() in ISSUE_FAMILY_PLACEHOLDERS:
+            bad_rows.append(f"row {index} missing family")
+        elif sources.lower() in ISSUE_FAMILY_PLACEHOLDERS:
+            bad_rows.append(f"{family} missing sources")
+        elif not ISSUE_FAMILY_OUTCOME_RE.search(outcome):
+            bad_rows.append(f"{family} missing outcome")
+        elif evidence.lower() in ISSUE_FAMILY_PLACEHOLDERS:
+            bad_rows.append(f"{family} missing evidence")
+    if bad_rows:
+        return "issue-family coverage incomplete: " + "; ".join(bad_rows[:8])
     return None
 
 
@@ -661,6 +732,290 @@ def artifact_path(root: Path, assertion: dict) -> Path:
     return root / str(assertion.get("path", "")).strip()
 
 
+def artifact_strip_table_cell(value: str) -> str:
+    value = html.unescape(str(value))
+    value = re.sub(r"<[^>]+>", " ", value)
+    value = re.sub(r"`([^`]*)`", r"\1", value)
+    value = re.sub(r"\[([^\]]+)\]\([^)]+\)", r"\1", value)
+    value = re.sub(r"[*_>#]+", " ", value)
+    return re.sub(r"\s+", " ", value).strip()
+
+
+def artifact_normalize_scope_header(value: str) -> str:
+    raw = artifact_strip_table_cell(value)
+    lowered = raw.lower().replace(" ", "_").replace("-", "_")
+    if "repository" in lowered or lowered == "repo" or "仓库" in raw:
+        return "repository"
+    if lowered == "role" or "角色" in raw:
+        return "role"
+    if ("audit" in lowered and "branch" in lowered) or lowered == "branch" or "审计分支" in raw or raw == "分支":
+        return "audit_branch"
+    if "commit" in lowered:
+        return "commit"
+    if "dirty" in lowered or "worktree" in lowered or "工作区" in raw:
+        return "dirty"
+    if ("submitted" in lowered and "bug" in lowered) or ("bug" in lowered and "提交" in raw) or "提交 Bug" in raw:
+        return "submitted_bugs"
+    return lowered
+
+
+def artifact_parse_markdown_tables(text: str) -> list[list[dict[str, str]]]:
+    tables: list[list[dict[str, str]]] = []
+    current: list[str] = []
+
+    def flush() -> None:
+        nonlocal current
+        if not current:
+            return
+        headers: list[str] = []
+        rows: list[dict[str, str]] = []
+        for line in current:
+            cells = [artifact_strip_table_cell(cell.strip()) for cell in line.strip().strip("|").split("|")]
+            if cells and all(re.fullmatch(r":?-{3,}:?", cell.replace(" ", "")) for cell in cells if cell):
+                continue
+            if not headers:
+                headers = [artifact_normalize_scope_header(cell) for cell in cells]
+                continue
+            if len(cells) < len(headers):
+                cells.extend([""] * (len(headers) - len(cells)))
+            rows.append(dict(zip(headers, cells)))
+        if rows:
+            tables.append(rows)
+        current = []
+
+    for raw_line in text.splitlines():
+        line = raw_line.strip()
+        if line.startswith("|"):
+            current.append(line)
+        else:
+            flush()
+    flush()
+    return tables
+
+
+ARTIFACT_REQUIRED_SCOPE_COLUMNS = {"repository", "audit_branch", "commit", "dirty", "submitted_bugs"}
+ARTIFACT_ALLOWED_SCOPE_COLUMNS = set(ARTIFACT_REQUIRED_SCOPE_COLUMNS)
+
+
+def artifact_scope_rows_from_markdown(text: str) -> list[dict[str, str]]:
+    for rows in artifact_parse_markdown_tables(text):
+        if rows and ARTIFACT_REQUIRED_SCOPE_COLUMNS.issubset(set(rows[0])):
+            return rows
+    return []
+
+
+def artifact_version_rows(text: str) -> list[dict[str, str]]:
+    required = {"repository", "audit_branch", "commit", "dirty"}
+    role_exclude = re.compile(
+        r"\b(reference|ref|excluded|out[- ]?of[- ]?scope|comparison|baseline|sample)\b|"
+        r"参考|仅参考|排除|范围外|对照|基线",
+        re.IGNORECASE,
+    )
+    for table in artifact_parse_markdown_tables(text):
+        if not table or not required.issubset(set(table[0])):
+            continue
+        rows: list[dict[str, str]] = []
+        for row in table:
+            role = row.get("role", "")
+            if role and not re.search(r"\b(target|analyzed|audit)\b|目标|审计|分析", role, re.IGNORECASE):
+                if role_exclude.search(role):
+                    continue
+            if row.get("repository", "").strip():
+                rows.append(row)
+        if rows:
+            return rows
+    return []
+
+
+def artifact_scope_rows_from_html(text: str) -> list[dict[str, str]]:
+    section_match = re.search(
+        r"<section\b[^>]*\bid=[\"']analysis-scope[\"'][^>]*>(.*?)</section>",
+        text,
+        flags=re.IGNORECASE | re.DOTALL,
+    )
+    if not section_match:
+        return []
+    section = section_match.group(1)
+    for table_match in re.finditer(r"<table\b[^>]*>(.*?)</table>", section, flags=re.IGNORECASE | re.DOTALL):
+        headers: list[str] = []
+        rows: list[dict[str, str]] = []
+        for row_match in re.finditer(r"<tr\b[^>]*>(.*?)</tr>", table_match.group(1), flags=re.IGNORECASE | re.DOTALL):
+            row_html = row_match.group(1)
+            header_cells = re.findall(r"<th\b[^>]*>(.*?)</th>", row_html, flags=re.IGNORECASE | re.DOTALL)
+            data_cells = re.findall(r"<td\b[^>]*>(.*?)</td>", row_html, flags=re.IGNORECASE | re.DOTALL)
+            if header_cells:
+                headers = [artifact_normalize_scope_header(cell) for cell in header_cells]
+                continue
+            if data_cells and headers:
+                cells = [artifact_strip_table_cell(cell) for cell in data_cells]
+                if len(cells) < len(headers):
+                    cells.extend([""] * (len(headers) - len(cells)))
+                rows.append(dict(zip(headers, cells)))
+        if rows and ARTIFACT_REQUIRED_SCOPE_COLUMNS.issubset(set(rows[0])):
+            return rows
+    return []
+
+
+ARTIFACT_PLACEHOLDER_SCOPE_VALUES = {
+    "",
+    "-",
+    "—",
+    "unknown",
+    "pending",
+    "待采集",
+    "待补充",
+    "not specified",
+    "n/a",
+    "na",
+    "tbd",
+    "todo",
+    "unconfirmed",
+    "未知",
+}
+
+
+def artifact_scope_value_missing(value: str) -> bool:
+    return artifact_strip_table_cell(value).lower() in ARTIFACT_PLACEHOLDER_SCOPE_VALUES
+
+
+def artifact_int_assertion(assertion: dict, key: str) -> int:
+    value = assertion.get(key, 0)
+    return value if isinstance(value, int) else 0
+
+
+def artifact_scope_row_map(rows: list[dict[str, str]]) -> dict[str, dict[str, str]]:
+    return {artifact_strip_table_cell(row.get("repository", "")): row for row in rows}
+
+
+def artifact_rows_from_manifest(text: str) -> tuple[list[dict[str, str]], str | None]:
+    try:
+        payload = json.loads(text)
+    except json.JSONDecodeError as exc:
+        return [], f"invalid JSON: {exc}"
+    if not isinstance(payload, dict):
+        return [], "expected JSON object"
+    rows = payload.get("repositories")
+    if not isinstance(rows, list):
+        return [], "missing repositories list"
+    parsed: list[dict[str, str]] = []
+    for row in rows:
+        if not isinstance(row, dict):
+            return [], "repositories entries must be objects"
+        repo = artifact_strip_table_cell(row.get("repository", ""))
+        if not repo:
+            return [], "repository row missing repository"
+        submitted = row.get("submitted_bugs", 0)
+        if not isinstance(submitted, int):
+            return [], f"repository row for {repo} has non-integer submitted_bugs"
+        parsed.append(
+            {
+                "repository": repo,
+                "audit_branch": artifact_strip_table_cell(row.get("audit_branch", "")),
+                "commit": artifact_strip_table_cell(row.get("commit", "")),
+                "dirty": artifact_strip_table_cell(row.get("dirty", "")),
+                "submitted_bugs": str(submitted),
+            }
+        )
+    return parsed, None
+
+
+def artifact_scope_baseline_failure(artifact_root: Path, assertion: dict | None = None) -> str | None:
+    assertion = assertion or {}
+    root = artifact_root / "submit" if (artifact_root / "submit").is_dir() else artifact_root
+    versions = root / "quality/repository-versions.md"
+    manifest = root / "indexes/audit-scope.generated.json"
+    readme = root / "README.md"
+    html_report = root / "bug-audit-report.html"
+    require_manifest = bool(assertion.get("require_manifest", False))
+    if not versions.is_file():
+        return "scope_baseline_complete: missing submit/quality/repository-versions.md"
+    if require_manifest and not manifest.is_file():
+        return "scope_baseline_complete: missing submit/indexes/audit-scope.generated.json"
+    if not readme.is_file():
+        return "scope_baseline_complete: missing submit/README.md"
+    if not html_report.is_file():
+        return "scope_baseline_complete: missing submit/bug-audit-report.html"
+
+    manifest_rows: list[dict[str, str]] = []
+    if manifest.is_file():
+        manifest_rows, manifest_error = artifact_rows_from_manifest(manifest.read_text(encoding="utf-8", errors="replace"))
+        if manifest_error:
+            return f"scope_baseline_complete: audit-scope.generated.json {manifest_error}"
+    version_rows = manifest_rows or artifact_version_rows(versions.read_text(encoding="utf-8", errors="replace"))
+    readme_rows = artifact_scope_rows_from_markdown(readme.read_text(encoding="utf-8", errors="replace"))
+    html_rows = artifact_scope_rows_from_html(html_report.read_text(encoding="utf-8", errors="replace"))
+    if not version_rows:
+        return "scope_baseline_complete: repository-versions.md has no target repository version rows"
+    min_repositories = artifact_int_assertion(assertion, "min_repositories")
+    if min_repositories and len(version_rows) < min_repositories:
+        return (
+            "scope_baseline_complete: repository-versions.md has "
+            f"{len(version_rows)} target repo row(s), expected at least {min_repositories}"
+        )
+    if not readme_rows:
+        return "scope_baseline_complete: README.md has no valid scope baseline table"
+    if not html_rows:
+        return "scope_baseline_complete: bug-audit-report.html has no valid analysis-scope table"
+
+    for source_name, rows in (("README.md", readme_rows), ("bug-audit-report.html", html_rows)):
+        extra_columns = sorted(column for column in set(rows[0]) - ARTIFACT_ALLOWED_SCOPE_COLUMNS if column)
+        if extra_columns:
+            return (
+                f"scope_baseline_complete: {source_name} scope baseline table must stay simplified; "
+                "remove column(s): " + ", ".join(extra_columns)
+            )
+        min_zero_bug_rows = artifact_int_assertion(assertion, "min_zero_bug_rows")
+        if min_zero_bug_rows:
+            zero_bug_rows = sum(
+                1
+                for row in rows
+                if artifact_strip_table_cell(row.get("submitted_bugs", "")) == "0"
+            )
+            if zero_bug_rows < min_zero_bug_rows:
+                return (
+                    f"scope_baseline_complete: {source_name} has {zero_bug_rows} zero-Bug row(s), "
+                    f"expected at least {min_zero_bug_rows}"
+                )
+        for version_row in version_rows:
+            repo = artifact_strip_table_cell(version_row.get("repository", ""))
+            for key in ("audit_branch", "commit", "dirty"):
+                if artifact_scope_value_missing(version_row.get(key, "")):
+                    return f"scope_baseline_complete: repository-versions.md row for {repo} missing {key}"
+            row = next(
+                (
+                    candidate
+                    for candidate in rows
+                    if artifact_strip_table_cell(candidate.get("repository", "")) == repo
+                ),
+                None,
+            )
+            if row is None:
+                return f"scope_baseline_complete: {source_name} missing repo row {repo}"
+            for key in ("audit_branch", "commit", "dirty"):
+                if artifact_scope_value_missing(row.get(key, "")):
+                    return f"scope_baseline_complete: {source_name} row for {repo} missing {key}"
+            if not re.fullmatch(r"\d+", artifact_strip_table_cell(row.get("submitted_bugs", ""))):
+                return f"scope_baseline_complete: {source_name} row for {repo} has non-numeric submitted Bug count"
+            expected_count = artifact_strip_table_cell(version_row.get("submitted_bugs", ""))
+            if expected_count and artifact_strip_table_cell(row.get("submitted_bugs", "")) != expected_count:
+                return (
+                    f"scope_baseline_complete: {source_name} row for {repo} has submitted Bug count "
+                    f"{artifact_strip_table_cell(row.get('submitted_bugs', ''))}, expected {expected_count}"
+                )
+    readme_by_repo = artifact_scope_row_map(readme_rows)
+    html_by_repo = artifact_scope_row_map(html_rows)
+    for repo, readme_row in readme_by_repo.items():
+        if repo in html_by_repo:
+            readme_count = artifact_strip_table_cell(readme_row.get("submitted_bugs", ""))
+            html_count = artifact_strip_table_cell(html_by_repo[repo].get("submitted_bugs", ""))
+            if readme_count != html_count:
+                return (
+                    f"scope_baseline_complete: submitted Bug count mismatch for {repo}: "
+                    f"README.md={readme_count}, bug-audit-report.html={html_count}"
+                )
+    return None
+
+
 def check_artifact_assertion(assertion: dict, artifact_root: Path) -> str | None:
     assertion_type = str(assertion.get("type", "")).strip()
     case_sensitive = bool(assertion.get("case_sensitive", False))
@@ -713,6 +1068,9 @@ def check_artifact_assertion(assertion: dict, artifact_root: Path) -> str | None
 
     if assertion_type == "high_priority_parked_candidates_reviewed":
         return artifact_high_priority_promotion_review_failure(artifact_root)
+
+    if assertion_type == "scope_baseline_complete":
+        return artifact_scope_baseline_failure(artifact_root, assertion)
 
     if assertion_type in {"glob_count_at_least", "glob_count_equals"}:
         pattern = str(assertion.get("pattern", assertion.get("path", ""))).strip()

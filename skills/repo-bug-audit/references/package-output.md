@@ -27,6 +27,7 @@
 │   ├── indexes/
 │   │   ├── findings.generated.md
 │   │   ├── findings.generated.json
+│   │   ├── audit-scope.generated.json
 │   │   ├── candidates.generated.md        # repo-group/deep/high-recall packages
 │   │   └── candidates.generated.json      # repo-group/deep/high-recall packages
 │   ├── knowledge/
@@ -75,6 +76,7 @@ Include:
 - Link to `bug-audit-report.html` for final handoff/report packages unless the report was explicitly omitted.
 - Analysis information: date, analyst when provided, method, scope, status.
 - Repository version evidence summary: branch/hash/dirty status coverage when available.
+- A simplified **Analysis Scope and Version Baseline** table for final handoff, multi-repo, or deep packages. The main table should be rendered from `indexes/audit-scope.generated.json` and include only: repository, audit branch, commit, dirty/worktree status, and submitted Bug count. Include repos with `0` submitted Bugs. Keep default branch, stable candidate, confidence, evidence, and notes in `quality/repository-versions.md`, not in the README main table.
 - Scope, collection standard, exclusion boundary, language.
 - Summary counts by priority, confidence, category, impact domain, repo, and issue family.
 - Fix-readiness summary when available: fix risk distribution, verification-command coverage, and important cross-repo or cross-language contract impact.
@@ -189,6 +191,7 @@ After the final package validates, respond with a short handoff summary. Include
 - Link to `submit/bug-audit-report.html` when generated.
 - `audit-overview.png` state: `included`, `omitted-by-user`, `omitted-as-lightweight-scan`, `omitted-after-failure`, or `deferred-post-handoff`.
 - Bug totals and P1-P4 distribution from `indexes/findings.generated.json`.
+- Analyzed repo count and 0-Bug repo visibility from `indexes/audit-scope.generated.json`.
 - Repo/profile/depth coverage status for multi-repo or deep runs.
 - Coverage classification: `first-pass`, `focused`, or `deep-complete`; never imply deep completion when only pattern scans and sample reads were performed.
 - Validation result, including error/warning counts.
@@ -222,6 +225,18 @@ If the overview image decision was not recorded, record `deferred-post-handoff`,
 - Evidence used for the candidate: user input, release docs, local remote refs, tags, CI/CD, deployment config, or hosting metadata.
 - Notes for unknown, detached, shallow, exported, or non-Git sources.
 - Whether the branch baseline was user-provided, confirmed interactively, or assumed in automatic mode.
+
+README and HTML should expose the final audit baseline, not the whole branch decision process. Their simplified scope table should be:
+
+```markdown
+| 仓库 | 审计分支 | Commit | 工作区状态 | 提交 Bug |
+|---|---|---|---|---|
+| example-api | `main` | `abc1234` | clean | 4 |
+| example-worker | `main` | `def5678` | clean | 0 |
+```
+
+This table is a recall and reproducibility guard: every analyzed repo stays visible even when no submitted Bug was promoted from that repo.
+If `quality/repository-versions.md` also contains reference or excluded repos, keep them out of the main README/HTML table and mention them in one short sentence pointing to `quality/repository-versions.md`.
 
 ## Knowledge Quality
 
